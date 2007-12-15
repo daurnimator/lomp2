@@ -1,0 +1,18 @@
+LOMP - Lua Open Music Player
+By Daurnimator
+
+Dependencies:
+	Lua 5.1				http://www.lua.org/
+		download:		http://www.lua.org/ftp/lua-5.1.2.tar.gz
+	ex (Lua Extension proposal)	http://lua-users.org/wiki/ExtensionProposal
+		download: 		http://luaforge.net/projects/lua-ex/
+	LuaSocket			http://www.tecgraf.puc-rio.br/~diego/professional/luasocket/
+		download:		http://luaforge.net/projects/luasocket/
+	
+	LuaXMLRPC			http://www.keplerproject.org/luaxmlrpc/
+		(included)
+		Which depends on:
+		LuaExpat		http://www.keplerproject.org/luaexpat/
+			download:	http://luaforge.net/frs/?group_id=13
+
+	mplayer
