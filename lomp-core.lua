@@ -97,7 +97,8 @@ function core.addfolder ( path , pl , recurse , noupdate ) --Path without traili
 	local tbl = { }
 	for entry in os.dir ( path ) do
 		if entry.type == "file" then
-			table.insert ( tbl , { p = path .. "/" .. entry.name , s = entry.size } )
+			local _ , _ , extension = string.find ( entry.name , "%.(.+)$" )
+			if not config.banextensions[extension] then table.insert ( tbl , { p = path .. "/" .. entry.name , s = entry.size , ext = extension } ) end
 		elseif entry.type == "directory" then
 			if recurse then core.addfolder ( path .. entry.name .. "/" , pl , true , true ) end
 		end

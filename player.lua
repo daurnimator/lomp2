@@ -4,6 +4,9 @@ module ( "lomp.player" , package.seeall )
 fifopath = "lomp.fifo"
 io.popen ( "mkfifo " .. fifopath ):close()
 
+
+--extensions = { wv ,  }
+
 --lomp.playback.goto ( 1 )
 function mplayer ( command )
 	if io.type ( fifo ) ~= "file" then

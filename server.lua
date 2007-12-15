@@ -81,6 +81,8 @@ server = {}
 require"socket"
 require"socket.url"
 require"copas"
+require"mime" -- For base64 decoding of authorisation
+require"xmlrpc"
 
 local httpcodes = {
 	[100] = "Continue",
@@ -125,11 +127,17 @@ local httpcodes = {
 	[505] = "HTTP Version not supported"
 	}
 	
+local function httpdate ( )
+	--eg, "Sun, 10 Apr 2005 20:27:03 GMT"
+	return os.date ( "%a, %d %b %Y %H:%M:%S GMT" )
+end
+
 local function httpresponse ( skt , status, headers , body , typ , fatal )
 	str = httpcodes[status]
 	typ = typ or "text/html"
-	body = body or "<html><head><title>HTTP CODE" .. status .. "</title></head><body><h1>HTTP CODE" .. status .. "</h1><p>" .. str .. "</p></body></html>" 
+	body = body or "<html><head><title>HTTP Code " .. status .. "</title></head><body><h1>HTTP Code " .. status .. "</h1><p>" .. str .. "</p></body></html>" 
 	local message = "HTTP/1.0 " .. status .. " " .. str .. "\r\n" 
+	message = message .. "Date: " .. httpdate ( ) .. "\r\n"
 	message = message .. "Server: " .. "lomp 0.0.1" .. "\r\n"
 	message = message .. "Content-Type: " .. typ .. "\r\n"
 	message = message .. "Content-Length: " .. string.len ( body ) .. "\r\n"
@@ -160,7 +168,7 @@ end--]]
 
 local function lompserver ( skt )
 	local found , chunk , code , request , size = false , 0 , false , "" , 0
-	while not found and chunk < 20 do
+	while not found and chunk < 20 do -- max of 20 lines, more and possible DOS Attack
 		local data = copas.receive ( skt )
 		request = request .. data .. "\r\n"
 		local length = string.len ( data )
@@ -174,34 +182,49 @@ local function lompserver ( skt )
 		end
 		chunk = chunk + 1
 	end
-		
-	print( request )
+	--print( request )
 	
 	local _, _, Method, Path, Major, Minor  = string.find(request, "([A-Z]+) (.+) HTTP/(%d).(%d)")
-	path = socket.url.unescape ( path )
-	local _, _, Host = string.find( request, "Host: ([^:\r\n]+)")
-	if not Host then Host = "default" end
-	local _, _, Agent = string.find( request, "Agent: ([^\r\n]+)")
-	local _, _, Referer = string.find( request, "Referer: ([^\r\n]+)")
+	Path = socket.url.unescape ( Path )
+	local headers = {} for k, v in string.gmatch ( request , "\r\n([^:]+): ([^\r\n]+)" ) do headers[string.lower ( k )] = v end
+	if not headers["host"] then headers["host"] = "default" end
+	if headers["content-length"] then body = copas.receive ( skt , headers["content-length"] ) end
 	
-	local t = {}
-	for k, v in string.gmatch(s, "([^:]+): ([^\r\n]+)\r\n") do
-		t[k] = v
+	--print( body )
+	if config.authorisation then
+		local authorised = false
+		if headers["authorization"] then
+			local _ , _ , AuthType , AuthString = string.find ( headers["authorization"] , "([^ ]+)% +(.+)" )
+			if string.lower ( AuthType )  == "basic" then
+				local _ , _ , user , pass = string.find ( mime.unb64 ( AuthString ) , "([^:]+):(.+)" )
+				--print(AuthType,AuthString,user,password,config.username,config.password)
+				if user == config.username and pass == config.password then authorised = true end
+			elseif string.lower ( AuthType ) == "digest" then
+				
+			end
+		end
+		if not authorised then httpresponse ( skt , 401 , { ['WWW-Authenticate'] = 'Basic realm="LOMP"' } , nil , nil , true ) return false end
 	end
-	for k,v in t do
-		print ( k,v)
-	end
-
-	local a , b , Content_Length = string.find( request , "Content%-Length: ([^\r\n]+)" )
-	if Content_Length then body = copas.receive ( skt , Content_Length ) end
-	
-	print(body)
-	
 	if Method == "POST" then
-		method_name , list_params = xmlrpc.srvDecode ( body )
-		xmlrpc.srvEncode { _M[method_name]( unpack ( list_params ) ) }
-		--httpresponse ( skt , 200 , "YOU GOT THE PRIZE!\r\n" , "text/xml" )
-		return
+		local method_name , list_params = xmlrpc.srvDecode ( body )
+		if _M[method_name] then
+			local s = { _M[method_name]( unpack ( list_params ) ) }
+			local x = xmlrpc.srvEncode ( s )
+			httpresponse ( skt , 200 , { } , x , "text/xml" )
+		elseif method_name == "cmds" then
+			local x = ""
+			for k , v in pairs( _M ) do
+				if not ( string.sub ( k , 1 , 1 ) == "_" ) then
+					x = x .. k .. "\n"
+				end
+			end
+			httpresponse ( skt , 200 , { } , x , "text" )
+		else
+			local x = xmlrpc.srvEncode ( { faultCode = 404 , faultString = httpcodes[404] } , true )
+			httpresponse ( skt , 404 , { } , x , "text/xml" )
+		end
+		print ( "Received Command: " .. method_name )
+		return true 
 	elseif Method == "GET" then
 	elseif Method == "HEAD" then
 	elseif Method == "PUT" then
@@ -211,15 +234,15 @@ local function lompserver ( skt )
 	elseif Method == "OPTIONS" then	
 	else
 		httpresponse ( skt , 405, nil , nil , true )
-		return
+		return true
 	end
 	
 	httpresponse ( skt , 503, nil , nil , true )
 end
 function server.inititate ( host , port )
-	server = socket.bind ( host , port)
+	server.server = socket.bind ( host , port)
 	--copas.addserver(server, echoHandler) -- Echo Handler
-	copas.addserver ( server , lompserver )
+	copas.addserver ( server.server , lompserver )
 end
 function server.step ( )
 	copas.step ( )

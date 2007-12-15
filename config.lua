@@ -34,4 +34,10 @@ if not port then
 	fail ( "No or invalid port defined, using default (5667)" )
 end
 
+if type ( authorisation ) ~= "boolean" then authorisation = false end
+if type ( username ) ~= "string" then username = "lompuser" end
+if type ( password ) ~= "string" then password = "changeme" end
+
+if type ( banextensions ) ~= "table" then banextensions = { } end
+
 if type ( sortcaseinsensitive ) ~= "boolean" then sortcaseinsensitive = true end

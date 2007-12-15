@@ -8,7 +8,8 @@ Dependencies:
 		download: 		http://luaforge.net/projects/lua-ex/
 	LuaSocket			http://www.tecgraf.puc-rio.br/~diego/professional/luasocket/
 		download:		http://luaforge.net/projects/luasocket/
-	
+	Copas				http://www.keplerproject.org/copas/index.html
+		download:		http://luaforge.net/frs/?group_id=100
 	LuaXMLRPC			http://www.keplerproject.org/luaxmlrpc/
 		(included)
 		Which depends on:
