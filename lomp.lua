@@ -66,8 +66,12 @@ end
 
 
 
-p = print
-
+--[[function p (...)
+	if type ( select ( 1 , ... ) ) == "string" then 
+	print ( ... )
+	elseif type ( select ( 1 , ... ) ) == "table" then for k,v in pairs((...)) do p(...) end
+	end
+end--]] p = print
 function demo ( )
 	core.newpl ( math.random(100) )
 	core.addfile ( "/media/sdc1/Downloaded/Zombie Nation, Kernkraft 400 CDS/[03] Zombie Nation - Kernkraft 400.wv" , 1 ) 
@@ -89,6 +93,13 @@ pv ( )
 
 
 server.inititate ( config.address , config.port )
+steps = {}
+
+table.insert ( steps , server.step )
+
+local s = 1
 while true do
-	server.step ( )
+	steps[s] ( )
+	s = s + 1
+	if s > #steps then s = 1 end
 end

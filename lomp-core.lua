@@ -4,7 +4,7 @@ require"ex"
 module ( "lomp" , package.seeall )
 
 local t = os.time ( )
-core = { }
+core = { _NAME = "LOMP" , _VERSION = "0.0.1" }
 vars = { 
 	init= t ,
 	pl = {

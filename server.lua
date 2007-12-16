@@ -76,6 +76,9 @@ end
 
 --]]
 
+local format, gsub, strfind, strsub = string.format, string.gsub, string.find, string.sub
+local concat, getn, tinsert = table.concat, table.getn, table.insert
+
 module ( "lomp" )
 server = {}
 require"socket"
@@ -133,12 +136,12 @@ local function httpdate ( )
 end
 
 local function httpresponse ( skt , status, headers , body , typ , fatal )
-	str = httpcodes[status]
+	local str = httpcodes[status]
 	typ = typ or "text/html"
 	body = body or "<html><head><title>HTTP Code " .. status .. "</title></head><body><h1>HTTP Code " .. status .. "</h1><p>" .. str .. "</p></body></html>" 
 	local message = "HTTP/1.0 " .. status .. " " .. str .. "\r\n" 
 	message = message .. "Date: " .. httpdate ( ) .. "\r\n"
-	message = message .. "Server: " .. "lomp 0.0.1" .. "\r\n"
+	message = message .. "Server: " .. core._NAME .. ' ' .. core._VERSION .. "\r\n"
 	message = message .. "Content-Type: " .. typ .. "\r\n"
 	message = message .. "Content-Length: " .. string.len ( body ) .. "\r\n"
 	for k,v in pairs ( headers ) do
@@ -190,7 +193,6 @@ local function lompserver ( skt )
 	if not headers["host"] then headers["host"] = "default" end
 	if headers["content-length"] then body = copas.receive ( skt , headers["content-length"] ) end
 	
-	--print( body )
 	if config.authorisation then
 		local authorised = false
 		if headers["authorization"] then
@@ -198,17 +200,47 @@ local function lompserver ( skt )
 			if string.lower ( AuthType )  == "basic" then
 				local _ , _ , user , pass = string.find ( mime.unb64 ( AuthString ) , "([^:]+):(.+)" )
 				--print(AuthType,AuthString,user,password,config.username,config.password)
-				if user == config.username and pass == config.password then authorised = true end
-			elseif string.lower ( AuthType ) == "digest" then
-				
+				if user == config.username and pass == config.password then authorised = true 
+				else httpresponse ( skt , 401 , { ['WWW-Authenticate'] = 'Basic realm=" ' .. core._NAME .. ' ' .. core._VERSION .. '"' } , nil , nil , true ) end
+			--elseif string.lower ( AuthType ) == "digest" then 
+				-- TODO: Implement digest authentication
+				-- Maybe just use stunnel instead? http://stunnel.mirt.net/
 			end
 		end
-		if not authorised then httpresponse ( skt , 401 , { ['WWW-Authenticate'] = 'Basic realm="LOMP"' } , nil , nil , true ) return false end
+		if not authorised then httpresponse ( skt , 401 , { ['WWW-Authenticate'] = 'Basic realm=" ' .. core._NAME .. ' ' .. core._VERSION .. '"' } , nil , nil , true ) return false end
 	end
+	
+	print( body )
+	
 	if Method == "POST" then
-		local method_name , list_params = xmlrpc.srvDecode ( body )
-		if _M[method_name] then
-			local s = { _M[method_name]( unpack ( list_params ) ) }
+		--local method_name , list_params = xmlrpc.srvDecode ( body )
+		--list_params = list_params[1] --I don't know why it needs this, but it does
+		--print(list_params)
+		--[[local kepler_home = "http://www.keplerproject.org"
+		local kepler_products = { "luasql", "lualdap", "luaexpat", "luaxmlrpc", }
+		local kepler_sites = {
+		    luasql = kepler_home.."/luasql",
+		    lualdap = kepler_home.."/lualdap",
+		    luaexpat = kepler_home.."/luaexpat",
+		    luaxmlrpc = kepler_home.."/luaxmlrpc",
+		}
+		xmlrpc.srvMethods {
+		    kepler = {
+			products = function (self) return kepler_products end,
+			site = function (self, prod) return kepler_sites[prod] end,
+		    }
+		}
+		local method, arg_table = xmlrpc.srvDecode ( body )
+		local func = xmlrpc.dispatch (method)
+		local ok, result, err = pcall (func, unpack (arg_table or {}))
+		if ok then
+			result = { code = 3, message = result, }
+		end
+		httpresponse ( skt , 200 , { } , xmlrpc.srvEncode (result, not ok) , "text/xml" )--]]
+		
+		--print ( "Received Command: " , method_name , "Parameters: " , unpack ( list_params or {} ) )
+		--[[if _M[method_name] then
+			local s = { _M[method_name] ( unpack ( list_params ) ) }
 			local x = xmlrpc.srvEncode ( s )
 			httpresponse ( skt , 200 , { } , x , "text/xml" )
 		elseif method_name == "cmds" then
@@ -222,8 +254,34 @@ local function lompserver ( skt )
 		else
 			local x = xmlrpc.srvEncode ( { faultCode = 404 , faultString = httpcodes[404] } , true )
 			httpresponse ( skt , 404 , { } , x , "text/xml" )
+		end--]]
+		--for k,v in pairs(_M) do print(k,v) end
+		local method_name , list_params = xmlrpc.srvDecode ( body )
+		list_params = list_params[1] --I don't know why it needs this, but it does
+		print ( "Received Command: " , method_name , "Parameters: " , unpack ( list_params or {} ) )
+		for k,v in pairs(list_params) do print(k,v) end
+		local function dispatch (name)
+			--[[if name == "cmds" then return true
+			elseif name == "restart" then return true end
+			local ok, _, obj, method = string.find (name, "^([^.]+)%.(.+)$")
+			if not ok then
+				return _M[name]
+			else
+				return function (...)
+					return _M[obj][method] (obj, unpack (...))
+				end
+			end--]]
+			return function ( ... ) print ( ... ) return _M[name] ( ... ) end
 		end
-		print ( "Received Command: " .. method_name )
+		xmlrpc.srvMethods ( dispatch )
+		local func = xmlrpc.dispatch ( method_name )
+		local ok, result, err = pcall (func, unpack (list_params or {}))
+		if ok then
+			result = { code = 3, message = result, }
+		end--]]
+		--result = dispatch ( method_name ) ( unpack ( list_params ) )
+		httpresponse ( skt , 200 , { } , xmlrpc.srvEncode (result, not ok) , "text/xml" )
+		
 		return true 
 	elseif Method == "GET" then
 	elseif Method == "HEAD" then
