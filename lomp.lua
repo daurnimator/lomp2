@@ -1,3 +1,6 @@
+#! /usr/local/bin/lua
+-- Change the above as appropriate
+
 if _VERSION ~= "Lua 5.1" then
 	error ( "This program needs lua 5.1 or work." )
 end

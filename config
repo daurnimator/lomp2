@@ -35,7 +35,8 @@ address =		"*"
 port = 			"5667"
  
  -- Authorisation
-  -- Enable Auth?
+  -- Enable Auth? (Only http Basic at this point in time. Passwords sent in plain text, Non encrypted.)
+   -- As an alternative, run LOMP over stunnel ( http://stunnel.mirt.net/ )
    -- Defaults to false
 authorisation =		true
    -- Username
