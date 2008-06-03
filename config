@@ -1,62 +1,67 @@
 -- This is the config file for LOMP.
 
+-- Location of log file
+ -- Default to ~/.lomp/lomp.log
+logfile = 			"lomp.log"
+
 -- Location of state file
  -- Contains last state of playlists, queues, etc
- -- Default is ~/.lomp/lomp.state
-state_file = 		"lomp.state"
-
--- Location of log file
- -- Default is ~/.lomp/lomp.log
-log_file = 			"lomp.log"
- -- Log Level
-logall = 			false
+ -- Default to ~/.lomp/lomp.state
+statefile = 		"lomp.state"
 
 -- Playback History
  -- How much history to remember
- -- Default is 200
+ -- Default to 200
 history =			200
 
 -- Library
  -- Location of your music
  -- Seperate entries with a comma
  -- eg: library = { "/media/music" , "/media/music2" }
-library = {		"/media/sdc1/Random Downloaded/" 
+library = {		"/media/sdc1/Random Downloaded/" ,
 }
 
--- Server
+
+
+-- Server Parameters
  -- Addresss and port to bind to on the local host. 
   -- Address can be an IP address or a host name. 
   -- If address is '*', the system binds to all local interfaces using the INADDR_ANY constant.
-  -- Default is "*"
+  -- Default to "*"
 address =		"*"
 
  -- Port must be an integer number in the range [0..64K).  If port is 0, the system automatically chooses an ephemeral port. 
-  -- Default is 5667
-port = 			"5667"
+  -- Default to 5667
+port = 			5667
  
  -- Authorisation
-  -- Enable Auth? (Only http Basic at this point in time. Passwords sent in plain text, Non encrypted.)
-   -- As an alternative, run LOMP over stunnel ( http://stunnel.mirt.net/ )
+  -- Enable Auth? (Only http basic authentication at this point in time. Passwords will sent in plain text.)
+   -- As a secure alternative, run LOMP over stunnel ( http://stunnel.mirt.net/ )
    -- Defaults to false
-authorisation =		true
+authorisation =	true
    -- Username
     -- Defaults to "lompuser"
 username = 		"lompuser"
    -- Password
-    -- Defaults to "changeme"
+    -- If not given, authorisation is turned off.
 password = 		"changeme"
 
+
+
 -- Plugins
- -- Plugins to use
+ -- Additional plugins to use
+ -- Seperate with commas.
+ -- eg, plugins = { "awesome" , "cool" , }
 plugins = {		
 }
 
 
 -- Pedantics
- -- File extensions to ignore
+ -- File extensions to add/allow
 banextensions = {	"wvc",
-			"m3u",
+				"m3u",
 }
- -- When Adding a folder, how do we sort? (by path)
-  -- Default is true
+
+ -- When adding a folder, how do we sort? (by path)
+  -- Default to true
 sortcaseinsensitive = true

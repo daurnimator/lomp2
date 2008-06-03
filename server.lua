@@ -354,7 +354,7 @@ local function lompserver ( skt )
 	elseif Method == "CONNECT" then
 	elseif Method == "OPTIONS" then	
 	else
-		httpresponse ( skt , 405, { Allow = "GET, POST"  , nil , nil ,true )
+		httpresponse ( skt , 405, { Allow = "GET, POST" } , nil , nil ,true )
 		return true
 	end
 	

@@ -61,7 +61,6 @@ function playback.queuenxt ( frompos )
 		return 
 	end
 	
-	local frompos
 	if not frompos then
 		if vars.queue.gap == 1 then
 			-- If frompos is not give, and we only have the softqueue; play the song at ploffset

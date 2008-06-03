@@ -10,236 +10,227 @@ vars = {
 	pl = {
 		rev = 0 ,
 	} ,
-	queue = { 
+	hardqueue = { 
 		rev = 0 ,
-		gap = 1 , -- Gap is first soft item
-		softqueuepl = 0 , -- Default soft playlist (0 = Library)
-		ploffset = 0 , -- Current play position (offset) in soft playlist. Add to gap to get playlist position overall. BUT, softplaylist should only be active when gap==1
+		--[[gap = 1 , -- Gap is first soft item
+		ploffset = 0 , -- Current play position (offset) in soft playlist. Add to gap to get playlist position overall. BUT, softplaylist should only be active when gap==1]]
 	} ,
 	played = { 
 		rev = 0 ,
 	} ,
 	shuffle = false , -- Mix up soft playlist?
-	rpt = true -- When end of soft playlist reached, go back to start of soft playlist?
+	rpt = true , -- When end of soft playlist reached, go back to start of soft playlist?
+	softqueuepl = nil , 
 }
 
-function core.newpl ( title , pl )
-	title = title or "New Playlist"
-	pl = pl or #vars.pl + 1
-	vars.pl[pl] = { name = title , rev = 0 }
-	vars.pl.rev = vars.pl.rev + 1
-	return pl
+function core.newplaylist ( name , pl )
+	if type ( name ) ~= "string" or name == "hardqueue" or ( name == "Library" and pl ~= 0 ) then name = "New Playlist" end
+	if pl ~= nil and ( type ( pl ) ~= "number" or pl > #vars.pl + 1 or pl < 0 ) then 
+		updatelog ( "'New playlist' called with invalid playlist number" , 1 ) 
+		return false , "'New playlist' called with invalid playlist number"
+	else
+		pl = pl or #vars.pl + 1
+		vars.pl [ pl ] = { name = name , rev = 0 }
+		vars.pl.rev = vars.pl.rev + 1
+		updatelog ( "Created new playlist #" .. pl .. " '" .. name .. "'" , 4 )
+		return pl , name
+	end
 end
-core.newpl ( "Library" , 0 ) -- Create Library (Just playlist 0)
-function core.deletepl ( pl )
-	if type ( pl ) == "string" then pl = valuetoindex ( vars.pl , "name" , pl ) end
-	assert ( ( type( pl ) == "number" and pl > 0 and pl < #vars.pl ) , "Provide a playlist" )
+core.newplaylist ( "Library" , 0 ) -- Create Library (Just playlist 0)
+function core.deleteplaylist ( pl )
+	if type ( pl ) == "string" then pl = table.valuetoindex ( vars.pl , "name" , pl ) end
+	if type ( pl ) ~= "number" or pl <= 0 or pl > #vars.pl then 
+		updatelog ( "'Delete playlist' called with invalid playlist" , 1 ) 
+		return false , "'Delete playlist' called with invalid playlist"
+	end
 	table.remove ( vars.pl , pl )
 	vars.pl.rev = vars.pl.rev + 1
-	if pl == vars.queue.softqueuepl then core.updatesoftqueue ( ) end -- If deleted playlist was the soft queue:
+	if pl == vars.queue.softqueuepl then vars.queue.softqueuepl = nil end -- If deleted playlist was the soft queue
 	return pl
 end
-function core.listpl ( )
-	local s = "Playlists: (Last Revision: " .. vars.pl.rev .. ")\n"
-	for i , v in ipairs( vars.pl ) do
-		s = s .. "Playlist #" .. i .. "\t" .. v.name .. " \tRevision " .. v.rev.. "\n"
+function core.addentry ( object , pl , pos )
+	local place
+	if pl == nil or pl == "hardqueue" then -- If no playlist given, or expressly stated: add to hard queue
+		place = vars.hardqueue
+	else	
+		if type ( pl ) == "string" then pl = table.valuetoindex ( vars.pl , "name" , pl ) end
+		if type ( pl ) ~= "number" or pl < 0 or pl > #vars.pl then 
+			updatelog ( "'Add entry' called with invalid playlist" , 1 )
+			return false , "'Add entry' called with invalid playlist"
+		end
+		place = vars.pl [ pl ]
 	end
-	return vars.pl , s
-end
-function core.addfile ( path , pl , noupdate , metadata )
-	assert ( path , "No path provided" )
-	local pos, place
-	metadata = metadata or {}
-	if not pl then --ADD TO HARD QUEUE
-		place = vars.queue
-		pos = 1		
-	else --ADD to a playlist
-		if type( pl ) == "string" then pl = valuetoindex ( vars.pl , "name" , key ) end
-		assert ( type ( pl ) == "number" , "Provide a playlist" )
-		pos = #vars.pl[pl] + 1
-		place = vars.pl[pl]
-	end
-	-- Read TAGS
-	--metadata 
-	table.insert ( place , pos , { typ = "file" , source = path , metadata = metadata , progress = 0 } )
-	place.rev = place.rev + 1
-	if pl then vars.pl.rev = vars.pl.rev + 1 end
-	if not noupdate and ( pl == vars.queue.softqueuepl ) then core.updatesoftqueue ( ) end -- Update softqueue if appropriate
-	return pos , pl
-end
-function core.addstream ( url , pl , noupdate )
-	assert ( url , "No url provided" )
-	local pos, place
-	local metadata = { }
-	if not pl then --ADD TO HARD QUEUE
-		place = vars.queue
-		pos = 1		
-	else --ADD to a playlist
-		if type( pl ) == "string" then pl = valuetoindex ( vars.pl , "name" , key ) end
-		assert ( type ( pl ) == "number" , "Provide a playlist" )
-		pos = #vars.pl[pl] + 1
-		place = vars.pl[pl]
-	end
-	-- Read TAGS
-	--metadata 
-	table.insert ( place , pos , { typ = "stream" , source = url , metadata = metadata , progress = 0 } )
-	place.rev = place.rev + 1
-	if pl then vars.pl.rev = vars.pl.rev + 1 end
-	if noupdate and ( pl == vars.queue.softqueuepl ) then core.updatesoftqueue ( ) end -- Update softqueue if appropriate
-	return pos , pl
-end
-function core.addfolder ( path , pl , recurse , noupdate ) --Path without trailing slash
-	assert ( path , "No path provided" )
-	if type( pl ) == "string" then pl = valuetoindex ( vars.pl , "name" , key ) end
-	assert ( type ( pl ) == "number" , "Provide a playlist" )
-	if string.sub ( path , -1) == "/" then path = string.sub ( path , 1 , ( string.len( path ) - 1 ) ) end -- Remove trailing slash if needed
-	local firstpos
-	local tbl = { }
-	for entry in os.dir ( path ) do
-		if entry.type == "file" then
-			local _ , _ , extension = string.find ( entry.name , "%.(.+)$" )
-			if not config.banextensions[extension] then table.insert ( tbl , { p = path .. "/" .. entry.name , s = entry.size , ext = extension } ) end
-		elseif entry.type == "directory" then
-			if recurse then core.addfolder ( path .. entry.name .. "/" , pl , true , true ) end
+	if type ( pos ) ~= "number" then
+		if pos == nil or pos > #place then pos = #place + 1 -- Add to end of playlist/queue
+		elseif pos < 1 then pos = 1
+		else
+			updatelog ( "'Add entry' called with invalid position" , 1 )
+			return false , "'Add entry' called with invalid position"
 		end
 	end
-	if config.sortcaseinsensitive ~= false then table.sort ( tbl , function (a,b) if string.lower( a.p ) < string.lower( b.p ) then return true end end) end-- Put in alphabetical order of path (case insensitive) 
-	for i , v in ipairs ( tbl ) do
-		local a , b = core.addfile ( v.p , pl , true , { filesize = v.s } )
-		firstpost = firstpost or a
-	end
-	if noupdate and ( pl == vars.queue.softqueuepl ) then core.updatesoftqueue ( ) end
-	return firstpos , pl , tbl
+	
+	table.insert ( place , pos , object )
+	place.rev = place.rev + 1
+	
+	
+	return ( pl or "hardqueue" ) , pos , object
 end
 
-function core.listentries ( pl )
-	if type( pl ) == "string" then pl = valuetoindex ( vars.pl , "name" , key ) end
-	assert ( type ( pl ) == "number" , "Provide a playlist" )
-	local s = "Listing Playlist #" .. pl .. " \t(Last Revision: " .. vars.pl[pl].rev .. ")\n"
-	for i , v in ipairs( vars.pl[pl] ) do
-		s = s .. "Entry #" .. i .. " \t(" .. v.typ .. ") \tSource: '" .. v.source .. "'\n"
+function core.addfile ( path , pl , pos )
+	-- Check path exists
+	if type ( path ) ~= "string" then
+		updatelog ( "'Add file' called with invalid path" , 1 ) 
+		return false , "'Add file' called with invalid path"
 	end
-	return vars.pl[pl] , s
+	
+	local _ , _ , extension = string.find ( path , "%.(.+)$" )
+	--if not config.banextensions[extension] then end
+	
+	local o = { typ = "file" , source = path , progress = 0 }
+	
+	return core.addentry ( o , pl , pos )
 end
-function core.listallentries ( )
-	local s = ""
-	for i,v in ipairs(lomp.vars.pl) do
-		s = s .. select ( 2, lomp.core.listentries ( i ) )
+function core.addstream ( url , pl , pos )
+	-- Check url is valid
+	if type ( url ) ~= "string" then
+		updatelog ( "'Add stream' called with invalid url" , 1 ) 
+		return false , "'Add stream' called with invalid url"
 	end
-	return vars.pl , s
+	
+	local o = { typ = "stream" , source = url , progress = 0 }
+	
+	return core.addentry ( o , pl , pos )
 end
-function core.removeplentry ( pos , pl )
-	if type ( pl ) == "string" then pl = valuetoindex ( vars.pl , "name" , pl ) end
-	assert ( type( pl ) == "number" , "Provide a playlist" )
-	assert ( type( entry ) == "number" , "Provide an entry" )
-	local tmp = vars.pl[pl][pos]
-	table.remove ( vars.pl[pl] , pos )
-	vars.pl[pl].rev = vars.pl[pl].rev + 1
-	vars.pl.rev = vars.pl.rev + 1
-	if pl == vars.queue.softqueuepl then core.updatesoftqueue ( ) end
-	return tmp
+function core.addfolder ( path , pl , pos , recurse )
+	-- Check path exists
+	if type ( path ) ~= "string" then
+		updatelog ( "'Add folder' called with invalid path" , 1 ) 
+		return false , "'Add folder' called with invalid path"
+	end
+	if string.sub ( path , -1) == "/" then path = string.sub ( path , 1 , ( string.len( path ) - 1 ) ) end -- Remove trailing slash if needed
+	if type ( pos ) ~= "number" then pos = nil end
+	
+	local dircontents = { }
+	for entry in os.dir ( path ) do
+		if entry.type == "file" then
+			dircontents [ #dircontents + 1 ] = path .. "/" .. entry.name
+			--table.insert ( dircontents , { path = path .. "/" .. entry.name , s = entry.size , ext = extension } ) 
+		elseif entry.type == "directory" then
+			if recurse then core.addfolder ( path .. "/" .. entry.name , pl , true , true ) end
+		end
+	end
+	if config.sortcaseinsensitive then table.sort ( dircontents , function ( a , b ) if string.lower ( a ) < string.lower ( b ) then return true end end ) end-- Put in alphabetical order of path (case insensitive) 
+	local firstpos = nil
+	for i , v in ipairs ( dircontents ) do
+		local a , b = core.addfile ( v , pl , pos )
+		if a then --If not failed
+			pl , pos = a , ( b + 1 ) -- Increment playlist position
+			firstpos = firstpos or b
+		end -- keep going (even after a failure)
+	end
+	
+	return pl , firstpos , dircontents
 end
-function core.copytoplaylist ( oldentry , oldpl , pl , pos )
-	if type ( oldpl ) == "string" then oldpl = valuetoindex ( vars.pl , "name" , key ) end
-	assert ( type ( oldpl ) == "number" , "Provide a playlist" )
-	assert ( type ( oldentry ) == "number" , "Provide an entry" )
-	if type ( pl ) == "string" then pl = valuetoindex ( vars.pl , "name" , key ) end
-	assert ( type ( pl ) == "number" , "Provide a playlist" )
-	local pos = pos or #(vars.pl[pl]) + 1 -- If new position not given, add to end.
-	assert ( type ( pos ) == "number" , "Provide an entry" )
-	table.insert ( vars.pl[pl] , pos , vars.pl[oldpl][oldentry] )
-	vars.pl[pl].rev = vars.pl[pl].rev + 1
-	vars.pl.rev = vars.pl.rev + 1
-	if pl == vars.queue.softqueuepl then core.updatesoftqueue ( ) end
-	return pl[newpos]
+function core.removeentry ( pl , pos )
+	local place
+	if pl == "hardqueue" then
+		place = vars.hardqueue
+	else
+		if type ( pl ) == "string" then pl = table.valuetoindex ( vars.pl , "name" , pl ) end
+		if type ( pl ) ~= "number" or pl < 0 or pl > #vars.pl then 
+			updatelog ( "'Remove entry' called with invalid playlist" , 1 ) 
+			return false , "'Remove entry' called with invalid playlist"
+		end
+		place = vars.pl [ pl ]
+	end
+	if type ( pos ) ~= "number" or pos < 1 or pos > #vars.pl [ pl ] then
+		updatelog ( "'Remove entry' called with invalid entry" , 1 ) 
+		return false , "'Remove entry' called with invalid entry"
+	end
+	local tmp = vars.pl [ pl ] [ pos ]
+	table.remove ( vars.pl [ pl ] , pos )
+	vars.pl [ pl ].rev = vars.pl [ pl ].rev + 1
+	return pl , pos , tmp
 end
-function core.movetoplaylist ( oldentry , oldpl , pl , pos )
-	if type ( oldpl ) == "string" then oldpl = valuetoindex ( vars.pl , "name" , key ) end
-	assert ( type ( oldpl ) == "number" , "Provide a playlist" )
-	assert ( type ( oldentry ) == "number" , "Provide an entry" )
-	if type ( pl ) == "string" then pl = valuetoindex ( vars.pl , "name" , key ) end
-	assert ( type ( pl ) == "number" , "Provide a playlist" )
-	local pos = pos or #(vars.pl[pl]) + 1 -- If new position not given, add to end.
-	assert ( type ( pos ) == "number" , "Provide an entry" )
-	local tmp = core.removeplentry ( oldentry , oldpl )
-	table.insert ( vars.pl[pl] , pos , tmp )
-	vars.pl[pl].rev = vars.pl[pl].rev + 1
-	vars.pl.rev = vars.pl.rev + 1
-	if pl == vars.queue.softqueuepl or oldpl ==  vars.queue.softqueuepl then core.updatesoftqueue ( ) end
-	return pl[newpos]
+function core.copytoplaylist ( newpl , newpos , oldpl , oldpos )
+	local oldplace
+	if oldpl == nil or oldpl == "hardqueue" then
+		oldplace = vars.hardqueue
+	else
+		if type ( oldpl ) == "string" then oldpl = table.valuetoindex ( vars.pl , "name" , oldpl ) end
+		if type ( oldpl ) ~= "number" or oldpl < 0 or oldpl > #vars.pl then 
+			updatelog ( "'Copy to playlist' called with invalid old playlist" , 1 ) 
+			return false , "'Copy to playlist' called with invalid old playlist"
+		end
+		oldplace = vars.pl [ oldpl ]
+	end
+	if type ( oldpos ) ~= "number" or oldpos < 1 or oldpos > #vars.pl [ pl ] then
+		updatelog ( "'Copy to playlist' called with invalid old entry" , 1 ) 
+		return false , "'Copy to playlist' called with invalid old entry"
+	end
+	local newplace
+	if newpl == nil or newpl == "hardqueue" then
+		newplace = vars.hardqueue
+	else
+		if type ( newpl ) == "string" then newpl = table.valuetoindex ( vars.pl , "name" , newpl ) end
+		if type ( newpl ) ~= "number" or newpl < 0 or newpl > #vars.pl then 
+			updatelog ( "'Copy to playlist' called with invalid new playlist" , 1 ) 
+			return false , "'Copy to playlist' called with invalid new playlist"
+		end
+		newplace = vars.pl [ newpl ]
+	end
+	if type ( newpos ) ~= "number" or newpos < 1 or newpos > #vars.pl [ pl ] then
+		if newpos == nil then
+			newpos = #newplace + 1 -- If new position is not given, add to end of playlist.
+		else
+			updatelog ( "'Copy to playlist' called with invalid new entry" , 1 ) 
+			return false , "'Copy to playlist' called with invalid new entry"
+		end
+	end
+	
+	table.insert ( newplace , newpos , oldplace [ oldpos ] )
+	
+	if oldpl == newpl then
+		-- Copy within a playlist
+		vars.pl [ oldpl ].rev = vars.pl [ oldpl ].rev + 1
+	else
+		-- Copy between playlists
+		vars.pl [ oldpl ].rev = vars.pl [ oldpl ].rev + 1
+		vars.pl [ newpl ].rev = vars.pl [ newpl ].rev + 1
+	end
+	
+	return newpl , newpos , oldpl , oldpos , newplace [ newpos ]
+end
+function core.movetoplaylist ( newpl , newpos , oldpl , oldpos )
+	local newpl , newpos , oldpl , oldpos = core.copytoplaylist ( newpl , newpos , oldpl , oldpos )
+	if not newpl then -- Copy error'd
+		return newpl , newpos
+	end
+	local pl , pos , tmp = core.removeentry ( oldpl , oldpos )
+	if not pl then
+		return pl , pos
+	end
+	return newpl , newpos , oldpl , oldpos , tmp
 end
 
--- Queue Stuff
- -- In the queue:
-  -- 0 = currently playing
-  -- played table = history
-  -- postive until "gap" = next (queued)
-  -- after "gap" = playlist to goto's contents
-  
-function core.updatesoftqueue ( pl )
-	if pl then
-		if type ( pl ) == "string" then pl = valuetoindex ( vars.pl , "name" , key ) end
-		assert ( type ( pl ) == "number" , "Provide a playlist" )
-		vars.queue.softqueuepl = pl
-		-- If we change the soft playlist, reset it
-		vars.queue.ploffset = 0
-	end
-	table.sever ( vars.queue , vars.queue.gap-1 )	
-	table.append ( vars.queue , vars.pl[vars.queue.softqueuepl] )
-	vars.queue.rev = vars.queue.rev + 1
-	updatelog ( "Updated soft queue\n" , 1 )
-	return true
-end
-function core.addtoqueue ( pl , entry , pos )
-	assert ( type ( entry ) == "number" , "Provide an entry" )
-	if type ( pl ) == "string" then pl = valuetoindex ( vars.pl , "name" , key ) end
-	assert ( type ( pl ) == "number" , "Provide a playlist" )
-	if type( pos ) ~= "number" then pos = nil  -- Do not throw error if pos is not a number, just add to end of set queue
-	elseif pos > vars.queue.gap then local a = "Cannot add soft playlist items. Please add to playlist instead" updatelog ( a , 1 ) return false , a end
-	local pos = pos or vars.queue.gap
-	table.insert ( vars.queue , pos ,  vars.pl[pl][entry] )
-	vars.queue.gap = vars.queue.gap + 1
-	core.updatesoftqueue ( )
-	vars.queue.rev = vars.queue.rev + 1
-	return pos
-end
-function core.removefromqueue ( pos )
-	assert ( type ( pos ) == "number" , "Provide an entry" )
-	if type( pos ) ~= "number" then pos = nil
-	elseif pos > vars.queue.gap then local a = "Cannot remove soft playlist items. Please remove from playlist instead" updatelog ( a , 1 ) return false , a end
-	local pos = pos or vars.queue.gap
-	table.remove (  vars.queue , pos )
-	vars.queue.gap = vars.queue.gap - 1
-	core.updatesoftqueue ( )
-	vars.queue.rev = vars.queue.rev + 1
-	return pos
-end
-function core.moveinqueue ( oldpos , newpos )
-	local tmp = vars.queue[oldpos]
-	table.remove ( vars.queue , vars.queue[oldpos] )
-	table.insert ( vars.queue , newpos , tmp )
-	core.updatesoftqueue ( )
-	return true
-end
-function core.listqueue ( )
-	local s = "Listing Queue \t(Last Revision: " .. vars.queue.rev .. ")\nState: " .. lomp.playback.state .. "\n"
-	if vars.queue[0] then
-		s = s .. "Current Song: " .. " \t(" .. vars.queue[0].typ .. ") \tSource: '" .. vars.queue[0].source .. "'\n"
-	end
-	for i , v in ipairs( vars.queue ) do
-		if i == vars.queue.gap then s = s .. "Soft Playlist Begin (Playlist " .. vars.queue.softqueuepl .. ")\n" end
-		s = s .. "Entry #" .. i .. " \t(" .. v.typ .. ") \tSource: '" .. v.source .. "' "
-		if i == vars.queue.gap+vars.queue.ploffset then s = s .. "<==" end
-		s = s .. "\n"
-	end
-	return vars.queue , s
-end
-function core.listplayed ( )
-	local s = "Listing Played Songs (most recent first) \t(Last Revision: " .. vars.played.rev .. ")\n"
-	for i , v in ipairs( vars.played ) do
-		s = s .. "Entry #" .. i .. " \t(" .. v.typ .. ") \tSource: '" .. v.source .. "'\n"
-	end
-	return vars.played , s
-end
 
-math.randomseed (os.time()) -- For good measure
+-- Queue Stuff  
+vars.queue = setmetatable ( vars.hardqueue , {
+	__index = function(t, k)
+		if type(k) ~= "number" then return nil end
+		if k >= 1 and k <= #vars.hardqueue then
+			return vars.hardqueue [ k ]
+		elseif k >= 1 then
+			return vars.pl [ vars.softqueuepl ] [ k - #vars.hardqueue ]
+		end
+	end,
+})
+function core.setsoftqueueplaylist ( pl )
+	if type ( pl ) == "string" then pl = table.valuetoindex ( vars.pl , "name" , pl ) end
+	if type ( pl ) ~= "number" or pl < 0 or pl > #vars.pl then 
+		updatelog ( "'Set soft queue playlist' called with invalid playlist" , 1 ) 
+		return false , "'Set soft queue playlist' called with invalid playlist"
+	end
+	
+	vars.softqueuepl = pl
+end

@@ -5,7 +5,13 @@ fifopath = "lomp.fifo"
 io.popen ( "mkfifo " .. fifopath ):close()
 
 
---extensions = { wv ,  }
+extensions = {	"mp3" ,
+				"ogg" ,
+				"flac" ,
+				"wav" ,
+				"wv" ,
+				
+}
 
 --lomp.playback.goto ( 1 )
 function mplayer ( command )
