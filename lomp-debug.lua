@@ -52,3 +52,24 @@ end
 	end
 	return vars.played , s
 end]]
+
+
+function demo ( )
+	core.newplaylist ( )
+	core.addfile ( "/media/sdc1/Downloaded/Zombie Nation, Kernkraft 400 CDS/[03] Zombie Nation - Kernkraft 400.wv" , 1 ) 
+	core.addfile ( "/media/sdc1/Random Downloaded/Requiem for a Tower.mp3" , 1 )
+end
+function pv ( )
+	p ( "Current State: " .. playback.state )
+	p ( select( 2 , core.listpl ( ) ) )
+	p ( select( 2 , core.listentries ( 0 ) ) )
+	p ( select( 2 , core.listallentries ( ) ) )
+	p ( select( 2 , core.listqueue ( ) ) )
+	--p ( select( 2 , core.listplayed ( ) ) )
+end
+--[[function p (...)
+	if type ( select ( 1 , ... ) ) == "string" then 
+	print ( ... )
+	elseif type ( select ( 1 , ... ) ) == "table" then for k,v in pairs((...)) do p(...) end
+	end
+end--]] p = print

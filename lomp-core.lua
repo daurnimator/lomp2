@@ -12,8 +12,6 @@ vars = {
 	} ,
 	hardqueue = { 
 		rev = 0 ,
-		--[[gap = 1 , -- Gap is first soft item
-		ploffset = 0 , -- Current play position (offset) in soft playlist. Add to gap to get playlist position overall. BUT, softplaylist should only be active when gap==1]]
 	} ,
 	played = { 
 		rev = 0 ,
@@ -21,6 +19,7 @@ vars = {
 	shuffle = false , -- Mix up soft playlist?
 	rpt = true , -- When end of soft playlist reached, go back to start of soft playlist?
 	softqueuepl = nil , 
+	ploffset = 0 ,
 }
 
 function core.newplaylist ( name , pl )

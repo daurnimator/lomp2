@@ -31,6 +31,8 @@ do
 end
 	
 function updatelog ( data , level )
+	if not level then level = 2 end
+	
 	if level == 0 then data = "Fatal error: \t" .. data
 	elseif level == 1 then data = "NonFatal error: \t" .. data 
 	elseif level == 2 then data = "Warning: \t\t" .. data
@@ -78,6 +80,7 @@ end--]]
 
 function quit ( )
 	--savestate ( )
+	player.stop ( )
 	os.exit ( )
 end
 
@@ -92,30 +95,11 @@ end
 
 require"lomp-debug"
 
---[[function p (...)
-	if type ( select ( 1 , ... ) ) == "string" then 
-	print ( ... )
-	elseif type ( select ( 1 , ... ) ) == "table" then for k,v in pairs((...)) do p(...) end
-	end
-end--]] p = print
-function demo ( )
-	core.newplaylist ( )
-	core.addfile ( "/media/sdc1/Downloaded/Zombie Nation, Kernkraft 400 CDS/[03] Zombie Nation - Kernkraft 400.wv" , 1 ) 
-	core.addfile ( "/media/sdc1/Random Downloaded/Requiem for a Tower.mp3" , 1 )
-	core.addfile ( "/path/file." .. math.random(100) , 1 )
-end
-function pv ( )
-	p ( "Current State: " .. playback.state )
-	p ( select( 2 , core.listpl ( ) ) )
-	p ( select( 2 , core.listentries ( 0 ) ) )
-	p ( select( 2 , core.listallentries ( ) ) )
-	p ( select( 2 , core.listqueue ( ) ) )
-	--p ( select( 2 , core.listplayed ( ) ) )
-end
 demo ( )
---demo ( )
+
 core.addfolder ( config.library [ 1 ] , 0 )
 core.setsoftqueueplaylist ( 0 )
+table.randomize ( vars.pl [ 0 ] )
 core.addentry ( vars.pl[0][1] , 1 , 1 )
 pv ( )
 
@@ -127,7 +111,11 @@ table.insert ( steps , server.step )
 
 local s = 1
 
-updatelog ( "LOMP Loaded " .. os.date ( "%c" ) )
+updatelog ( "LOMP Loaded " .. os.date ( "%c" ) , 3 )
+
+
+playback.play ( )
+
 while true do
 	steps[s] ( )
 	s = s + 1

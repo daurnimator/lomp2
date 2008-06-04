@@ -361,9 +361,16 @@ local function lompserver ( skt )
 	httpresponse ( skt , 503, nil , nil , nil , true )
 end
 function server.inititate ( host , port )
-	server.server = socket.bind ( host , port)
+	server.server , err = socket.bind ( host , port )
 	--copas.addserver(server, echoHandler) -- Echo Handler
-	copas.addserver ( server.server , lompserver )
+	if server.server then 
+		copas.addserver ( server.server , lompserver )
+		updatelog ( "Server started bound to '" .. "', port #" .. port , 4 ) 
+		return true
+	else
+		updatelog ( "Server could not be started: " .. err , 0 )
+		return false
+	end
 end
 function server.step ( )
 	copas.step ( )
