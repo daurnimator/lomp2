@@ -21,7 +21,7 @@ function play ( source , offset )
 	
 	proc = os.spawn ( cmd );
 	--rin:close( ) ; wout:close( ) ; werr:close( )
-		
+	_ , _ , pid = string.find ( tostring ( proc ) , "^process %((%d+)," )
 	if not proc then return false end 
 	return true
 end
@@ -30,15 +30,24 @@ end
 		
 		
 function pause ( )
-	os.execute "killall -STOP ogg123"
+	--os.execute "killall -STOP ogg123"
+	if proc then
+		os.execute ( "kill -STOP " .. pid )
+	end
 end
 
 function unpause ( )
-	os.execute "killall -CONT ogg123"
+	--os.execute "killall -CONT ogg123"
+	if proc then
+		os.execute ( "kill -CONT " .. pid )
+	end
 end
 
 function stop ( )
-	os.execute "killall ogg123"
+	--os.execute "killall ogg123"
+	if proc then
+		os.execute ( "kill " .. pid )
+	end
 end
 
 function callonend ( )
