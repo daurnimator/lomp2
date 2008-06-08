@@ -7,7 +7,7 @@ end
 
 module ( "lomp" , package.seeall )
 
-verbosity = 3
+local verbosity = 3
 
 do 
 	log = ""
@@ -60,64 +60,62 @@ require("lomp-core")
 require("playback")
 require("server")
 
---[[-- Restore State
-do
-	local file, err = io.open( config.statefile )
-	if file then
-		--RESTORE THE STATE
-		core.updatesoftqueue ( )
--- New/Blank State
-	else
-		updatelog ( "Could not find state file: '" .. err .. "'\n\t\t Using defaults." )
-		core.newpl ( "Default Playlist" )
-	end
-end
-function savestate ( )
-	local file, err = io.open( config.statefile , "w+" )
-	file:flush ( )
-	file:close ( )
-end--]]
-
-function quit ( )
-	--savestate ( )
-	player.stop ( )
-	os.exit ( )
-end
-
 
 updatelog ( "Loading plugins." , 3 )
 for i , v in ipairs ( config.plugins ) do
 	local name = dofile ( v ) or v
 	updatelog ( "Loaded plugin '" .. name .. "'" , 3 )
 end
+updatelog ( "All Plugins Loaded" , 3 )
 
 
+do -- Restore State
+	local ok , err = core.restorestate ( )
+end
 
 require"lomp-debug"
+
+
 
 demo ( )
 
 core.addfolder ( config.library [ 1 ] , 0 )
 core.setsoftqueueplaylist ( 0 )
-table.randomize ( vars.pl [ 0 ] )
-core.addentry ( vars.pl[0][1] , 1 , 1 )
-pv ( )
-
 
 server.inititate ( config.address , config.port )
 steps = {}
 
 table.insert ( steps , server.step )
 
-local s = 1
+
 
 updatelog ( "LOMP Loaded " .. os.date ( "%c" ) , 3 )
 
+core.setsoftqueueplaylist ( 1 )
+pv ( )
 
+
+function playsongfrompl ( pl , pos )
+	core.setsoftqueueplaylist ( pl )
+	core.clearhardqueue ( )
+	playback.goto ( pos )
+	playback.play ( )
+end
+--print(savestate())
 playback.play ( )
+os.sleep ( 2 )
+--print(player.getstate ( ))
+playback.nxt ( )
+playback.play ( )
+os.sleep ( 2 )
+playsongfrompl ( 0 , 2 )
+os.sleep ( 5 )
+core.quit ( )
 
+local s = 1
 while true do
 	steps[s] ( )
+	print ( "Step Finished" )
 	s = s + 1
 	if s > #steps then s = 1 end
 end

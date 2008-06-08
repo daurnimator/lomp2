@@ -6,9 +6,23 @@ extensions = {	"ogg" ,
 }
 
 function play ( source , offset )
-	os.execute ( "xmms2 clear" )
-	os.execute ( "xmms2 add '" .. source .. "'")
-	os.execute ( "xmms2 play" )
+	--cmd = io.popen ( "ogg123 " .. source )
+	--rin, win = io.pipe( )
+	--rout, wout = io.pipe( )
+	--rerr, werr = io.pipe( )
+	local null = io.open ( "/dev/null" )
+	werr = null
+	local cmd = { 
+		"ogg123" , source , --Command then arguments. 
+		stdin = rin , stdout = wout , stderr = werr 
+	}
+	
+	if tonumber ( offset ) then table.insert ( cmd , 2 , "--skip " .. offset ) end
+	
+	proc = os.spawn ( cmd );
+	--rin:close( ) ; wout:close( ) ; werr:close( )
+		
+	if not proc then return false end 
 	return true
 end
 
@@ -16,20 +30,34 @@ end
 		
 		
 function pause ( )
-	os.execute ( "xmms2 pause" )
-	return true
+	os.execute "killall -STOP ogg123"
 end
 
 function unpause ( )
-	os.execute ( "xmms2 play" )
-	return true
+	os.execute "killall -CONT ogg123"
 end
 
 function stop ( )
-	os.execute ( "xmms2 stop" )
-	return true
+	os.execute "killall ogg123"
+end
+
+function callonend ( )
+	-- When file is finished playing, call this.
 end
 
 function getstate ( )
-	
+	--[[local r = rerr:read ( 3 )  -- Junk
+	local r = rerr:read ( )
+	rerr:read ( ) rerr:read ( 2 )-- Blank Junk
+	r = r .. "\n" .. rerr:read ( )
+	r = r .. "\n" .. rerr:read ( )
+	r = r .. "\n" .. rerr:read ( )
+	r = r .. "\n" .. rerr:read ( )
+	r = r .. "\n" .. rerr:read ( )
+	r = r .. "\n" .. rerr:read ( )
+	r = r .. "\n" .. rerr:read ( )
+	r = r .. "\n" .. rerr:read ( )
+	r = r .. "\n" .. rerr:read ( 76 )
+	return '"' .. r .. '"'
+	--]]
 end

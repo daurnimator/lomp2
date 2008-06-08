@@ -1,24 +1,115 @@
 require"general"
 require"ex"
+require"player"
 
 module ( "lomp" , package.seeall )
 
 local t = os.time ( )
-core = { _NAME = "LOMP" , _VERSION = "0.0.1" }
+core = { 
+	_NAME = "LOMP" , 
+	_MAJ = 0 ,
+	_MIN = 0 ,
+	_INC = 0 ,
+}
+
+core._VERSION = core._MAJ .. "." .. core._MIN .. "." .. core._INC 
+
+function core.savestate ( )
+	local s = core._NAME .. "\t" .. core._VERSION .. " State File.\tCreated: " .. os.date ( ) .. "\n"
+	s = s .. "rpt = " .. tostring ( vars.rpt ) .. ";\n"
+	s = s .. "loop = " .. tostring ( vars.loop ) .. ";\n"
+	-- Queue
+	s = s .. "softqueuepl = " .. vars.softqueuepl .. ";\n"
+	s = s .. "ploffset = " .. vars.ploffset .. ";\n"
+	s = s .. "hardqueue = {rev=0;\n"
+	for i = 1 , ( #vars.hardqueue ) do -- Not current song
+		s = s .. "\t'" .. vars.hardqueue [ i ].source .. "';\n"
+	end
+	s = s .. "};\n"
+	
+	-- Playlists
+	s = s .. "pl = {\n"
+	for i = 0 , #vars.pl do
+		s = s .. "\t[" .. i .. "] = { name = '" .. vars.pl [ i ].name .. "';\n"
+		for j , entry in ipairs ( vars.pl [ i ] ) do
+			s = s .. "\t\t'" .. entry.source .. "';\n"
+		end
+		s = s .. "\t};\n"
+	end
+	s = s .. "};\n"
+	
+	--- Tag lib?
+	
+	-- Plugin specified things??
+	
+	
+	local file, err = io.open( config.statefile , "w+" )
+	if err then 
+		updatelog ( "Could not open state file: '" .. err , 2 ) 
+		return false , "Could not open state file: '" .. err
+	end
+	file:write ( s )
+	file:flush ( )
+	file:close ( )
+	
+	updatelog ( "State sucessfully saved" , 4 )
+	
+	return s , err
+end
+function core.quit ( )
+	local ok , err = core.savestate ( )
+	player.stop ( )
+	os.exit ( )
+end
+function core.restorestate ( )
+	local file, err = io.open ( config.statefile )
+	if file then -- Restoring State.
+		local v = file:read ( )
+		if not v then
+			updatelog ( "Invalid state file" , 1 )
+			return false , "Invalid state file"
+		end 
+		local _ , _ , program , major , minor , inc = string.find ( v , "^([^%s]+)%s+(%d+)%.(%d+)%.(%d+)" )
+		if type ( program ) == "string" and program == "LOMP" and tonumber ( major ) <= core._MAJ and tonumber ( minor ) <= core._MIN and tonumber ( inc ) <= core._INC then
+			local s = file:read ( "*a" )
+			file:close ( )
+			local f , err = loadstring ( s , "Saved State" )
+			if not f then
+				updatelog ( "Could not load state file: " .. err , 1 )
+				return false , "Could not load state file: " .. err
+			end
+			local t = { }
+			setfenv ( f , t )
+			f ( )
+			table.inherit ( vars , t , true )
+		else
+			file:close ( )
+			updatelog ( "Invalid state file" , 1 )
+			return false , "Invalid state file"
+		end
+	else
+		updatelog ( "Could not find state file: '" .. err .. "'" , 2 )
+		return false , "Could not find state file: '" .. err .. "'"
+	end
+	return true
+end
+
 vars = { 
 	init= t ,
 	pl = {
+		[-1] = { } , -- Empty Playlist
 		rev = 0 ,
 	} ,
 	hardqueue = { 
 		rev = 0 ,
+		name = "Hard Queue"
 	} ,
 	played = { 
 		rev = 0 ,
 	} ,
-	shuffle = false , -- Mix up soft playlist?
+	loop = false , -- Loop soft playlist?
 	rpt = true , -- When end of soft playlist reached, go back to start of soft playlist?
-	softqueuepl = nil , 
+	softqueuepl = -1 , 
 	ploffset = 0 ,
 }
 
@@ -35,16 +126,18 @@ function core.newplaylist ( name , pl )
 		return pl , name
 	end
 end
-core.newplaylist ( "Library" , 0 ) -- Create Library (Just playlist 0)
+if not vars.pl [ 0 ] then core.newplaylist ( "Library" , 0 ) end -- Create Library (Just playlist 0)
 function core.deleteplaylist ( pl )
 	if type ( pl ) == "string" then pl = table.valuetoindex ( vars.pl , "name" , pl ) end
 	if type ( pl ) ~= "number" or pl <= 0 or pl > #vars.pl then 
 		updatelog ( "'Delete playlist' called with invalid playlist" , 1 ) 
 		return false , "'Delete playlist' called with invalid playlist"
 	end
+	local name = vars.pl.name
 	table.remove ( vars.pl , pl )
 	vars.pl.rev = vars.pl.rev + 1
-	if pl == vars.queue.softqueuepl then vars.queue.softqueuepl = nil end -- If deleted playlist was the soft queue
+	if pl == vars.queue.softqueuepl then vars.queue.softqueuepl = -1 end -- If deleted playlist was the soft queue
+	updatelog ( "Deleted playlist #" .. pl .. " (" .. name .. ")" , 4 )
 	return pl
 end
 function core.addentry ( object , pl , pos )
@@ -71,10 +164,9 @@ function core.addentry ( object , pl , pos )
 	table.insert ( place , pos , object )
 	place.rev = place.rev + 1
 	
-	
+	updatelog ( "Added entry to playlist #" .. pl .. " (" .. place.name .. ") position #" .. pos .. " Source: " .. object.source  , 4 )
 	return ( pl or "hardqueue" ) , pos , object
 end
-
 function core.addfile ( path , pl , pos )
 	-- Check path exists
 	if type ( path ) ~= "string" then
@@ -82,8 +174,24 @@ function core.addfile ( path , pl , pos )
 		return false , "'Add file' called with invalid path"
 	end
 	
-	local _ , _ , extension = string.find ( path , "%.(.+)$" )
-	--if not config.banextensions[extension] then end
+	local _ , _ , extension = string.find ( path , ".+%.(.-)$" )
+	extension = string.lower ( extension )
+	
+	local accepted = false
+	for i , v in ipairs ( player.extensions ) do
+		if extension == v then accepted = true end
+	end
+	if accepted == true then 
+		for i , v in ipairs ( config.banextensions ) do
+			if extension == v then
+				updatelog ( "Banned file extension attempted to be added: " .. extension , 2 )
+				return false , "Banned file extension attempted to be added: " .. extension
+			end
+		end
+	else		
+		updatelog ( "Attempt to add invalid file type (" .. extension .. "): " .. path , 2 )
+		return false , "Attempt to add invalid file type (" .. extension .. "): " .. path
+	end
 	
 	local o = { typ = "file" , source = path , progress = 0 }
 	
@@ -224,6 +332,13 @@ vars.queue = setmetatable ( vars.hardqueue , {
 		end
 	end,
 })
+function core.clearhardqueue ( )
+	vars.hardqueue = { 
+		rev = vars.hardqueue.rev + 1 ,
+		name = "Hard Queue" 
+	}
+	return true
+end
 function core.setsoftqueueplaylist ( pl )
 	if type ( pl ) == "string" then pl = table.valuetoindex ( vars.pl , "name" , pl ) end
 	if type ( pl ) ~= "number" or pl < 0 or pl > #vars.pl then 
@@ -232,4 +347,9 @@ function core.setsoftqueueplaylist ( pl )
 	end
 	
 	vars.softqueuepl = pl
+	
+	-- Reset offset
+	vars.ploffset = 0
+	
+	return pl
 end

@@ -149,35 +149,12 @@ local function xmlrpcserver ( skt , r , headers , body )
 			if not authorised then
 				if typ == "basic" then
 					-- Send a xml fault document
+					updatelog ( "Unauthorised login blocked." , 2 )
 					httpresponse ( skt , 401 , { ['WWW-Authenticate'] = 'Basic realm=" ' .. core._NAME .. ' ' .. core._VERSION .. '"' } , xmlrpc.srvEncode ( { faultCode = 401 , faultString = httpcodes[401] } , true ) , "text/xml" , true )
 				end
 			else -- Authorised
-				print( body )
-				--local method_name , list_params = xmlrpc.srvDecode ( body )
-				--list_params = list_params[1] --I don't know why it needs this, but it does
+				--print( body )
 				--print(list_params)
-				--[[local kepler_home = "http://www.keplerproject.org"
-				local kepler_products = { "luasql", "lualdap", "luaexpat", "luaxmlrpc", }
-				local kepler_sites = {
-				    luasql = kepler_home.."/luasql",
-				    lualdap = kepler_home.."/lualdap",
-				    luaexpat = kepler_home.."/luaexpat",
-				    luaxmlrpc = kepler_home.."/luaxmlrpc",
-				}
-				xmlrpc.srvMethods {
-				    kepler = {
-					products = function (self) return kepler_products end,
-					site = function (self, prod) return kepler_sites[prod] end,
-				    }
-				}
-				local method, arg_table = xmlrpc.srvDecode ( body )
-				local func = xmlrpc.dispatch (method)
-				local ok, result, err = pcall (func, unpack (arg_table or {}))
-				if ok then
-					result = { code = 3, message = result, }
-				end
-				httpresponse ( skt , 200 , { } , xmlrpc.srvEncode (result, not ok) , "text/xml" )--]]
-				
 				--print ( "Received Command: " , method_name , "Parameters: " , unpack ( list_params or {} ) )
 				--[[if _M[method_name] then
 					local s = { _M[method_name] ( unpack ( list_params ) ) }
@@ -211,6 +188,8 @@ local function xmlrpcserver ( skt , r , headers , body )
 							return _M[obj][method] (obj, unpack (...))
 						end
 					end--]]
+					print ("dispatch")
+					for k,v in pairs (_M) do print (k,v) end
 					return function ( ... ) print ( ... ) return _M[name] ( ... ) end
 				end
 				xmlrpc.srvMethods ( dispatch )
@@ -302,15 +281,18 @@ local function lompserver ( skt )
 	while not found do
 		if chunk < 20 then
 			local data = copas.receive ( skt )
-			request = request .. data .. "\r\n"
-			
-			local length = string.len ( data )
-			if length < 1 then found = true end
-			rsize = rsize + length
-			
-			local position , len = string.find ( request, '\r\n\r\n' )
-			if position then found = true end
-			
+			if data then
+				request = request .. data .. "\r\n"
+				
+				local length = string.len ( data )
+				if length < 1 then found = true end
+				rsize = rsize + length
+				
+				local position , len = string.find ( request, '\r\n\r\n' )
+				if position then found = true end
+			else
+				return false
+			end
 			chunk = chunk + 1
 		else -- max of 20 lines, more and possible DOS Attack
 			return false
@@ -321,10 +303,10 @@ local function lompserver ( skt )
 	local _ , _ , Method , Path , Major , Minor = string.find ( request , "([A-Z]+) ([^ ]+) HTTP/(%d).(%d)" )
 	Method = string.upper ( Method )
 	if not Major then return false end -- Not HTTP
-	local file , querystring = string.match ( Path , "([^%?]+)%??([^*)$" ) 	-- Reserved characters: !*'();:@&=+$,/?%#[]
-															-- Unreserved characters: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~
+	local file , querystring = string.match ( Path , "([^%?]+)%??(.*)$" ) 	-- HTTP Reserved characters: !*'();:@&=+$,/?%#[]
+															-- HTTP Unreserved characters: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~
 															-- Lua reserved pattern characters: ^$()%.[]*+-?
-															-- *+$?%[]
+															-- Intersection of http and lua reserved: *+$?%[]
 															-- %!%*%'%(%)%;%:%@%&%=%+%$%,%/%?%%%#%[%]
 	file = socket.url.unescape ( file )
 	local queryvars = { }
@@ -338,8 +320,8 @@ local function lompserver ( skt )
 	
 	local r = { Method = Method , Path = Path , Major = Major , Minor = Minor , file = file , querystring = querystring , queryvars = queryvars }
 	
+	local body
 	if headers["content-length"] then body = copas.receive ( skt , headers["content-length"] ) end
-	--print( body )
 	
 	if Method == "POST" then
 		if headers["content-type"] == "text/xml" then -- This is an xmlrpc command

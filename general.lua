@@ -48,3 +48,19 @@ function table.randomize ( tbl , n , count )
 	return true , tbl
 end
 
+function table.copy ( tbl )
+	local t = { }
+	for k , v in pairs ( tbl ) do
+		t [ k ] = v
+	end
+	return t
+end
+
+-- Copy tbl2's values into tbl1 where the matching tbl1 key (or index) doesn't exist
+function table.inherit ( tbl1 , tbl2 , overwrite )
+	if not overwrite then t = table.copy ( tbl1 ) else t = tbl1 end
+	for k , v in pairs ( tbl2 ) do
+		if not t [ k ] then t [ k ] = v end
+	end
+	return t
+end

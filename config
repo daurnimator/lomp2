@@ -38,7 +38,7 @@ port = 			5667
   -- Enable Auth? (Only http basic authentication at this point in time. Passwords will sent in plain text.)
    -- As a secure alternative, run LOMP over stunnel ( http://stunnel.mirt.net/ )
    -- Defaults to false
-authorisation =	true
+authorisation =	false
    -- Username
     -- Defaults to "lompuser"
 username = 		"lompuser"
