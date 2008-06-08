@@ -140,6 +140,17 @@ function core.deleteplaylist ( pl )
 	updatelog ( "Deleted playlist #" .. pl .. " (" .. name .. ")" , 4 )
 	return pl
 end
+function core.clearplaylist ( pl )
+	if type ( pl ) == "string" then pl = table.valuetoindex ( vars.pl , "name" , pl ) end
+	if type ( pl ) ~= "number" or pl <= 0 or pl > #vars.pl then 
+		updatelog ( "'Clear playlist' called with invalid playlist" , 1 ) 
+		return false , "'Clear playlist' called with invalid playlist"
+	end
+	local name , rev = vars.pl [ pl ].name , vars.pl [ pl ].rev
+	vars.pl [ pl ] = { name = name ; rev = rev + 1 }
+	updatelog ( "Cleared playlist #" .. pl .. " (" .. name .. ")" , 4 )
+	return pl
+end
 function core.addentry ( object , pl , pos )
 	local place
 	if pl == nil or pl == "hardqueue" then -- If no playlist given, or expressly stated: add to hard queue
@@ -219,11 +230,12 @@ function core.addfolder ( path , pl , pos , recurse )
 	
 	local dircontents = { }
 	for entry in lfs.dir ( path ) do
-		local m = lfs.attributes ( path .. "/" .. entry , "mode" )
-		if m == "file" then
-			dircontents [ #dircontents + 1 ] = path .. "/" .. entry
-		elseif m == "directory" then
-			if recurse then core.addfolder ( path .. "/" .. entry , pl , true , true ) end
+		local fullpath = path .. "/" .. entry
+		local mode = lfs.attributes ( fullpath , "mode" )
+		if mode == "file" then
+			dircontents [ #dircontents + 1 ] = fullpath
+		elseif mode == "directory" then
+			if recurse then core.addfolder ( fullpath , pl , true , true ) end
 		end
 	end
 	if config.sortcaseinsensitive then table.sort ( dircontents , function ( a , b ) if string.lower ( a ) < string.lower ( b ) then return true end end ) end-- Put in alphabetical order of path (case insensitive) 
@@ -352,4 +364,12 @@ function core.setsoftqueueplaylist ( pl )
 	vars.ploffset = 0
 	
 	return pl
+end
+
+-- Misc Helper Functions
+function core.refreshlibrary ( )
+	core.clearplaylist ( 0 )
+	for i , v in ipairs ( config.library ) do
+		core.addfolder ( v , 0 )
+	end
 end

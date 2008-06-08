@@ -74,13 +74,7 @@ do -- Restore State
 end
 
 require"lomp-debug"
-
-
-
 demo ( )
-
-core.addfolder ( config.library [ 1 ] , 0 )
-core.setsoftqueueplaylist ( 0 )
 
 server.inititate ( config.address , config.port )
 steps = {}
