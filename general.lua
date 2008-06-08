@@ -1,9 +1,6 @@
 -- Set math randomseed
 math.randomseed ( os.time ( ) )
 
--- Make _ automatically discard it's assignments.
-setmetatable(_G, { __newindex = function(this,key,value) if key == '_' then return end return rawset(this,key,value) end })
-
 -- Finds first value in tbl that matches pattern "key"
 function table.valuetoindex ( tbl , value , key )
 	for i,v in ipairs ( tbl ) do

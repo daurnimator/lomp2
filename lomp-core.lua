@@ -1,5 +1,5 @@
 require"general"
-require"ex"
+require"lfs"
 require"player"
 
 module ( "lomp" , package.seeall )
@@ -218,12 +218,12 @@ function core.addfolder ( path , pl , pos , recurse )
 	if type ( pos ) ~= "number" then pos = nil end
 	
 	local dircontents = { }
-	for entry in os.dir ( path ) do
-		if entry.type == "file" then
-			dircontents [ #dircontents + 1 ] = path .. "/" .. entry.name
-			--table.insert ( dircontents , { path = path .. "/" .. entry.name , s = entry.size , ext = extension } ) 
-		elseif entry.type == "directory" then
-			if recurse then core.addfolder ( path .. "/" .. entry.name , pl , true , true ) end
+	for entry in lfs.dir ( path ) do
+		local m = lfs.attributes ( path .. "/" .. entry , "mode" )
+		if m == "file" then
+			dircontents [ #dircontents + 1 ] = path .. "/" .. entry
+		elseif m == "directory" then
+			if recurse then core.addfolder ( path .. "/" .. entry , pl , true , true ) end
 		end
 	end
 	if config.sortcaseinsensitive then table.sort ( dircontents , function ( a , b ) if string.lower ( a ) < string.lower ( b ) then return true end end ) end-- Put in alphabetical order of path (case insensitive) 

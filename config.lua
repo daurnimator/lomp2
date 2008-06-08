@@ -1,17 +1,26 @@
-module ( "config" , package.seeall )
-
 local function fail ( err )
-	_G.lomp.log = "Error: \t" .. _G.lomp.log .. err .. "\n"
+	lomp.log = "Error: \t" .. lomp.log .. err .. "\n"
 	error ( err )
 end
 local function warn ( err )
-	_G.lomp.log = "Warning: \t" .. _G.lomp.log .. err .. "\n"
+	lomp.log = "Warning: \t" .. lomp.log .. err .. "\n"
 	print ( err )
 end
 
-plugins = { }
+config = {
+	type = type ,
+	plugins = { }
+}
 
-dofile ( "config" )
+-- Load config
+local compiledchunk = loadfile ( "config" )
+setfenv ( compiledchunk , config )
+
+module ( "config" )
+
+-- Run config
+compiledchunk ( ) 
+
 
 -- Check all configuration values.
 
