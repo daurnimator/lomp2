@@ -73,9 +73,6 @@ do -- Restore State
 	local ok , err = core.restorestate ( )
 end
 
-require"lomp-debug"
-demo ( )
-
 server.inititate ( config.address , config.port )
 steps = {}
 
@@ -85,31 +82,12 @@ table.insert ( steps , server.step )
 
 updatelog ( "LOMP Loaded " .. os.date ( "%c" ) , 3 )
 
-core.setsoftqueueplaylist ( 1 )
-pv ( )
-
-
-function playsongfrompl ( pl , pos )
-	core.setsoftqueueplaylist ( pl )
-	core.clearhardqueue ( )
-	playback.goto ( pos )
-	playback.play ( )
-end
---print(savestate())
-playback.play ( )
-os.sleep ( 2 )
---print(player.getstate ( ))
-playback.nxt ( )
-playback.play ( )
-os.sleep ( 2 )
-playsongfrompl ( 0 , 2 )
-os.sleep ( 5 )
-core.quit ( )
+require"lomp-debug"
+demo ( )
 
 local s = 1
 while true do
 	steps[s] ( )
-	print ( "Step Finished" )
 	s = s + 1
 	if s > #steps then s = 1 end
 end

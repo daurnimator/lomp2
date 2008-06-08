@@ -7,6 +7,7 @@ require"player"
 playback = { state = "stopped" }
 
 function playback.play ( )
+	if state ~= "stopped" then playback.stop ( ) end -- Remove eventually??
 	if not vars.queue [ 0 ] then 
 		local r = playback.forward ( ) 
 		if not r then return false end

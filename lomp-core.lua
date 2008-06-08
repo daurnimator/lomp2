@@ -3,7 +3,7 @@ require"lfs"
 require"player"
 
 module ( "lomp" , package.seeall )
-
+print = print
 local t = os.time ( )
 core = { 
 	_NAME = "LOMP" , 
@@ -142,7 +142,7 @@ function core.deleteplaylist ( pl )
 end
 function core.clearplaylist ( pl )
 	if type ( pl ) == "string" then pl = table.valuetoindex ( vars.pl , "name" , pl ) end
-	if type ( pl ) ~= "number" or pl <= 0 or pl > #vars.pl then 
+	if type ( pl ) ~= "number" or pl < 0 or pl > #vars.pl then 
 		updatelog ( "'Clear playlist' called with invalid playlist" , 1 ) 
 		return false , "'Clear playlist' called with invalid playlist"
 	end

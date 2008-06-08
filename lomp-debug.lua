@@ -14,6 +14,7 @@ function core.listpl ( )
 end
 
 function core.listentries ( pl )
+	print (pl)
 	if type( pl ) == "string" then pl = valuetoindex ( vars.pl , "name" , key ) end
 	assert ( type ( pl ) == "number" , "Provide a playlist" )
 	local s = "Listing Playlist #" .. pl .. " \t(Last Revision: " .. vars.pl[pl].rev .. ")\n"
@@ -61,8 +62,26 @@ function demo ( )
 	core.addfile ( '/media/sdd1/Temp/Torrents/Rage Against The Machine - Rage Against The Machine (1992) [FLAC]/02 - Killing In The Name.flac' , pl )
 	core.addfile ( '/media/sdd1/Temp/Done Torrents/Daft Punk - Aerodynamic,Aerodynamite (2001) [FLAC] {CDS}/02 - Aerodynamite.flac' , pl )
 	--core.addfile ( "/media/sdc1/Downloaded/Zombie Nation, Kernkraft 400 CDS/[03] Zombie Nation - Kernkraft 400.wv" , pl ) 
+	core.setsoftqueueplaylist ( 1 )
+	pv ( )
 	
+	function playsongfrompl ( pl , pos )
+		core.setsoftqueueplaylist ( pl )
+		core.clearhardqueue ( )
+		playback.goto ( pos )
+		playback.play ( )
+	end
+	playback.play ( )
+	os.sleep ( 1 )
+	--print(player.getstate ( ))
+	playback.nxt ( )
+	playback.play ( )
+	--os.sleep ( 1 )
+	--playsongfrompl ( 0 , 2 )
+	--os.sleep ( 5 )
+	--core.quit ( )
 end
+function a ( ... ) print ("testing!", ... ) return "test done" end
 function pv ( )
 	p ( "Current State: " .. playback.state )
 	p ( select( 2 , core.listpl ( ) ) )

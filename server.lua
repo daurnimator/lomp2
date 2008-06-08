@@ -153,50 +153,37 @@ local function xmlrpcserver ( skt , r , headers , body )
 					httpresponse ( skt , 401 , { ['WWW-Authenticate'] = 'Basic realm=" ' .. core._NAME .. ' ' .. core._VERSION .. '"' } , xmlrpc.srvEncode ( { faultCode = 401 , faultString = httpcodes[401] } , true ) , "text/xml" , true )
 				end
 			else -- Authorised
-				--print( body )
-				--print(list_params)
-				--print ( "Received Command: " , method_name , "Parameters: " , unpack ( list_params or {} ) )
-				--[[if _M[method_name] then
-					local s = { _M[method_name] ( unpack ( list_params ) ) }
-					local x = xmlrpc.srvEncode ( s )
-					httpresponse ( skt , 200 , { } , x , "text/xml" )
-				elseif method_name == "cmds" then
-					local x = ""
-					for k , v in pairs( _M ) do
-						if not ( string.sub ( k , 1 , 1 ) == "_" ) then
-							x = x .. k .. "\n"
-						end
-					end
-					httpresponse ( skt , 200 , { } , x , "text" )
-				else
-					local x = xmlrpc.srvEncode ( { faultCode = 404 , faultString = httpcodes[404] } , true )
-					httpresponse ( skt , 404 , { } , x , "text/xml" )
-				end--]]
-				--for k,v in pairs(_M) do print(k,v) end
 				local method_name , list_params = xmlrpc.srvDecode ( body )
 				list_params = list_params[1] --I don't know why it needs this, but it does
-				print ( "Received Command: " , method_name , "Parameters: " , unpack ( list_params or {} ) )
-				for k,v in pairs(list_params) do print(k,v) end
 				local function dispatch (name)
-					--[[if name == "cmds" then return true
-					elseif name == "restart" then return true end
-					local ok, _, obj, method = string.find (name, "^([^.]+)%.(.+)$")
-					if not ok then
-						return _M[name]
-					else
-						return function (...)
-							return _M[obj][method] (obj, unpack (...))
-						end
-					end--]]
-					print ("dispatch")
-					for k,v in pairs (_M) do print (k,v) end
-					return function ( ... ) print ( ... ) return _M[name] ( ... ) end
+					--print ("dispatching: " .. name )
+					local func = _M
+					--for i,v in pairs ( _M ) do print (i,v) end -- Possible Functions
+					
+					for k in string.gmatch ( name , "(%w+)%." ) do
+						func = func [ k ]
+					end
+					func = func [ select ( 3 , string.find ( name , "([^%.]+)$" ) ) ]
+					
+					return func
 				end
 				xmlrpc.srvMethods ( dispatch )
 				local func = xmlrpc.dispatch ( method_name )
-				local ok, result, err = pcall (func, unpack (list_params or {}))
-				if ok then
-					result = { code = 3, message = result, }
+				local function interpret ( ok , err , ... )
+					if not ok then
+						return ok , err
+					else
+						return ok , { err , ... }
+					end
+				end
+				
+				for k,v in pairs( list_params ) do print ("Key:",k,"Value:",v) end
+				print ( "unpack: " .. unpack (list_params))
+				
+				local ok , result = interpret ( pcall ( func , unpack ( list_params or { } ) ) )
+				--[[print(ok,result,err)
+				if not ok then
+					-- ERRor??
 				end--]]
 				--result = dispatch ( method_name ) ( unpack ( list_params ) )
 				httpresponse ( skt , 200 , { } , xmlrpc.srvEncode (result, not ok) , "text/xml" )
