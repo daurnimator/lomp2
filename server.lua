@@ -153,6 +153,7 @@ local function xmlrpcserver ( skt , r , headers , body )
 					httpresponse ( skt , 401 , { ['WWW-Authenticate'] = 'Basic realm=" ' .. core._NAME .. ' ' .. core._VERSION .. '"' } , xmlrpc.srvEncode ( { faultCode = 401 , faultString = httpcodes[401] } , true ) , "text/xml" , true )
 				end
 			else -- Authorised
+				--print (body)
 				local method_name , list_params = xmlrpc.srvDecode ( body )
 				list_params = list_params[1] --I don't know why it needs this, but it does
 				local function dispatch (name)
@@ -176,11 +177,14 @@ local function xmlrpcserver ( skt , r , headers , body )
 						return ok , { err , ... }
 					end
 				end
+
+				local function depack ( t , i , j )
+					i = i or 1
+					if ( j and i > j ) or ( not j and t [ tostring ( i ) ] == nil ) then return end 
+					return t [ tostring ( i ) ] , depack ( t , i + 1 , j )
+				end 
 				
-				for k,v in pairs( list_params ) do print ("Key:",k,"Value:",v) end
-				print ( "unpack: " .. unpack (list_params))
-				
-				local ok , result = interpret ( pcall ( func , unpack ( list_params or { } ) ) )
+				local ok , result = interpret ( pcall ( func , depack ( list_params or { } ) ) )
 				--[[print(ok,result,err)
 				if not ok then
 					-- ERRor??
@@ -275,13 +279,13 @@ local function lompserver ( skt )
 				if length < 1 then found = true end
 				rsize = rsize + length
 				
-				local position , len = string.find ( request, '\r\n\r\n' )
+				local position , len = string.find ( request , '\r\n\r\n' )
 				if position then found = true end
 			else
 				return false
 			end
 			chunk = chunk + 1
-		else -- max of 20 lines, more and possible DOS Attack
+		else -- max of 20 lines, more and request could be a DOS Attack
 			return false
 		end
 	end
@@ -302,20 +306,20 @@ local function lompserver ( skt )
 			queryvars[socket.url.unescape ( k )] = socket.url.unescape ( v )
 		end
 	end
-	local headers = {} for k, v in string.gmatch ( request , "\r\n([^:]+): ([^\r\n]+)" ) do headers[string.lower ( k )] = v end
-	if not headers["host"] then headers["host"] = "default" end
+	local headers = { } for k , v in string.gmatch ( request , "\r\n([^:]+): ([^\r\n]+)" ) do headers [ string.lower ( k ) ] = v end
+	if not headers [ "host" ] then headers [ "host" ] = "default" end
 	
-	local r = { Method = Method , Path = Path , Major = Major , Minor = Minor , file = file , querystring = querystring , queryvars = queryvars }
+	local requestdetails = { Method = Method , Path = Path , Major = Major , Minor = Minor , file = file , querystring = querystring , queryvars = queryvars }
 	
 	local body
-	if headers["content-length"] then body = copas.receive ( skt , headers["content-length"] ) end
+	if headers [ "content-length" ] then body = copas.receive ( skt , headers [ "content-length" ] ) end
 	
 	if Method == "POST" then
-		if headers["content-type"] == "text/xml" then -- This is an xmlrpc command
-			return xmlrpcserver ( skt , r , headers , body )
+		if headers [ "content-type" ] == "text/xml" then -- This is an xmlrpc command
+			return xmlrpcserver ( skt , requestdetails , headers , body )
 		end
 	elseif Method == "GET" then
-		return webserver ( skt , r , headers , body )
+		return webserver ( skt , requestdetails , headers , body )
 	elseif Method == "HEAD" then
 	elseif Method == "PUT" then
 	elseif Method == "DELETE" then
