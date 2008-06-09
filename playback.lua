@@ -18,19 +18,27 @@ function playback.play ( )
 	
 	player.play ( source , offset )
 	playback.state = "playing"
+	
+	return true
 end
 
 function playback.stop ( )
 	player.stop ( )
 	playback.state = "stopped"
+	
+	return true
 end
 function playback.pause ( )
 	player.pause ( )
 	playback.state = "paused"
+	
+	return true
 end
 function playback.unpause ( )
 	player.unpause ( )
 	playback.state = "playing"
+	
+	return true
 end
 
 function playback.goto ( songnum )

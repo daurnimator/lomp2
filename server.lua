@@ -86,8 +86,8 @@ local function httpdate ( )
 end
 
 local function httpresponse ( skt , status, headers , body , typ , fatal )
-	local str = httpcodes[status]
-	headers = headers or {}
+	local str = httpcodes [ status ]
+	headers = headers or { }
 	typ = typ or "text/html"
 	body = body or "<html><head><title>HTTP Code " .. status .. "</title></head><body><h1>HTTP Code " .. status .. "</h1><p>" .. str .. "</p></body></html>" 
 	local message = "HTTP/1.0 " .. status .. " " .. str .. "\r\n" 
@@ -105,6 +105,16 @@ local function httpresponse ( skt , status, headers , body , typ , fatal )
 	local bytessent , err = copas.send ( skt , message )
 	
 	return code or 0 , str , message , bytessent
+end
+local function dispatch ( baseenv , name )
+	if type ( name ) ~= "string" then return false end
+	local func = baseenv
+	for k in string.gmatch ( name , "(%w+)%." ) do
+		func = func [ k ]
+	end
+	func = func [ select ( 3 , string.find ( name , "([^%.]+)$" ) ) ]
+	
+	return func
 end
 
 --[[local function echoHandler( skt )
@@ -152,24 +162,15 @@ local function xmlrpcserver ( skt , r , headers , body )
 					-- Send a xml fault document
 					updatelog ( "Unauthorised login blocked." , 2 )
 					httpresponse ( skt , 401 , { ['WWW-Authenticate'] = 'Basic realm=" ' .. core._NAME .. ' ' .. core._VERSION .. '"' } , xmlrpc.srvEncode ( { faultCode = 401 , faultString = httpcodes[401] } , true ) , "text/xml" , true )
+					return false
 				end
 			else -- Authorised
 				--print (body)
 				local method_name , list_params = xmlrpc.srvDecode ( body )
 				list_params = list_params[1] --I don't know why it needs this, but it does
-				local function dispatch (name)
-					--print ("dispatching: " .. name )
-					local func = _M
-					--for i,v in pairs ( _M ) do print (i,v) end -- Possible Functions
-					
-					for k in string.gmatch ( name , "(%w+)%." ) do
-						func = func [ k ]
-					end
-					func = func [ select ( 3 , string.find ( name , "([^%.]+)$" ) ) ]
-					
-					return func
-				end
-				xmlrpc.srvMethods ( dispatch )
+				
+				local function d ( ... ) return dispatch ( _M , ... ) end
+				xmlrpc.srvMethods ( d )
 				local func = xmlrpc.dispatch ( method_name )
 				local function interpret ( ok , err , ... )
 					if not ok then
@@ -196,7 +197,77 @@ local function xmlrpcserver ( skt , r , headers , body )
 				return true
 			end
 end
+local function basiccmdserver ( skt , requestdetails , headers )
+	-- Execute action based on GET string.
+	local authorised , typ = auth ( headers )
+	if not authorised then
+		if typ == "basic" then
+			-- Send an xml fault document
+			updatelog ( "Unauthorised login blocked." , 2 )
+			httpresponse ( skt , 401 , { ['WWW-Authenticate'] = 'Basic realm=" ' .. core._NAME .. ' ' .. core._VERSION .. '"' } , xmlrpc.srvEncode ( { faultCode = 401 , faultString = httpcodes[401] } , true ) , "text/xml" , true )
+			return false
+		end		
+	else
+		local cmd = requestdetails.queryvars [ "cmd" ]
+		local function basiccmd ( func , params ) 
+			local doc
+			local function makeresponse ( pcallok , ok , ... )
+				if pcallok and ok then
+					doc = "<html><head><title>Completed Command: " .. cmd .. "</title></head><body><h1>Completed Command: " .. cmd .. "</h1><h2>Results:</h2><ul>" 
+					for i , v in ipairs ( { ok , ... } ) do
+						if tostring ( v ) then
+							doc = doc .. "<li>" .. tostring ( v ) .. "</li>"
+						else
+						end
+					end
+					doc = doc .. "</ul></body></html>" 
+					local code , str , msg , bytessent = httpresponse ( skt , 200 , { } , doc )
+					return true
+				else
+					doc = "<html><head><title>Failure in: " .. cmd .. "</title></head><body><h1>Failure in: " .. cmd .. "</h1><h2>Error:</h2>" 
+					if not pcallok then
+						doc = doc .. "<p>" .. ok .. "</p>"
+					else
+						doc = doc .. "<ul>"
+						for i , v in ipairs ( { ok , ... } ) do
+							doc = doc .. "<li>" .. tostring ( v ) .. "</li>"
+						end
+						doc = doc .. "</ul>"
+					end
+					doc = doc .. "</body></html>" 
+					local code , str , msg , bytessent = httpresponse ( skt , 500 , { } , doc )
+					return false
+				end
+			end
+			makeresponse ( pcall ( func , unpack ( params ) ) )
+		end
+		
+		--for k , v in pairs ( requestdetails.queryvars ) do print ( k,v ) end
+		
+		local i = 1
+		local params = { }
+		while true do
+			if requestdetails.queryvars [ tostring ( i ) ] then
+				params [ i ] = requestdetails.queryvars [ tostring ( i ) ]
+				if tonumber ( params [ i ] ) then params [ i ] = tonumber ( params [ i ] ) end
+			else break
+			end
+			i = i + 1
+		end
+		
+		--[[if cmd == "play" then basiccmd ( playback.play , params )
+		elseif cmd == "stop" then basiccmd ( playback.stop , params )
+		elseif cmd == "pause" then basiccmd ( playback.pause , params )--]]
 
+		local func = dispatch ( _M , cmd )
+		if func then 
+			basiccmd ( func , params )
+		else 
+			httpresponse ( skt , 404 )
+			return false
+		end
+	end
+end
 local function webserver ( skt , r , headers , body )
 		-- Serve html :D
 		--local authorised , typ = auth ( headers )
@@ -271,7 +342,7 @@ local function lompserver ( skt )
 	-- Retrive HTTP header
 	local found , chunk , code , request , rsize = false , 0 , false , "" , 0
 	while not found do
-		if chunk < 20 then
+		if chunk < 25 then
 			local data = copas.receive ( skt )
 			if data then
 				request = request .. data .. "\r\n"
@@ -286,7 +357,7 @@ local function lompserver ( skt )
 				return false
 			end
 			chunk = chunk + 1
-		else -- max of 20 lines, more and request could be a DOS Attack
+		else -- max of 25 lines, more and request could be a DOS Attack
 			return false
 		end
 	end
@@ -321,7 +392,7 @@ local function lompserver ( skt )
 		end
 	elseif Method == "GET" then
 		if file == "/BasicCMD" then
-			return basiccmdserver ( skt , requestdetails )
+			return basiccmdserver ( skt , requestdetails , headers )
 		else
 			return webserver ( skt , requestdetails , headers , body )
 		end
