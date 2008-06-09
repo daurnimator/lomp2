@@ -33,7 +33,7 @@ function core.listallentries ( )
 end
 
 function core.listqueue ( )
-	local s = "Listing Queue\nState: " .. lomp.playback.state .. "\n"
+	local s = "Listing Queue\nState: " .. lomp.playback.state .. "\nSoft Queue is currently: " .. vars.softqueuepl .. "\n"
 	if vars.queue[0] then
 		s = s .. "Current Song: " .. " \t(" .. vars.queue[0].typ .. ") \tSource: '" .. vars.queue[0].source .. "'\n"
 	end
@@ -54,7 +54,13 @@ end
 	return vars.played , s
 end]]
 
-
+	function playsongfrompl ( pl , pos )
+		core.setsoftqueueplaylist ( pl )
+		core.clearhardqueue ( )
+		playback.goto ( pos )
+		playback.play ( )
+	end
+	
 function demo ( )
 	core.refreshlibrary ( )
 	local pl = core.newplaylist ( "Flac Files" )
@@ -65,12 +71,7 @@ function demo ( )
 	core.setsoftqueueplaylist ( 1 )
 	pv ( )
 	
-	function playsongfrompl ( pl , pos )
-		core.setsoftqueueplaylist ( pl )
-		core.clearhardqueue ( )
-		playback.goto ( pos )
-		playback.play ( )
-	end
+
 	playback.play ( )
 	os.sleep ( 1 )
 	--print(player.getstate ( ))

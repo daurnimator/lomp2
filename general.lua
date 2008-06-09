@@ -55,9 +55,13 @@ end
 
 -- Copy tbl2's values into tbl1 where the matching tbl1 key (or index) doesn't exist
 function table.inherit ( tbl1 , tbl2 , overwrite )
-	if not overwrite then t = table.copy ( tbl1 ) else t = tbl1 end
+	local t
+	if overwrite then t = tbl1 else t = table.copy ( tbl1 ) end
 	for k , v in pairs ( tbl2 ) do
-		if not t [ k ] then t [ k ] = v end
+		if type ( t [ k ] ) == "table" and type ( v ) == "table" then
+				t [ k ] = table.inherit ( t [ k ] , v , true )
+		else t [ k ] = v 
+		end
 	end
 	return t
 end

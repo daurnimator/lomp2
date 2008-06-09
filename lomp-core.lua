@@ -9,10 +9,29 @@ core = {
 	_NAME = "LOMP" , 
 	_MAJ = 0 ,
 	_MIN = 0 ,
-	_INC = 0 ,
+	_INC = 1 ,
 }
 
 core._VERSION = core._MAJ .. "." .. core._MIN .. "." .. core._INC 
+
+vars = { 
+	init= t ,
+	pl = {
+		[-1] = { } , -- Empty Playlist
+		rev = 0 ,
+	} ,
+	hardqueue = { 
+		rev = 0 ,
+		name = "Hard Queue"
+	} ,
+	played = { 
+		rev = 0 ,
+	} ,
+	loop = false , -- Loop soft playlist?
+	rpt = true , -- When end of soft playlist reached, go back to start of soft playlist?
+	softqueuepl = -1 , 
+	ploffset = 0 ,
+}
 
 function core.savestate ( )
 	local s = core._NAME .. "\t" .. core._VERSION .. " State File.\tCreated: " .. os.date ( ) .. "\n"
@@ -21,7 +40,7 @@ function core.savestate ( )
 	-- Queue
 	s = s .. "softqueuepl = " .. vars.softqueuepl .. ";\n"
 	s = s .. "ploffset = " .. vars.ploffset .. ";\n"
-	s = s .. "hardqueue = {rev=0;\n"
+	s = s .. "hardqueue = {\n"
 	for i = 1 , ( #vars.hardqueue ) do -- Not current song
 		s = s .. "\t'" .. vars.hardqueue [ i ].source .. "';\n"
 	end
@@ -30,9 +49,9 @@ function core.savestate ( )
 	-- Playlists
 	s = s .. "pl = {\n"
 	for i = 0 , #vars.pl do
-		s = s .. "\t[" .. i .. "] = { name = '" .. vars.pl [ i ].name .. "';\n"
+		s = s .. "\t[" .. i .. "] = { rev = 0 ; name = '" .. vars.pl [ i ].name .. "';\n"
 		for j , entry in ipairs ( vars.pl [ i ] ) do
-			s = s .. "\t\t'" .. entry.source .. "';\n"
+			s = s .. "\t\t{typ = '" .. entry.typ .. "';source = '" .. entry.source .. "'};\n"
 		end
 		s = s .. "\t};\n"
 	end
@@ -82,6 +101,14 @@ function core.restorestate ( )
 			setfenv ( f , t )
 			f ( )
 			table.inherit ( vars , t , true )
+			--[[print ("======1")
+			for k , v in pairs ( t ) do print ( k , v ) end
+			print ("======2")
+			for k , v in pairs ( t.pl[1] ) do print ( k , v ) end
+			print ("======3")
+			for k , v in pairs ( vars ) do print ( k , v ) end
+			print ("======4")
+			for k , v in pairs ( vars.pl[1] ) do print ( k , v ) end--]]
 		else
 			file:close ( )
 			updatelog ( "Invalid state file" , 1 )
@@ -93,25 +120,6 @@ function core.restorestate ( )
 	end
 	return true
 end
-
-vars = { 
-	init= t ,
-	pl = {
-		[-1] = { } , -- Empty Playlist
-		rev = 0 ,
-	} ,
-	hardqueue = { 
-		rev = 0 ,
-		name = "Hard Queue"
-	} ,
-	played = { 
-		rev = 0 ,
-	} ,
-	loop = false , -- Loop soft playlist?
-	rpt = true , -- When end of soft playlist reached, go back to start of soft playlist?
-	softqueuepl = -1 , 
-	ploffset = 0 ,
-}
 
 function core.newplaylist ( name , pl )
 	if type ( name ) ~= "string" or name == "hardqueue" or ( name == "Library" and pl ~= 0 ) then name = "New Playlist" end
@@ -204,7 +212,7 @@ function core.addfile ( path , pl , pos )
 		return false , "Attempt to add invalid file type (" .. extension .. "): " .. path
 	end
 	
-	local o = { typ = "file" , source = path , progress = 0 }
+	local o = { typ = "file" , source = path }
 	
 	return core.addentry ( o , pl , pos )
 end
@@ -215,7 +223,7 @@ function core.addstream ( url , pl , pos )
 		return false , "'Add stream' called with invalid url"
 	end
 	
-	local o = { typ = "stream" , source = url , progress = 0 }
+	local o = { typ = "stream" , source = url }
 	
 	return core.addentry ( o , pl , pos )
 end
@@ -372,4 +380,12 @@ function core.refreshlibrary ( )
 	for i , v in ipairs ( config.library ) do
 		core.addfolder ( v , 0 )
 	end
+end
+function core.enablelooping ( )
+	vars.loop = true
+	return true
+end
+function core.disablelooping ( )
+	vars.loop = false
+	return true
 end

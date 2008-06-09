@@ -78,12 +78,10 @@ steps = {}
 
 table.insert ( steps , server.step )
 
-
-
 updatelog ( "LOMP Loaded " .. os.date ( "%c" ) , 3 )
 
 require"lomp-debug"
-demo ( )
+--demo ( )
 
 local s = 1
 while true do

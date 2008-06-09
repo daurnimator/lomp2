@@ -315,6 +315,7 @@ local function lompserver ( skt )
 	if headers [ "content-length" ] then body = copas.receive ( skt , headers [ "content-length" ] ) end
 	
 	if Method == "POST" then
+		print ( file )
 		if headers [ "content-type" ] == "text/xml" then -- This is an xmlrpc command
 			return xmlrpcserver ( skt , requestdetails , headers , body )
 		end
