@@ -10,7 +10,7 @@ require"mime" -- For base64 decoding of authorisation
 require"xmlrpc"
 require"ex"
 
-local mime = { }
+local mimetypes = { }
 do
 	local f = io.open ( "/etc/mime.types" , "r" )
 	if f then
@@ -20,19 +20,19 @@ do
 			local _ , _ , typ , name = string.find ( line , "^(.*)\t+([^\t]+)$" )
 			if typ then
 				for e in string.gmatch ( name , "([^%s]+)" ) do
-					mime[e] = typ
+					mimetypes[e] = typ
 				end
 			end
 		end
 		f:close ( )
 	else
-		mime["html"] = "text/html"
-		mime["htm"] = "text/html"
-		mime["txt"] = "text/plain"
-		mime["jpg"] = "image/jpeg"
-		mime["jpeg"] = "image/jpeg"
-		mime["gif"] = "image/gif"
-		mime["png"] = "image/png"
+		mimetypes["html"] = "text/html"
+		mimetypes["htm"] = "text/html"
+		mimetypes["txt"] = "text/plain"
+		mimetypes["jpg"] = "image/jpeg"
+		mimetypes["jpeg"] = "image/jpeg"
+		mimetypes["gif"] = "image/gif"
+		mimetypes["png"] = "image/png"
 	end
 end
 
@@ -122,8 +122,9 @@ end--]]
 
 local function auth ( headers )
 	if config.authorisation then
-		if headers["authorization"] then -- If using http authorization
-			local _ , _ , AuthType , AuthString = string.find ( headers["authorization"] , "([^ ]+)% +(.+)" )
+		local preferred = "basic" -- Preferred method is basic auth (Only thing currently supported)
+		if headers [ "authorization" ] then -- If using http authorization
+			local _ , _ , AuthType , AuthString = string.find ( headers [ "authorization" ] , "([^ ]+)% +(.+)" )
 			if string.lower ( AuthType )  == "basic" then -- If they are trying Basic Authentication:
 				local _ , _ , user , pass = string.find ( mime.unb64 ( AuthString ) , "([^:]+):(.+)" ) -- Decrypt username:password ( Sent in base64 )
 				--print(AuthType,AuthString,user,password,config.username,config.password)
@@ -131,13 +132,13 @@ local function auth ( headers )
 				if user == config.username and pass == config.password then
 					return true
 				else -- Credentials incorrect
-					return false , "basic"
+					return false , preferred 
 				end
 			--elseif string.lower ( AuthType ) == "digest" then 
 				-- TODO: Implement digest authentication
 			end
 		else -- No "Authorization" header present: Other authorisation being used?
-			return false , "basic" -- Tell them to login using Basic Auth (Only thing currently supported)
+			return false , preferred 
 		end
 	else -- Open Access Wanted
 		return true
@@ -256,7 +257,7 @@ local function webserver ( skt , r , headers , body )
 				code = 200
 			end
 			local _ , _ , extension = string.find ( file , "%.(.+)$" )
-			mimetyp = mime[extension]
+			mimetyp = mimetypes [ extension ]
 		end
 		do
 			local code , str , msg , bytessent = httpresponse ( skt , code , hdr , doc , mimetyp )
@@ -315,12 +316,15 @@ local function lompserver ( skt )
 	if headers [ "content-length" ] then body = copas.receive ( skt , headers [ "content-length" ] ) end
 	
 	if Method == "POST" then
-		print ( file )
-		if headers [ "content-type" ] == "text/xml" then -- This is an xmlrpc command
+		if file == "/LOMP" and headers [ "content-type" ] == "text/xml" then -- This is an xmlrpc command for lomp
 			return xmlrpcserver ( skt , requestdetails , headers , body )
 		end
 	elseif Method == "GET" then
-		return webserver ( skt , requestdetails , headers , body )
+		if file == "/BasicCMD" then
+			return basiccmdserver ( skt , requestdetails )
+		else
+			return webserver ( skt , requestdetails , headers , body )
+		end
 	elseif Method == "HEAD" then
 	elseif Method == "PUT" then
 	elseif Method == "DELETE" then
