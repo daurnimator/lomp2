@@ -110,7 +110,8 @@ local function httpsend ( skt , requestdetails , status , headers , body )
 		message = message .. k .. ": " .. v .. "\r\n"
 	end
 	
-	--if requestdetails.headers [ "connection" ] == "close" then message = message .. "Connection: close\r\n" end
+	message = message .. "Connection: close\r\n" -- Multiple HTTP commands not allowed, tell client to close connection
+	
 	message = message .. "\r\n" -- Signal end of header(s)
 	
 	message = message .. body
@@ -226,7 +227,7 @@ local function basiccmdserver ( skt , requestdetails )
 				elseif t == "b" then
 					params [ i ] = true
 				else
-					httpsend ( skt , 400 )
+					httpsend ( skt , requestdetails , 400 )
 					return false
 				end
 			else break
@@ -350,72 +351,74 @@ local function webserver ( skt , requestdetails , body ) -- Serve html interface
 end
 
 local function lompserver ( skt )
-	-- Retrive HTTP header
-	local found , chunk , code , request , rsize = false , 0 , false , "" , 0
-	while not found do
-		if chunk < 25 then
-			local data = copas.receive ( skt )
-			if data then
-				request = request .. data .. "\r\n"
-				
-				local length = string.len ( data )
-				if length < 1 then found = true end
-				rsize = rsize + length
-			else
+	while true do -- Keep doing it until connection is closed.
+		-- Retrive HTTP header
+		local found , chunk , code , request , rsize = false , 0 , false , "" , 0
+		while not found do
+			if chunk < 25 then
+				local data , err = copas.receive ( skt )
+				if err == "closed" then return end
+				if rsize <=1 and data == "\r\n" then -- skip blank lines @ start
+				elseif data then
+					request = request .. data .. "\r\n"
+					
+					local length = string.len ( data )
+					if length < 1 then found = true end
+					rsize = rsize + length
+				else
+					return false
+				end
+				chunk = chunk + 1
+			else -- max of 25 lines, more and request could be a DOS Attack
 				return false
 			end
-			chunk = chunk + 1
-		else -- max of 25 lines, more and request could be a DOS Attack
-			return false
 		end
-	end
-	--print( request )
-	
-	local _ , _ , Method , Path , Major , Minor = string.find ( request , "([A-Z]+) ([^ ]+) HTTP/(%d).(%d)" )
-	Method = string.upper ( Method )
-	if not Major then return false end -- Not HTTP
-	local file , querystring = string.match ( Path , "([^%?]+)%??(.*)$" ) 	-- HTTP Reserved characters: !*'();:@&=+$,/?%#[]
-															-- HTTP Unreserved characters: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~
-															-- Lua reserved pattern characters: ^$()%.[]*+-?
-															-- Intersection of http and lua reserved: *+$?%[]
-															-- %!%*%'%(%)%;%:%@%&%=%+%$%,%/%?%%%#%[%]
-	file = socket.url.unescape ( file )
-	local queryvars = { }
-	if querystring then
-		for k, v in string.gmatch( querystring , "([%w%-%_%.%~]+)=([%w%-%_%.%~]+)&?") do
-			queryvars [ socket.url.unescape ( k ) ] = socket.url.unescape ( v )
+		--print( request )
+		
+		local _ , _ , Method , Path , Major , Minor = string.find ( request , "([A-Z]+) ([^ ]+) HTTP/(%d).(%d)" )
+		Method = string.upper ( Method )
+		if not Major then return false end -- Not HTTP
+		local file , querystring = string.match ( Path , "([^%?]+)%??(.*)$" ) 	-- HTTP Reserved characters: !*'();:@&=+$,/?%#[]
+																-- HTTP Unreserved characters: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~
+																-- Lua reserved pattern characters: ^$()%.[]*+-?
+																-- Intersection of http and lua reserved: *+$?%[]
+																-- %!%*%'%(%)%;%:%@%&%=%+%$%,%/%?%%%#%[%]
+		file = socket.url.unescape ( file )
+		local queryvars = { }
+		if querystring then
+			for k, v in string.gmatch( querystring , "([%w%-%_%.%~]+)=([%w%-%_%.%~]+)&?") do
+				queryvars [ socket.url.unescape ( k ) ] = socket.url.unescape ( v )
+			end
 		end
-	end
-	local headers = { } for k , v in string.gmatch ( request , "\r\n([^:]+): ([^\r\n]+)" ) do headers [ string.lower ( k ) ] = v end
-	if not headers [ "host" ] then headers [ "host" ] = "default" end
-	
-	local requestdetails = { Method = Method , Path = Path , Major = Major , Minor = Minor , file = file , querystring = querystring , queryvars = queryvars , headers = headers }
-	
-	local body
-	if headers [ "content-length" ] then body = copas.receive ( skt , headers [ "content-length" ] ) end
-	
-	if Method == "POST" then
-		if file == "/LOMP" and headers [ "content-type" ] == "text/xml" then -- This is an xmlrpc command for lomp
-			return xmlrpcserver ( skt , requestdetails , body )
-		end
-	elseif Method == "GET" then
-		if file == "/BasicCMD" then
-			return basiccmdserver ( skt , requestdetails , headers )
+		local headers = { } for k , v in string.gmatch ( request , "\r\n([^:]+): ([^\r\n]+)" ) do headers [ string.lower ( k ) ] = v end
+		if not headers [ "host" ] then headers [ "host" ] = "default" end
+		
+		local requestdetails = { Method = Method , Path = Path , Major = Major , Minor = Minor , file = file , querystring = querystring , queryvars = queryvars , headers = headers }
+		
+		local body
+		if headers [ "content-length" ] then body = copas.receive ( skt , headers [ "content-length" ] ) end
+		
+		if Method == "POST" then
+			if file == "/LOMP" and headers [ "content-type" ] == "text/xml" then -- This is an xmlrpc command for lomp
+				xmlrpcserver ( skt , requestdetails , body )
+			end
+		elseif Method == "GET" then
+			if file == "/BasicCMD" then
+				basiccmdserver ( skt , requestdetails , headers )
+			else
+				webserver ( skt , requestdetails , body )
+			end
+		elseif Method == "HEAD" then	
+			httpsend ( skt , requestdetails , 501 , { Allow = "GET, POST" } )
+		elseif Method == "TRACE" then -- Send back request as body
+			httpsend ( skt , requestdetails , 200 , { [ 'content-type'] = "message/http" } , request )
+		--elseif Method == "PUT" or Method == "DELETE" or Method == "OPTIONS" then	
 		else
-			return webserver ( skt , requestdetails , body )
+			httpsend ( skt , requestdetails , 501 , { Allow = "GET, POST" } )
 		end
-	elseif Method == "HEAD" then	
-	elseif Method == "PUT" then
-	elseif Method == "DELETE" then
-	elseif Method == "TRACE" then -- Send back request as body
-		return httpsend ( skt , requestdetails , 200 , { [ 'content-type'] = "message/http" } , request )
-	elseif Method == "OPTIONS" then	
-	else
-		httpsend ( skt , requestdetails , 501 , { Allow = "GET, POST" } )
-		return true
+		
+		break
 	end
-	
-	httpsend ( skt , requestdetails , 503 )
 end
 function server.initiate ( host , port )
 	server.server , err = socket.bind ( host , port )
