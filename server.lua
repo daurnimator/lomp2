@@ -8,7 +8,8 @@ require"socket.url"
 require"copas"
 require"mime" -- For base64 decoding of authorisation
 require"xmlrpc"
-require"ex"
+--require"ex"
+require"lfs"
 
 local mimetypes = { }
 do
@@ -275,75 +276,77 @@ local function basiccmdserver ( skt , requestdetails )
 		end
 	end
 end
-local function webserver ( skt , requestdetails , body )
-		-- Serve html :D
-		--local authorised , typ = auth ( headers )
-		local headers = requestdetails.headers
+local function webserver ( skt , requestdetails , body ) -- Serve html interface
 		local code , doc , hdr , mimetyp = 206 , nil , { } , "text/html"
+		local publicdir = "."
+		local allowdirectorylistings = true
+		
+		function pathtomime ( path )
+			local _ , _ , extension = string.find ( path , "%.(.+)$" )
+			return mimetypes [ extension ]
+		end
+
 		local defaultfiles = { "index.html" , "index.htm" }
-		local sfile = string.gsub ( requestdetails.file , "/%.[^/]*" , "" )
-		if not authorised and sfile ~= requestdetails.file then 
-			--code = 307
-			--hdr["Location"] = "http://" .. headers["host"] .. sfile
-			code = 401
-		else 
-			local file = "." .. requestdetails.file
-			local f , filecontents
-			if string.sub ( file , -1 ) ~= "/" then 
-				local entry = os.dirent ( file )
-				if entry and entry.type == "directory" then file = file .. "/" end
-			end
-			if string.sub ( file , -1 ) == "/" then 
-				local entry , err
-				for i , v in ipairs ( defaultfiles ) do
-					entry , err = os.dirent ( file .. v )
-					if entry then break end
-				end
-				if not entry then
-					--doc = "<html><head><title>" .. core._NAME .. ' ' .. core._VERSION .. " Web Client</title></head><body><h1>Coming Soon!</h1></body></html>"
-					-- Directory listing
-					do
-						doc = "<html><head><title>" .. core._NAME .. ' ' .. core._VERSION .. " Directory Listing</title></head><body><h1>Listing of " .. file .. "</h1><ul>"
-						local t = { }
-						for entry in os.dir ( file ) do 
-							if string.sub ( entry.name , 1 , 1 ) ~= "." then
-								t[#t+1] = entry
-							end
-						end
-						table.sort ( t , function (a,b) if string.lower( a.name ) < string.lower( b.name ) then return true end end)
-						table.sort ( t , function (a,b) if string.lower( a.type ) < string.lower( b.type ) then return true end end)
-						for i , v in ipairs ( t ) do
-							local n = v.name
-							if v.type == "directory" then n = n .. "/" end
-							doc = doc .. "<li><a href='" .. n .. "'>" .. n .. "</a> " .. v.size .. " Bytes</li>"
-						end
-						doc = doc .. "</ul></body></html>"
-					end
-					code = 200
-				end
-			else 
-				f = io.open ( file , "rb" )
-			end
-			if doc then
-			elseif not f then
-				code = 404
-			else
-				filecontents = f:read ( "*all" )
-				f:close()
-				
-				doc = filecontents
-				code = 200
-			end
-			local _ , _ , extension = string.find ( file , "%.(.+)$" )
-			mimetyp = mimetypes [ extension ]
-		end
-		do
-			hdr [ 'content-length' ]  = mimetyp
-			local code , str , bytessent = httpsend ( skt , requestdetails , code , hdr , doc )
 			
-			-- Apache Log Format
-			print ( string.format ( '%s - - [%s] "GET %s HTTP/%s.%s" %s %s "%s" "%s"', skt:getpeername ( ) , os.date ( "!%m/%b/%Y:%H:%M:%S GMT" ) , requestdetails.Path , requestdetails.Major , requestdetails.Minor , code , bytessent , headers [ "referer" ] or "-" , headers[ "agent" ] or "-" ) )
+		local sfile = string.gsub ( requestdetails.file , "/%.[^/]*" , "" ) -- Strip out ".." and "." of file request
+		local path = publicdir .. sfile -- Prefix with public dir path
+			
+		if string.sub ( path , -1 ) ~= "/" and lfs.attributes ( path , "mode" ) ~= "directory" then -- Requesting a specific file
+			local f , filecontents
+			f = io.open ( path , "rb" )
+			if f then
+				filecontents = f:read ( "*all" )
+				f:close ( )
+				
+				code = 200
+				doc = filecontents
+			else -- no such file
+				code = 404
+				return
+			end
+		else -- Want index file
+			if string.sub ( path , -1 ) ~= "/" then path = path .. "/" end -- Ensure path ends in directory seperator
+			for i , v in ipairs ( defaultfiles ) do
+				local f , filecontents
+				f = io.open ( path .. v )
+				if f then
+					filecontents = f:read ( "*all" )
+					f:close ( )
+					
+					code = 200
+					doc = filecontents
+					break
+				end
+			end
+			if not doc and lfs.attributes ( path , "mode" ) == "directory" and allowdirectorylistings then -- Directory listing
+				doc = "<html><head><title>" .. core._NAME .. ' ' .. core._VERSION .. " Directory Listing</title></head><body><h1>Listing of " .. sfile .. "</h1><ul>"
+				local t = { }
+				for entry in lfs.dir ( path ) do
+					if string.sub ( entry , 1 , 1 ) ~= "." then
+						t [ #t + 1 ] = entry
+					end
+				end
+				table.sort ( t )
+				if sfile ~= "/" then doc = doc .. "<li><a href='" .. ".." .. "'>" .. ".." .. "</a></li>" end
+				for i , v in ipairs ( t ) do
+					doc = doc .. "<li><a href='" .. v .. "'>" .. v .. "</a></li>"
+				end
+				doc = doc .. "</ul></body></html>"
+				
+				code = 200
+			else -- If still around at this point: forbidden to list the directory
+				print ( path , doc,  lfs.attributes ( path , "mode" ) , allowdirectorylistings )
+				code = 403
+			end
 		end
+		
+		hdr [ 'content-length' ]  = pathtomime ( path )
+		local code , str , bytessent = httpsend ( skt , requestdetails , code , hdr , doc )
+			
+		-- Apache Log Format
+		local apachelog = string.format ( '%s - - [%s] "GET %s HTTP/%s.%s" %s %s "%s" "%s"', skt:getpeername ( ) , os.date ( "!%m/%b/%Y:%H:%M:%S GMT" ) , requestdetails.Path , requestdetails.Major , requestdetails.Minor , code , bytessent , ( requestdetails.headers [ "referer" ] or "-" ) , ( requestdetails.headers[ "agent" ] or "-" ) )
+		print ( apachelog )
+		
 		return true
 end
 
