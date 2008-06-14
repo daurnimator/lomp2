@@ -65,3 +65,17 @@ function table.inherit ( tbl1 , tbl2 , overwrite )
 	end
 	return t
 end
+
+function package.see ( env )
+	env = env or _G
+	return function ( module ) 
+		local t = type ( module )
+			assert ( t == "table" , "bad argument #1 to package.seefrom (table expected, got " .. t .. ")" )
+			local meta = getmetatable ( module )
+			if not meta then
+				meta = { }
+				setmetatable ( module , meta )
+			end
+		meta.__index = env
+	end
+end

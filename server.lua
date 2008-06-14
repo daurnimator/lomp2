@@ -84,27 +84,40 @@ local function httpdate ( )
 	--eg, "Sun, 10 Apr 2005 20:27:03 GMT"
 	return os.date ( "!%a, %d %b %Y %H:%M:%S GMT" )
 end
+local function httpsend ( skt , requestdetails , status , headers , body )
+	if type ( status ) ~= "number" or status < 100 or status > 599 then error ( "Invalid http code" ) end
+	local reasonphrase = httpcodes [ status ]
+	
+	local sheaders = { }
+	for k , v in pairs ( ( headers or { } ) ) do
+		sheaders [ string.lower ( k ) ] = v
+	end
+	
+	if requestdetails.Method ~= "HEAD" then 
+		body = body or ( "<html><head><title>HTTP Code " .. status .. "</title></head><body><h1>HTTP Code " .. status .. "</h1><p>" .. reasonphrase .. "</p></body></html>" )
+	else
+		body = ""
+	end
+	
+	local message = "HTTP/1.1 " .. status .. " " .. reasonphrase .. "\r\n" 
 
-local function httpresponse ( skt , status, headers , body , typ , fatal )
-	local str = httpcodes [ status ]
-	headers = headers or { }
-	typ = typ or "text/html"
-	body = body or "<html><head><title>HTTP Code " .. status .. "</title></head><body><h1>HTTP Code " .. status .. "</h1><p>" .. str .. "</p></body></html>" 
-	local message = "HTTP/1.0 " .. status .. " " .. str .. "\r\n" 
-	message = message .. "Date: " .. httpdate ( ) .. "\r\n"
-	message = message .. "Server: " .. core._NAME .. ' ' .. core._VERSION .. "\r\n"
-	message = message .. "Content-Type: " .. typ .. "\r\n"
-	message = message .. "Content-Length: " .. string.len ( body ) .. "\r\n"
-	for k,v in pairs ( headers ) do
+	sheaders [ "date" ] = httpdate ( )
+	sheaders [ "server" ] = core._NAME .. ' ' .. core._VERSION
+	sheaders [ "content-type" ] = sheaders [ "content-type" ] or "text/html"
+	sheaders [ "content-length" ] = string.len ( body )
+	
+	for k,v in pairs ( sheaders ) do
 		message = message .. k .. ": " .. v .. "\r\n"
 	end
-	if fatal then message = message .. "Connection: close\r\n" end
+	
+	--if requestdetails.headers [ "connection" ] == "close" then message = message .. "Connection: close\r\n" end
 	message = message .. "\r\n" -- Signal end of header(s)
+	
 	message = message .. body
 	
 	local bytessent , err = copas.send ( skt , message )
 	
-	return code or 0 , str , message , bytessent
+	return status , reasonphrase , bytessent
 end
 local function dispatch ( baseenv , name )
 	if type ( name ) ~= "string" then return false end
@@ -116,19 +129,6 @@ local function dispatch ( baseenv , name )
 	
 	return func
 end
-
---[[local function echoHandler( skt )
-	while true do
-		local data = copas.receive( skt )
-		if data == "quit" then
-			break
-		end
-		if data then 
-			print(data)
-			copas.send(skt, data .. "\r\n")
-		end
-	end
-end--]]
 
 local function auth ( headers )
 	if config.authorisation then
@@ -155,61 +155,88 @@ local function auth ( headers )
 	end
 end
 
-local function xmlrpcserver ( skt , r , headers , body )
-			local authorised , typ = auth ( headers )
-			if not authorised then
-				if typ == "basic" then
-					-- Send a xml fault document
-					updatelog ( "Unauthorised login blocked." , 2 )
-					httpresponse ( skt , 401 , { ['WWW-Authenticate'] = 'Basic realm=" ' .. core._NAME .. ' ' .. core._VERSION .. '"' } , xmlrpc.srvEncode ( { faultCode = 401 , faultString = httpcodes[401] } , true ) , "text/xml" , true )
-					return false
-				end
-			else -- Authorised
-				--print (body)
-				local method_name , list_params = xmlrpc.srvDecode ( body )
-				list_params = list_params[1] --I don't know why it needs this, but it does
-				
-				local function d ( ... ) return dispatch ( _M , ... ) end
-				xmlrpc.srvMethods ( d )
-				local func = xmlrpc.dispatch ( method_name )
-				local function interpret ( ok , err , ... )
-					if not ok then
-						return ok , err
-					else
-						return ok , { err , ... }
-					end
-				end
-
-				local function depack ( t , i , j )
-					i = i or 1
-					if ( j and i > j ) or ( not j and t [ tostring ( i ) ] == nil ) then return end 
-					return t [ tostring ( i ) ] , depack ( t , i + 1 , j )
-				end 
-				
-				local ok , result = interpret ( pcall ( func , depack ( list_params or { } ) ) )
-				--[[print(ok,result,err)
-				if not ok then
-					-- ERRor??
-				end--]]
-				--result = dispatch ( method_name ) ( unpack ( list_params ) )
-				httpresponse ( skt , 200 , { } , xmlrpc.srvEncode (result, not ok) , "text/xml" )
-				
-				return true
+local function xmlrpcserver ( skt , requestdetails , body )
+	local authorised , typ = auth ( requestdetails.headers )
+	if not authorised then
+		if typ == "basic" then
+			-- Send a xml fault document
+			updatelog ( "Unauthorised login blocked." , 2 )
+			httpsend ( skt , requestdetails , 401 , { [ 'WWW-Authenticate' ] = 'Basic realm=" ' .. core._NAME .. ' ' .. core._VERSION .. '"' ; [ 'content-length' ] = "text/xml" } , xmlrpc.srvEncode ( { faultCode = 401 , faultString = httpcodes [ 401 ] } , true ) )
+			return false
+		end
+	else -- Authorised
+		--print (body)
+		local method_name , list_params = xmlrpc.srvDecode ( body )
+		list_params = list_params[1] --I don't know why it needs this, but it does
+		
+		local function d ( ... ) return dispatch ( _M , ... ) end
+		xmlrpc.srvMethods ( d )
+		local func = xmlrpc.dispatch ( method_name )
+		local function interpret ( ok , err , ... )
+			if not ok then
+				return ok , err
+			else
+				return ok , { err , ... }
 			end
+		end
+
+		local function depack ( t , i , j )
+			i = i or 1
+			if ( j and i > j ) or ( not j and t [ tostring ( i ) ] == nil ) then return end 
+			return t [ tostring ( i ) ] , depack ( t , i + 1 , j )
+		end 
+				
+		local ok , result = interpret ( pcall ( func , depack ( list_params or { } ) ) )
+
+		httpsend ( skt , requestdetails , 200 , { [ 'content-length' ] = "text/xml" } , xmlrpc.srvEncode ( result , not ok) )
+			
+		return true
+	end
 end
-local function basiccmdserver ( skt , requestdetails , headers )
+local function basiccmdserver ( skt , requestdetails )
 	-- Execute action based on GET string.
-	local authorised , typ = auth ( headers )
+	local authorised , typ = auth ( requestdetails.headers )
 	if not authorised then
 		if typ == "basic" then
 			-- Send an xml fault document
 			updatelog ( "Unauthorised login blocked." , 2 )
-			httpresponse ( skt , 401 , { ['WWW-Authenticate'] = 'Basic realm=" ' .. core._NAME .. ' ' .. core._VERSION .. '"' } , xmlrpc.srvEncode ( { faultCode = 401 , faultString = httpcodes[401] } , true ) , "text/xml" , true )
+			httpsend ( skt , requestdetails , 401 , { ['WWW-Authenticate'] = 'Basic realm=" ' .. core._NAME .. ' ' .. core._VERSION .. '"' } )
 			return false
 		end		
 	else
 		local cmd = requestdetails.queryvars [ "cmd" ]
-		local function basiccmd ( func , params ) 
+		
+		--for k , v in pairs ( requestdetails.queryvars ) do print ( k,v ) end
+		
+		local i = 1
+		local params = { }
+		while true do
+			if requestdetails.queryvars [ tostring ( i ) ] then
+				local v = requestdetails.queryvars [ tostring ( i ) ]
+				local t = v:sub ( 1 , 1 )
+				local s = v:sub ( 2 , -1 )
+				if t == "s" then
+					params [ i ] = s
+				elseif t == "n" and tonumber ( s ) then
+					params [ i ] = tonumber ( s )
+				elseif t == "-" then
+					params [ i ] = nil
+				elseif t == "b" and s == "f" or s == "false" then
+					params [ i ] = false
+				elseif t == "b" then
+					params [ i ] = true
+				else
+					httpsend ( skt , 400 )
+					return false
+				end
+			else break
+			end
+			i = i + 1
+		end
+		
+		local func = dispatch ( _M , cmd )
+		
+		if func then 
 			local doc
 			local function makeresponse ( pcallok , ok , ... )
 				if pcallok and ok then
@@ -221,8 +248,8 @@ local function basiccmdserver ( skt , requestdetails , headers )
 						end
 					end
 					doc = doc .. "</ul></body></html>" 
-					local code , str , msg , bytessent = httpresponse ( skt , 200 , { } , doc )
-					return true
+					
+					return 200 , doc
 				else
 					doc = "<html><head><title>Failure in: " .. cmd .. "</title></head><body><h1>Failure in: " .. cmd .. "</h1><h2>Error:</h2>" 
 					if not pcallok then
@@ -235,52 +262,32 @@ local function basiccmdserver ( skt , requestdetails , headers )
 						doc = doc .. "</ul>"
 					end
 					doc = doc .. "</body></html>" 
-					local code , str , msg , bytessent = httpresponse ( skt , 500 , { } , doc )
-					return false
+					
+					return 500 , doc
 				end
 			end
-			makeresponse ( pcall ( func , unpack ( params ) ) )
-		end
-		
-		--for k , v in pairs ( requestdetails.queryvars ) do print ( k,v ) end
-		
-		local i = 1
-		local params = { }
-		while true do
-			if requestdetails.queryvars [ tostring ( i ) ] then
-				params [ i ] = requestdetails.queryvars [ tostring ( i ) ]
-				if tonumber ( params [ i ] ) then params [ i ] = tonumber ( params [ i ] ) end
-			else break
-			end
-			i = i + 1
-		end
-		
-		--[[if cmd == "play" then basiccmd ( playback.play , params )
-		elseif cmd == "stop" then basiccmd ( playback.stop , params )
-		elseif cmd == "pause" then basiccmd ( playback.pause , params )--]]
-
-		local func = dispatch ( _M , cmd )
-		if func then 
-			basiccmd ( func , params )
+			local status , doc = makeresponse ( pcall ( func , unpack ( params ) ) )
+			local code , str , msg , bytessent = httpsend ( skt , requestdetails , status , nil , doc )
+			return true
 		else 
-			httpresponse ( skt , 404 )
+			httpsend ( skt , requestdetails , 404 )
 			return false
 		end
 	end
 end
-local function webserver ( skt , r , headers , body )
+local function webserver ( skt , requestdetails , body )
 		-- Serve html :D
 		--local authorised , typ = auth ( headers )
+		local headers = requestdetails.headers
 		local code , doc , hdr , mimetyp = 206 , nil , { } , "text/html"
 		local defaultfiles = { "index.html" , "index.htm" }
-		local file = r.file
-		local sfile = string.gsub ( file , "/%.[^/]*" , "" )
-		if not authorised and sfile ~= file then 
+		local sfile = string.gsub ( requestdetails.file , "/%.[^/]*" , "" )
+		if not authorised and sfile ~= requestdetails.file then 
 			--code = 307
 			--hdr["Location"] = "http://" .. headers["host"] .. sfile
 			code = 401
 		else 
-			file = "." .. file
+			local file = "." .. requestdetails.file
 			local f , filecontents
 			if string.sub ( file , -1 ) ~= "/" then 
 				local entry = os.dirent ( file )
@@ -331,9 +338,11 @@ local function webserver ( skt , r , headers , body )
 			mimetyp = mimetypes [ extension ]
 		end
 		do
-			local code , str , msg , bytessent = httpresponse ( skt , code , hdr , doc , mimetyp )
+			hdr [ 'content-length' ]  = mimetyp
+			local code , str , bytessent = httpsend ( skt , requestdetails , code , hdr , doc )
+			
 			-- Apache Log Format
-			print ( string.format ( '%s - - [%s] "GET %s HTTP/%s.%s" %s %s "%s" "%s"', skt:getpeername ( ) , os.date ( "!%m/%b/%Y:%H:%M:%S GMT" ) , r.Path , r.Major , r.Minor , code , bytessent , headers["referer"] or "-" , headers["agent"] or "-" ) )
+			print ( string.format ( '%s - - [%s] "GET %s HTTP/%s.%s" %s %s "%s" "%s"', skt:getpeername ( ) , os.date ( "!%m/%b/%Y:%H:%M:%S GMT" ) , requestdetails.Path , requestdetails.Major , requestdetails.Minor , code , bytessent , headers [ "referer" ] or "-" , headers[ "agent" ] or "-" ) )
 		end
 		return true
 end
@@ -350,9 +359,6 @@ local function lompserver ( skt )
 				local length = string.len ( data )
 				if length < 1 then found = true end
 				rsize = rsize + length
-				
-				local position , len = string.find ( request , '\r\n\r\n' )
-				if position then found = true end
 			else
 				return false
 			end
@@ -375,50 +381,60 @@ local function lompserver ( skt )
 	local queryvars = { }
 	if querystring then
 		for k, v in string.gmatch( querystring , "([%w%-%_%.%~]+)=([%w%-%_%.%~]+)&?") do
-			queryvars[socket.url.unescape ( k )] = socket.url.unescape ( v )
+			queryvars [ socket.url.unescape ( k ) ] = socket.url.unescape ( v )
 		end
 	end
 	local headers = { } for k , v in string.gmatch ( request , "\r\n([^:]+): ([^\r\n]+)" ) do headers [ string.lower ( k ) ] = v end
 	if not headers [ "host" ] then headers [ "host" ] = "default" end
 	
-	local requestdetails = { Method = Method , Path = Path , Major = Major , Minor = Minor , file = file , querystring = querystring , queryvars = queryvars }
+	local requestdetails = { Method = Method , Path = Path , Major = Major , Minor = Minor , file = file , querystring = querystring , queryvars = queryvars , headers = headers }
 	
 	local body
 	if headers [ "content-length" ] then body = copas.receive ( skt , headers [ "content-length" ] ) end
 	
 	if Method == "POST" then
 		if file == "/LOMP" and headers [ "content-type" ] == "text/xml" then -- This is an xmlrpc command for lomp
-			return xmlrpcserver ( skt , requestdetails , headers , body )
+			return xmlrpcserver ( skt , requestdetails , body )
 		end
 	elseif Method == "GET" then
 		if file == "/BasicCMD" then
 			return basiccmdserver ( skt , requestdetails , headers )
 		else
-			return webserver ( skt , requestdetails , headers , body )
+			return webserver ( skt , requestdetails , body )
 		end
-	elseif Method == "HEAD" then
+	elseif Method == "HEAD" then	
 	elseif Method == "PUT" then
 	elseif Method == "DELETE" then
-	elseif Method == "TRACE" then
-	elseif Method == "CONNECT" then
+	elseif Method == "TRACE" then -- Send back request as body
+		return httpsend ( skt , requestdetails , 200 , { [ 'content-type'] = "message/http" } , request )
 	elseif Method == "OPTIONS" then	
 	else
-		httpresponse ( skt , 405, { Allow = "GET, POST" } , nil , nil ,true )
+		httpsend ( skt , requestdetails , 501 , { Allow = "GET, POST" } )
 		return true
 	end
 	
-	httpresponse ( skt , 503, nil , nil , nil , true )
+	httpsend ( skt , requestdetails , 503 )
 end
-function server.inititate ( host , port )
+function server.initiate ( host , port )
 	server.server , err = socket.bind ( host , port )
-	--copas.addserver(server, echoHandler) -- Echo Handler
 	if server.server then 
+		--[[copas.addserver( server , function echoHandler ( skt )
+			while true do
+				local data = copas.receive( skt )
+				if data == "quit" then
+					break
+				end
+				if data then 
+					print(data)
+					copas.send(skt, data .. "\r\n")
+				end
+			end
+		end ) --]] -- Echo Handler
 		copas.addserver ( server.server , lompserver )
-		updatelog ( "Server started bound to '" .. "', port #" .. port , 4 ) 
+		updatelog ( "Server started; bound to '" .. host .. "', port #" .. port , 4 ) 
 		return true
 	else
-		updatelog ( "Server could not be started: " .. err , 0 )
-		return false
+		return ferror ( "Server could not be started: " .. err , 0 )
 	end
 end
 function server.step ( )

@@ -14,7 +14,6 @@ function core.listpl ( )
 end
 
 function core.listentries ( pl )
-	print (pl)
 	if type( pl ) == "string" then pl = valuetoindex ( vars.pl , "name" , key ) end
 	assert ( type ( pl ) == "number" , "Provide a playlist" )
 	local s = "Listing Playlist #" .. pl .. " \t(Last Revision: " .. vars.pl[pl].rev .. ")\n"
@@ -46,24 +45,25 @@ function core.listqueue ( )
 	return vars.queue , s
 end
 
---[[function core.listplayed ( )
+function core.listplayed ( )
 	local s = "Listing Played Songs (most recent first) \t(Last Revision: " .. vars.played.rev .. ")\n"
 	for i , v in ipairs( vars.played ) do
 		s = s .. "Entry #" .. i .. " \t(" .. v.typ .. ") \tSource: '" .. v.source .. "'\n"
 	end
 	return vars.played , s
-end]]
+end
 
 	function playsongfrompl ( pl , pos )
 		core.setsoftqueueplaylist ( pl )
 		core.clearhardqueue ( )
 		playback.goto ( pos )
 		playback.play ( )
+		return true
 	end
 	
 function demo ( )
 	core.refreshlibrary ( )
-	local pl = core.newplaylist ( "Flac Files" )
+	local pl = core.playlist.new ( "Flac Files" )
 	core.addfile ( '/media/sdd1/Temp/Done Torrents/Daft Punk - Aerodynamic,Aerodynamite (2001) [FLAC] {CDS}/01 - Aerodynamic.flac' , pl )
 	core.addfile ( '/media/sdd1/Temp/Torrents/Rage Against The Machine - Rage Against The Machine (1992) [FLAC]/02 - Killing In The Name.flac' , pl )
 	core.addfile ( '/media/sdd1/Temp/Done Torrents/Daft Punk - Aerodynamic,Aerodynamite (2001) [FLAC] {CDS}/02 - Aerodynamite.flac' , pl )
@@ -89,7 +89,8 @@ function pv ( )
 	p ( select( 2 , core.listentries ( 0 ) ) )
 	p ( select( 2 , core.listallentries ( ) ) )
 	p ( select( 2 , core.listqueue ( ) ) )
-	--p ( select( 2 , core.listplayed ( ) ) )
+	p ( select( 2 , core.listplayed ( ) ) )
+	return true
 end
 --[[function p (...)
 	if type ( select ( 1 , ... ) ) == "string" then 

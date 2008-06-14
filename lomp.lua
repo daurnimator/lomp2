@@ -54,6 +54,10 @@ function updatelog ( data , level )
 	if level == 0 then error ( data ) end
 	return true
 end
+function ferror ( data , level )
+	updatelog ( data , level )
+	return false , data
+end
 
 require("general")
 require("lomp-core")
@@ -73,7 +77,7 @@ do -- Restore State
 	local ok , err = core.restorestate ( )
 end
 
-server.inititate ( config.address , config.port )
+server.initiate ( config.address , config.port )
 steps = {}
 
 table.insert ( steps , server.step )
