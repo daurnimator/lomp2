@@ -69,11 +69,11 @@ function playback.forward ( ) -- Moves forward one song in the queue
 	playback.stop ( )
 	if vars.queue[0] then
 		table.insert ( vars.played , 1 , vars.queue [ 0 ] ) -- Add current to played (history)
-		vars.played.rev = vars.played.rev + 1
+		vars.played.revision = vars.played.revision + 1
 	end
 	if #vars.queue > 0 then -- Hard queue left
 		table.remove ( vars.queue , 0 ) -- Shifts all elements down
-		vars.queue.rev = vars.queue.rev + 1
+		vars.queue.revision = vars.queue.revision + 1
 		return true
 	else
 		if vars.queue [ 1 + vars.ploffset ] == nil and vars.loop then 
@@ -83,7 +83,7 @@ function playback.forward ( ) -- Moves forward one song in the queue
 			vars.queue [ 0 ] = vars.queue [ vars.ploffset + 1 ]
 			vars.ploffset = vars.ploffset + 1
 		
-			vars.queue.rev = vars.queue.rev + 1
+			vars.queue.revision = vars.queue.revision + 1
 			return true
 		else -- No songs left
 			return false
@@ -95,8 +95,8 @@ function playback.backward ( ) -- Moves back one song from the history
 	if vars.played [ 1 ] then
 		table.insert ( vars.queue , 0 , vars.played [ 1 ] ) -- Move most recent history to current, shifting current to hardqueue (and shifting any others up)
 		table.remove ( vars.played , 1 ) -- Shifts all elements down
-		vars.queue.rev = vars.queue.rev + 1
-		vars.played.rev = vars.played.rev + 1
+		vars.queue.revision = vars.queue.revision + 1
+		vars.played.revision = vars.played.revision + 1
 		return true
 	else -- Nothing in history.
 		return false

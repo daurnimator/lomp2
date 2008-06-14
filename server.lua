@@ -8,7 +8,6 @@ require"socket.url"
 require"copas"
 require"mime" -- For base64 decoding of authorisation
 require"xmlrpc"
---require"ex"
 require"lfs"
 
 local mimetypes = { }

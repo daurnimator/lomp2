@@ -18,14 +18,14 @@ vars = {
 	init= t ,
 	pl = {
 		[-1] = { } , -- Empty Playlist
-		rev = 0 ,
+		revision = 0 ,
 	} ,
 	hardqueue = { 
-		rev = 0 ,
+		revision = 0 ,
 		name = "Hard Queue"
 	} ,
 	played = { 
-		rev = 0 ,
+		revision = 0 ,
 	} ,
 	loop = false , -- Loop soft playlist?
 	rpt = true , -- When end of soft playlist reached, go back to start of soft playlist?
@@ -123,7 +123,7 @@ vars.queue = setmetatable ( vars.hardqueue , {
 })
 function core.clearhardqueue ( )
 	vars.hardqueue = { 
-		rev = vars.hardqueue.rev + 1 ,
+		revision = vars.hardqueue.revision + 1 ,
 		name = "Hard Queue" 
 	}
 	return true
@@ -144,13 +144,13 @@ end
 
 -- History Stuff
 function core.clearhistory ( )
-	local oldrev = vars.played.rev or 0
-	vars.played = { rev = ( oldrev + 1 ) ; }
+	local oldrevision = vars.played.revision or 0
+	vars.played = { revision = ( oldrevision + 1 ) ; }
 	return true
 end
 function core.removefromhistory ( pos )
 	table.remove ( vars.played , pos )
-	vars.played.rev = vars.played.rev + 1
+	vars.played.revision = vars.played.revision + 1
 	return true
 end
 

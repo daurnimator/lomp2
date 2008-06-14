@@ -6,9 +6,9 @@ module ( "lomp" , package.seeall )
 require"lomp-core"
 
 function core.listpl ( )
-	local s = "Playlists: (Last Revision: " .. vars.pl.rev .. ")\n"
+	local s = "Playlists: (Last Revision: " .. vars.pl.revision .. ")\n"
 	for i , v in ipairs( vars.pl ) do
-		s = s .. "Playlist #" .. i .. "\t" .. v.name .. " \tRevision " .. v.rev.. "\n"
+		s = s .. "Playlist #" .. i .. "\t" .. v.name .. " \tRevision " .. v.revision.. "\n"
 	end
 	return vars.pl , s
 end
@@ -16,7 +16,7 @@ end
 function core.listentries ( pl )
 	if type( pl ) == "string" then pl = valuetoindex ( vars.pl , "name" , key ) end
 	assert ( type ( pl ) == "number" , "Provide a playlist" )
-	local s = "Listing Playlist #" .. pl .. " \t(Last Revision: " .. vars.pl[pl].rev .. ")\n"
+	local s = "Listing Playlist #" .. pl .. " \t(Last Revision: " .. vars.pl[pl].revision .. ")\n"
 	for i , v in ipairs( vars.pl[pl] ) do
 		s = s .. "Entry #" .. i .. " \t(" .. v.typ .. ") \tSource: '" .. v.source .. "'\n"
 	end
@@ -46,7 +46,7 @@ function core.listqueue ( )
 end
 
 function core.listplayed ( )
-	local s = "Listing Played Songs (most recent first) \t(Last Revision: " .. vars.played.rev .. ")\n"
+	local s = "Listing Played Songs (most recent first) \t(Last Revision: " .. vars.played.revision .. ")\n"
 	for i , v in ipairs( vars.played ) do
 		s = s .. "Entry #" .. i .. " \t(" .. v.typ .. ") \tSource: '" .. v.source .. "'\n"
 	end

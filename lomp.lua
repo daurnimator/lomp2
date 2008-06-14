@@ -64,6 +64,16 @@ require("lomp-core")
 require("playback")
 require("server")
 
+steps = { }
+function addstep ( func )
+	for i , v in ipairs ( steps ) do 
+		if v == func then return false end
+	end
+	table.insert ( steps , func )
+	return true
+end
+
+addstep ( server.step )
 
 updatelog ( "Loading plugins." , 3 )
 for i , v in ipairs ( config.plugins ) do
@@ -72,24 +82,19 @@ for i , v in ipairs ( config.plugins ) do
 end
 updatelog ( "All Plugins Loaded" , 3 )
 
-
 do -- Restore State
 	local ok , err = core.restorestate ( )
 end
 
 server.initiate ( config.address , config.port )
-steps = {}
-
-table.insert ( steps , server.step )
 
 updatelog ( "LOMP Loaded " .. os.date ( "%c" ) , 3 )
 
 require"lomp-debug"
---demo ( )
 
 local s = 1
 while true do
-	steps[s] ( )
+	steps [ s ] ( )
 	s = s + 1
 	if s > #steps then s = 1 end
 end

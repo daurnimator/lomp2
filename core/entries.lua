@@ -22,7 +22,7 @@ function core.addentry ( object , pl , pos )
 	end
 	
 	table.insert ( place , pos , object )
-	place.rev = place.rev + 1
+	place.revision = place.revision + 1
 	
 	updatelog ( "Added entry to playlist " .. pl .. " (" .. place.name .. ") position #" .. pos .. " Source: " .. object.source  , 4 )
 	return pl , pos , object
@@ -44,7 +44,7 @@ function core.removeentry ( pl , pos )
 	end
 	
 	removedentry  = table.remove ( place , pos )
-	place.rev = place.rev + 1
+	place.revision = place.revision + 1
 	
 	updatelog ( "Removed entry from playlist " .. pl .. " (" .. place.name .. ") position #" .. pos .. " Source: " .. object.source  , 4 )
 	return pl , pos , removedentry
@@ -85,11 +85,11 @@ function core.copytoplaylist ( newpl , newpos , oldpl , oldpos )
 	
 	if oldpl == newpl then
 		-- Copy within a playlist
-		vars.pl [ oldpl ].rev = vars.pl [ oldpl ].rev + 1
+		vars.pl [ oldpl ].revision = vars.pl [ oldpl ].revision + 1
 	else
 		-- Copy between playlists
-		vars.pl [ oldpl ].rev = vars.pl [ oldpl ].rev + 1
-		vars.pl [ newpl ].rev = vars.pl [ newpl ].rev + 1
+		vars.pl [ oldpl ].revision = vars.pl [ oldpl ].revision + 1
+		vars.pl [ newpl ].revision = vars.pl [ newpl ].revision + 1
 	end
 	
 	return newpl , newpos , oldpl , oldpos , newplace [ newpos ]

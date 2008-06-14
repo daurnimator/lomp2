@@ -18,7 +18,7 @@ function core.savestate ( )
 	-- Playlists
 	s = s .. "pl = {\n"
 	for i = 0 , #vars.pl do
-		s = s .. "\t[" .. i .. "] = { rev = 0 ; name = '" .. vars.pl [ i ].name .. "';\n"
+		s = s .. "\t[" .. i .. "] = { revision = 0 ; name = '" .. vars.pl [ i ].name .. "';\n"
 		for j , entry in ipairs ( vars.pl [ i ] ) do
 			s = s .. "\t\t{typ = '" .. entry.typ .. "';source = '" .. entry.source .. "'};\n"
 		end

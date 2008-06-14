@@ -28,7 +28,7 @@ end
 
 -- Filter a function throught it: it will discard the first "skip" number of arguments
  -- Sort of like select
-function packn( skip , _ , ... ) 
+function packn ( skip , _ , ... ) 
 	if skip == 0 then
 		return { _ , ... }
 	else return packn ( skip - 1 , ... ) 

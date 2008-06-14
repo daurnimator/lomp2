@@ -9,8 +9,8 @@ function new ( name , pl )
 	end
 	
 	pl = pl or #vars.pl + 1
-	vars.pl [ pl ] = { name = name , rev = 0 }
-	vars.pl.rev = vars.pl.rev + 1
+	vars.pl [ pl ] = { name = name , revision = 0 }
+	vars.pl.revision = vars.pl.revision + 1
 	
 	updatelog ( "Created new playlist #" .. pl .. " '" .. name .. "'" , 4 )
 	return pl , name
@@ -23,7 +23,7 @@ function delete ( pl )
 	
 	local name = vars.pl [ pl ].name
 	table.remove ( vars.pl , pl )
-	vars.pl.rev = vars.pl.rev + 1
+	vars.pl.revision = vars.pl.revision + 1
 	if pl == vars.queue.softqueuepl then vars.queue.softqueuepl = -1 end -- If deleted playlist was the soft queue
 	
 	updatelog ( "Deleted playlist #" .. pl .. " (" .. name .. ")" , 4 )
@@ -35,12 +35,12 @@ function clear ( pl )
 		return ferror ( "'Clear playlist' called with invalid playlist" , 1 ) 
 	end
 	
-	--vars.pl [ pl ] = { name = name ; rev = rev + 1 }
+	--vars.pl [ pl ] = { name = name ; revision = revision + 1 }
 	
 	repeat
 		table.remove ( vars.pl [ pl ]  )
 	until not vars.pl [ pl ] [ 1 ] 
-	vars.pl [ pl ].rev = vars.pl [ pl ].rev + 1
+	vars.pl [ pl ].revision = vars.pl [ pl ].revision + 1
 	
 	updatelog ( "Cleared playlist #" .. pl .. " (" .. vars.pl [ pl ].name .. ")" , 4 )
 	return pl
