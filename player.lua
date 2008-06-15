@@ -1,4 +1,4 @@
-require"ex"
+require "ex"
 module ( "lomp.player" , package.seeall )
 
 extensions = {	"ogg" ,
@@ -26,8 +26,10 @@ function play ( source , offset )
 	return true
 end
 
-
-		
+function changesong ( newsource )
+	stop ( )
+	play ( newsource )
+end	
 		
 function pause ( )
 	--os.execute "killall -STOP ogg123"

@@ -3,12 +3,12 @@
 
 module ( "lomp" )
 server = {}
-require"socket"
-require"socket.url"
-require"copas"
-require"mime" -- For base64 decoding of authorisation
-require"xmlrpc"
-require"lfs"
+require "socket"
+require "socket.url"
+require "copas"
+require "mime" -- For base64 decoding of authorisation
+require "xmlrpc"
+require "lfs"
 
 local mimetypes = { }
 do

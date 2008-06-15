@@ -1,8 +1,8 @@
-require"general"
+require "general"
 
 module ( "lomp" , package.seeall )
 
-require"player"
+require "player"
 
 playback = { state = "stopped" }
 
@@ -42,7 +42,9 @@ function playback.unpause ( )
 end
 
 function playback.goto ( songnum )
-	if songnum > 0 then
+	if songnum == 0 then -- Stop?
+		
+	elseif songnum > 0 then
 		for i = 1 , songnum do
 			local r = playback.forward ( )
 			if not r then break end
@@ -73,20 +75,19 @@ function playback.forward ( ) -- Moves forward one song in the queue
 	end
 	if #vars.queue > 0 then -- Hard queue left
 		table.remove ( vars.queue , 0 ) -- Shifts all elements down
+		
 		vars.queue.revision = vars.queue.revision + 1
 		return true
 	else
-		if vars.queue [ 1 + vars.ploffset ] == nil and vars.loop then 
-			ploffset = 0 -- If at end of soft queue, go back to start (of soft queue).
-		end
-		if vars.queue [ 1 + vars.ploffset ] ~= nil then -- Only soft queue left
-			vars.queue [ 0 ] = vars.queue [ vars.ploffset + 1 ]
-			vars.ploffset = vars.ploffset + 1
+		vars.queue [ 0 ] = vars.queue [ 1 ]
 		
-			vars.queue.revision = vars.queue.revision + 1
-			return true
-		else -- No songs left
-			return false
+		vars.ploffset = vars.ploffset + 1
+		if vars.ploffset > #vars.pl [ vars.softqueuepl ] then -- No songs left
+			if vars.loop then -- Restart soft queue
+				vars.ploffset = 0
+			else -- Stop?
+				
+			end
 		end
 	end
 end

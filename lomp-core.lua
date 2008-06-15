@@ -1,6 +1,6 @@
-require"general"
-require"lfs"
-require"player"
+require "general"
+require "lfs"
+require "player"
 
 module ( "lomp" , package.seeall )
 print = print
@@ -112,12 +112,21 @@ end
 
 -- Queue Stuff  
 vars.queue = setmetatable ( vars.hardqueue , {
-	__index = function(t, k)
-		if type(k) ~= "number" then return nil end
+	__index = function( t , k )
+		if type ( k ) ~= "number" then return nil end
 		if k >= 1 and k <= #vars.hardqueue then
 			return vars.hardqueue [ k ]
 		elseif k >= 1 then
-			return vars.pl [ vars.softqueuepl ] [ k - #vars.hardqueue ]
+			local softqueuelen = #vars.pl [ vars.softqueuepl ]
+			if softqueuelen <= 0 then
+				return false
+			else
+				local insoft = vars.ploffset + k - #vars.hardqueue
+				while insoft > softqueuelen do
+					insoft = insoft - softqueuelen
+				end
+				return vars.pl [ vars.softqueuepl ] [ insoft ]
+			end
 		end
 	end,
 })

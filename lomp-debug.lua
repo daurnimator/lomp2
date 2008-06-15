@@ -1,9 +1,9 @@
-require"general"
-require"ex"
+require "general"
+require "ex"
 
 module ( "lomp" , package.seeall )
 
-require"lomp-core"
+require "lomp-core"
 
 function core.listpl ( )
 	local s = "Playlists: (Last Revision: " .. vars.pl.revision .. ")\n"
