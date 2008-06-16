@@ -27,6 +27,7 @@ do
 	else
 		mimetypes["html"] = "text/html"
 		mimetypes["htm"] = "text/html"
+		mimetypes["css"] = "text/css"
 		mimetypes["txt"] = "text/plain"
 		mimetypes["jpg"] = "image/jpeg"
 		mimetypes["jpeg"] = "image/jpeg"
@@ -313,24 +314,17 @@ local function webserver ( skt , requestdetails ) -- Serve html interface
 					else	
 						hdr [ "expires" ] = httpdate ( os.time ( ) + 30 ) -- 30 seconds in the future
 					end
-				else -- Could not access file
-					code = 403
 				end
 			end
-		else -- Want index file or directory listing
+		elseif attributes.mode == "directory" then -- Want index file or directory listing
 			for i , v in ipairs ( defaultfiles ) do
-				local f , filecontents
-				f = io.open ( path .. v )
-				if f then
-					filecontents = f:read ( "*all" )
-					f:close ( )
-					
-					code = 200
-					doc = filecontents
+				if lfs.attributes ( path .. v , "mode" ) == "file" then
+					code = 301
+					hdr [ "location" ] = sfile .. v
 					break
 				end
 			end
-			if not code and attributes.mode == "directory" and allowdirectorylistings then -- Directory listing
+			if not code and allowdirectorylistings then -- Directory listing
 				doc = "<html><head><title>" .. core._NAME .. ' ' .. core._VERSION .. " Directory Listing</title></head><body><h1>Listing of " .. sfile .. "</h1><ul>"
 				local t = { }
 				for entry in lfs.dir ( path ) do
@@ -346,12 +340,11 @@ local function webserver ( skt , requestdetails ) -- Serve html interface
 				doc = doc .. "</ul></body></html>"
 				
 				code = 200
-			elseif not code then -- If still around at this point: forbidden to list the directory
-				code = 403
 			end
 		end
-		
-		--hdr [ 'content-length' ]  = pathtomime ( path )
+		if not code then -- If still around at this point: couldn't access file or forbidden to list the directory
+			code = 403		
+		end
 		local code , str , bytessent = httpsend ( skt , requestdetails , code or 404 , hdr , doc )
 			
 		-- Apache Log Format
@@ -362,7 +355,7 @@ local function webserver ( skt , requestdetails ) -- Serve html interface
 end
 local function jsonserver ( skt , requestdetails , body )
 	require "Json"
-
+	print ( "Json cmd received: " .. body )
 	local o = Json.Decode ( body )
 	hdr = { ["content-type"] = "application/json" }
 	if type ( o ) == "table" and o [ 1 ] then
@@ -382,6 +375,7 @@ local function jsonserver ( skt , requestdetails , body )
 				t [ i ] = { false , "No such function" }
 			end
 		end
+		print ( Json.Encode ( t ) )
 		httpsend ( skt , requestdetails , code , hdr , Json.Encode ( t ) )
 
 	else -- Json decoding failed

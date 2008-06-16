@@ -6,11 +6,16 @@ module ( "lomp" , package.seeall )
 require "lomp-core"
 
 function core.listpl ( )
+	local t = { }
+	t [ 0 ] = { name = vars.pl [ 0 ].name , revision = vars.pl [ 0 ].revision }
+	for i , v in ipairs ( vars.pl ) do
+		t [ i ] = { name = v.name , revision = v.revision }
+	end
 	local s = "Playlists: (Last Revision: " .. vars.pl.revision .. ")\n"
-	for i , v in ipairs( vars.pl ) do
+	for i , v in ipairs( t ) do
 		s = s .. "Playlist #" .. i .. "\t" .. v.name .. " \tRevision " .. v.revision.. "\n"
 	end
-	return vars.pl , s
+	return t , s
 end
 
 function core.listentries ( pl )
@@ -20,7 +25,7 @@ function core.listentries ( pl )
 	for i , v in ipairs( vars.pl[pl] ) do
 		s = s .. "Entry #" .. i .. " \t(" .. v.typ .. ") \tSource: '" .. v.source .. "'\n"
 	end
-	return vars.pl[pl] , s
+	return vars.pl [ pl ] , s
 end
 
 function core.listallentries ( )
@@ -77,12 +82,13 @@ function demo ( )
 	--playback.nxt ( )
 	os.sleep ( 1 )
 	--print(player.getstate ( ))
-	playback.nxt ( )
+	playback.next ( )
 	playback.play ( )
 	--os.sleep ( 1 )
 	--playsongfrompl ( 0 , 2 )
 	--os.sleep ( 5 )
 	--core.quit ( )
+	return true
 end
 function a ( ... ) print ("testing!", ... ) return "test done" end
 function pv ( )

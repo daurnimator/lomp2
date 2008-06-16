@@ -61,11 +61,11 @@ function playback.goto ( songnum )
 	end
 end
 
-function playback.prv ( )
+function playback.previous ( )
 	return playback.goto ( -1 )
 end
 
-function playback.nxt ( )
+function playback.next ( )
 	return playback.goto ( 1 )
 end
 
@@ -87,7 +87,6 @@ function playback.forward ( ) -- Moves forward one song in the queue
 		vars.hardqueue.revision = vars.hardqueue.revision + 1
 		return true
 	else
-		print ( "weee" )
 		if vars.queue [ 1 ] then
 			vars.queue [ 0 ] = vars.queue [ 1 ]
 			

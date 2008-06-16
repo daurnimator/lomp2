@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 <head>
 	<script type="text/javascript" src="json2.js"></script>
@@ -8,46 +7,290 @@
 	<script type="text/javascript" src="jquery.ui-1.5/ui/minified/jquery.ui.all.min.js"></script>
 	<link rel="stylesheet" href="jquery.ui-1.5/themes/flora/flora.all.css" type="text/css" media="screen" title="Flora (Default)" />
 
-	<style></style>
 	<script type="text/javascript">
 		sendCmd = function ( cmds , callback ) {
 			$.post("/JSON", JSON.stringify(cmds) , callback , "json");			
-		}
-		$(function(){
-			$(".play").click ( function ( event ) {
-				event.preventDefault( ) 
-				sendCmd ( [{ cmd: "playback.play"  , params : [ ] }] , function ( data ) { if  ( data[0][0] == true ) {
-						//Command Successful
-					} else if  ( data [0] ) {
-						alert ( "pcall failed: " + data [0][1]);
-					} else {
-						alert ( "bad response - not a json array" )
+		};
+		getplaylists = function ( callback ) {
+			sendCmd ( [ { cmd : "core.listpl" , params : [ ] } ] , function ( data ) { if  ( data [ 0 ] [ 0 ] == true ) {
+					var i = 0
+					while ( data [ 0 ] [ 1 ] [ i ] ) {
+						playlists [ i ] = { name : data [ 0 ] [ 1 ] [ i ].name , revision : data [ 0 ] [ 1 ] [ i ].revision };
+						i++;
+					};					
+				} else if  ( data [ 0 ] ) {
+					alert ( "pcall failed: " + data [ 0 ] [ 1 ] );
+				} else {
+					alert ( "bad response - not a json array" )
+				}
+				callback ( );
+			} );
+		};
+		populateplaylists = function ( ) {
+			getplaylists ( function ( ) {
+				var playlistlist = document.createElement( 'ul' );
+				for ( i = 0 ; i < playlists.length ; i++ ) {
+					var li = document.createElement( 'li' );
+					if ( i == currentplaylist ) { $( li ).addClass ( "liselected" );
+					} else { $( li ).addClass ( "li" + ( i % 2 ) ); //For Alternate Colouring
 					}
-				} );
-			});
+					var a = document.createElement ( 'a' );
+					
+					a.appendChild ( document.createTextNode ( playlists [ i ].name ) );
+					$( a ).attr ( "href" , ( "/BasicCMD?cmd=core.setsoftqueueplaylist&1=" + i ) );
+					$( a ).addClass ( "setplaylist" );
+					$( a ).attr ( "playlist" , i );
+
+					li.appendChild ( a );
+					playlistlist.appendChild ( li );
+				}
+				$( ".playlistlist>ul" ).remove ( );
+				bindBehaviors ( playlistlist );
+				$( ".playlistlist" ).append ( playlistlist );
+			} );
+		};
+		$(function(){
+			state = "stopped";
+			currentplaylist = 0
+			playlists = [ ]
+			populateplaylists ( ); //Populate Playlist list
 			
-			$(".seekbar").slider( { start: function ( event , ui ) {
-				seekbarold = ui.value;
-			}, change: function ( event , ui ) {
-				event.stopPropagation( ); 
-				sendCmd ( [{ cmd: "playback.seek"  , params : [ ui.value ] }] , function ( data ) { if  ( data[1] == true ) {
-						$(".seekbar").slider ( "moveTo" , ui.value );
-					} else {
-					} 
+			bindBehaviors = function ( scope ) {
+				$( ".previous" , scope ).click ( function ( event ) {
+					event.preventDefault( );
+					var cmds = [ { cmd: "playback.previous"  , params : [ ] } ];
+					if ( state == "playing" ) {
+						cmds [ cmds.length ] = { cmd: "playback.play" };
+					}
+					sendCmd ( cmds , function ( data ) { if  ( data [ 0 ] [ 0 ] == true ) {
+							//Command Successful
+						} else if  ( data [ 0 ] ) {
+							alert ( "pcall failed: " + data [ 0 ] [ 1 ] );
+						} else {
+							alert ( "bad response - not a json array" )
+						}
+						return false ;
+					} );
+				});
+				$( ".stop" , scope ).click ( function ( event ) {
+					event.preventDefault( );
+					sendCmd ( [ { cmd: "playback.stop"  , params : [ ] } ] , function ( data ) { if  ( data [ 0 ] [ 0 ] == true ) {
+							//Command Successful
+							state = "stopped";
+						} else if  ( data [ 0 ] ) {
+							alert ( "pcall failed: " + data [ 0 ] [ 1 ] );
+						} else {
+							alert ( "bad response - not a json array" )
+						}
+						return false ;
+					} );
+				});
+				$( ".play" , scope ).click ( function ( event ) {
+					event.preventDefault( );
+					sendCmd ( [ { cmd: "playback.play"  , params : [ ] } ] , function ( data ) { if  ( data [ 0 ] [ 0 ] == true ) {
+							//Command Successful
+							state = "playing";
+						} else if  ( data [ 0 ] ) {
+							alert ( "pcall failed: " + data [ 0 ] [ 1 ] );
+						} else {
+							alert ( "bad response - not a json array" )
+						}
+						return false ;
+					} );
+				});
+				$( ".pause" , scope ).click ( function ( event ) {
+					event.preventDefault( );
+					if ( state == "paused" ) {
+						sendCmd ( [ { cmd: "playback.unpause"  , params : [ ] } ] , function ( data ) { if  ( data [ 0 ] [ 0 ] == true ) {
+								//Command Successful
+								state = "playing";
+							} else if  ( data [ 0 ] ) {
+								alert ( "pcall failed: " + data [ 0 ] [ 1 ] );
+							} else {
+								alert ( "bad response - not a json array" )
+							}
+							return false ;
+						} );
+					} else if  ( state == "playing" ) {
+						sendCmd ( [ { cmd: "playback.pause"  , params : [ ] } ] , function ( data ) { if  ( data [ 0 ] [ 0 ] == true ) {
+								//Command Successful
+								state = "paused";
+							} else if  ( data [ 0 ] ) {
+								alert ( "pcall failed: " + data [ 0 ] [ 1 ] );
+							} else {
+								alert ( "bad response - not a json array" )
+							}
+							return false ;
+						} );				
+					}
+				});
+				$( ".next" , scope ).click ( function ( event ) {
+					event.preventDefault( );
+					var cmds = [ { cmd: "playback.next"  , params : [ ] } ];
+					if ( state == "playing" ) {
+						cmds [ cmds.length ] = { cmd: "playback.play" };
+					}
+					sendCmd ( cmds , function ( data ) { if  ( data [ 0 ] [ 0 ] == true ) {
+							//Command Successful
+						} else if  ( data [ 0 ] ) {
+							alert ( "pcall failed: " + data [ 0 ] [ 1 ] );
+						} else {
+							alert ( "bad response - not a json array" )
+						}
+						return false ;
+					} );
+				});			
+				$( ".seekbar" , scope ).slider( { start: function ( event , ui ) {
+						seekbarold = ui.value;
+					}, change: function ( event , ui ) {
+						event.stopPropagation( ); 
+						sendCmd ( [ { cmd: "playback.seek"  , params : [ ui.value ] } ] , function ( data ) { 
+							if  ( data [ 1 ] == true ) {
+								$(".seekbar").slider ( "moveTo" , ui.value );
+							} else {
+							} 
+							$(".seekbar").slider ( "moveTo" , seekbarold ); // Move back to where it started until callback comes.
+							return false ;
+						} );
+					}, max: 354
 				} );
-				$(".seekbar").slider ( "moveTo" , seekbarold );
-			} } );
+				$( ".setplaylist" , scope ).click ( function ( event ) {
+					event.preventDefault( );
+					var pl = $( event.target ).attr ( "playlist" );
+					sendCmd ( [ { cmd: "core.setsoftqueueplaylist"  , params : [ pl ] } ] , function ( data ) { if  ( data [ 0 ] [ 0 ] == true ) {
+							//Command Successful
+							state = "stopped";
+						} else if  ( data [ 0 ] ) {
+							alert ( "pcall failed: " + data [ 0 ] [ 1 ] );
+						} else {
+							alert ( "bad response - not a json array" )
+						}
+						return false ;
+					} );
+				});
+				
+				
+			}
+			bindBehaviors ( this );
 		});
 	</script>
+	<style>
+		body {
+			padding: 0 0;
+			margin: 0 0;
+		}
+		.li0 > a {
+			background-color: #FFF;
+			color: #111;
+		}
+		.li1 > a {
+			background-color: #EEE;
+			color: #000;
+		}
+		.li0 > a:hover , .li1 > a:hover {
+			background-color: #CCE0FF;
+		}
+		.liselected > a {
+			background-color: #6090FF;
+			color: #FFF;
+		}
+		.center {
+			margin-left: auto;
+			margin-right: auto;
+			text-align: center;
+		}
+		.center > div {
+			margin-left: auto;
+			margin-right: auto;
+			text-align: center;
+		}
+		div.toolbar {
+			display: block;
+			margin: 5px;
+			vertical-align: middle;
+		}
+		.top {
+			margin: 0 10px 10px 10px;
+			padding: 10px 10px 5px 10px;
+			display: inline-block;
+			border-top: 1px solid #000000;
+			border-left: 3px solid #000000;
+			border-bottom: 3px solid #000000;
+			border-right: 3px solid #000000;
+			-moz-border-radius-bottomleft: 40px;
+			-moz-border-radius-bottomright: 40px;
+		}
+		.left {
+			margin: 10px 10px 10px 0px;
+			padding: 15px 10px 15px 5px;
+			display: inline-block;
+			border-top: 3px solid #000000;
+			border-left: 1px solid #000000;
+			border-bottom: 3px solid #000000;
+			border-right: 3px solid #000000;
+			-moz-border-radius-topright: 40px;
+			-moz-border-radius-bottomright: 40px;
+			float: left;
+		}
+		.main {
+			margin: 10px 10px 10px 10px;
+			padding: 15px 15px 15px 15px;
+			display: inline-block;
+			border-top: 3px solid #000000;
+			border-left: 3px solid #000000;
+			border-bottom: 3px solid #000000;
+			border-right: 3px solid #000000;
+		}
+		.imgbutton {
+			width: 64px;
+			height: 64px;
+			margin-top: 1px;
+		}
+		.imgbutton > img {
+			border: none;
+		}
+		.imgbutton:hover {
+			margin-top: 0;
+			border-bottom: 1px solid #CCC;
+		}
+		.seekbar {
+			display: inline-block;
+			margin: 10px 0;
+		}
+		.playlistlist > ul {
+			list-style: none;
+			margin: 0;
+			padding: 0;
+			border: 1px solid #000
+		}
+		.playlistlist > ul > li > a {
+			text-decoration: none;
+			display: block;
+			width: 200px;
+		}
+	</style>
 </head>
-<body class="flora">
-
-<div class='toolbar'>
-	<div class='basicplayback'>
-		<div class='mediumbutton play'><a href="/BasicCMD?cmd=playback.play">|></a></div>
+<body>
+	<div class='utils'>
+	<div class='center'>
+		<div class='top center'>
+			<div class='toolbar'>
+				<a class='imgbutton previous' href="/BasicCMD?cmd=playback.prv"><img src="images/media-skip-backward-64.png" alt="&lt;&lt;|" title="Previous" /></a>
+				<a class='imgbutton stop' href="/BasicCMD?cmd=playback.stop"><img src="images/media-playback-stop-64.png" alt="[]" title="Stop" /></a>
+				<a class='imgbutton play' href="/BasicCMD?cmd=playback.play"><img src="images/media-playback-start-64.png" alt="|&gt;" title="Play" /></a>
+				<a class='imgbutton pause' href="/BasicCMD?cmd=playback.pause"><img src="images/media-playback-pause-64.png" alt="||" title="Pause" /></a>
+				<a class='imgbutton next' href="/BasicCMD?cmd=playback.nxt"><img src="images/media-skip-forward-64.png" alt="|&gt;&gt;" title="Next" /></a>
+			</div>
+			<div class="toolbar">Time Played<div class='seekbar'></div>Total Time</div>
+		</div>
 	</div>
-	<div class='seekbar'></div>
-</div>
-	
+	<div class='left'>
+		<div class='searchbar'>Searchbar</div>
+		<hr>
+		<div class='playlistlist'>Select a playlist:</div>
+	</div>
+	<div class="main">
+		<div><a >WEEE</a></div>
+	</div>
 </body>
 </html>
