@@ -44,7 +44,6 @@ end
 
 require "core.savestate"
 require "core.playlist"
-if not vars.pl [ 0 ] then core.playlist.new ( "Library" , 0 ) end -- Create Library (Just playlist 0)
 require "core.entries"
 
 function core.addfile ( path , pl , pos )

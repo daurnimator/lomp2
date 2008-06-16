@@ -14,7 +14,7 @@ do
 	log = ""
 
 	-- Output Loading Annoucement
-	print ( " " )
+	print ( )
 	local str = "LOMP Loading " .. os.date ( "%c" ) .. "\n"
 	print ( str )
 
@@ -24,7 +24,7 @@ do
 	-- Log File Stuff
 	local file , err = io.open ( config.logfile , "w+" )
 	if err then error ( "Could not open/create log file: '" .. err .. "'\n" ) end
-	file:write ( str .. "\n" .. log .. "\n")
+	file:write ( str .. log .. "\n")
 	file:flush ( )
 	file:close ( )
 	
@@ -60,10 +60,10 @@ function ferror ( data , level )
 	return false , data
 end
 
-require("general")
-require("lomp-core")
-require("playback")
-require("server")
+require "general"
+require "lomp-core"
+require "playback"
+require "server"
 
 steps = { }
 function addstep ( func )
@@ -76,6 +76,14 @@ end
 
 addstep ( server.step )
 
+do -- Restore State
+	local ok , err = core.restorestate ( )
+	if not ok then
+		core.playlist.new ( "Library" , 0 ) -- Create Library (Just playlist 0)
+	end
+end
+
+
 updatelog ( "Loading plugins." , 3 )
 for i , v in ipairs ( config.plugins ) do
 	local name = dofile ( v ) or v
@@ -83,15 +91,11 @@ for i , v in ipairs ( config.plugins ) do
 end
 updatelog ( "All Plugins Loaded" , 3 )
 
-do -- Restore State
-	local ok , err = core.restorestate ( )
-end
-
 server.initiate ( config.address , config.port )
 
 updatelog ( "LOMP Loaded " .. os.date ( "%c" ) , 3 )
 
-require"lomp-debug"
+require "lomp-debug"
 
 local s = 1
 while true do
