@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+	<script type="text/javascript" src="json2.js"></script>
+	
+	<script type="text/javascript" src="jquery.js"></script>        
+	<script type="text/javascript" src="jquery.ui-1.5/ui/minified/jquery.ui.all.min.js"></script>
+	<link rel="stylesheet" href="jquery.ui-1.5/themes/flora/flora.all.css" type="text/css" media="screen" title="Flora (Default)" />
+
+	<style></style>
+	<script type="text/javascript">
+		sendCmd = function ( cmds , callback ) {
+			$.post("/JSON", JSON.stringify(cmds) , callback , "json");			
+		}
+		$(function(){
+			$(".button_play").click ( function ( event ) {
+				event.preventDefault( ) 
+				sendCmd ( [{ cmd: "playback.play"  , params : [ ] }] , function ( data ) { if  ( data[0][0] == true ) {
+						//Command Successful
+					} else if  ( data [0] ) {
+						alert ( "pcall failed: " + data [0][1]);
+					} else {
+						alert ( "bad response - not a json array" )
+					}
+				} );
+			});
+			
+			$(".seekbar").slider( { start: function ( event , ui ) {
+				seekbarold = ui.value;
+			}, change: function ( event , ui ) {
+				event.stopPropagation( ); 
+				sendCmd ( [{ cmd: "playback.seek"  , params : [ ui.value ] }] , function ( data ) { if  ( data[1] == true ) {
+						$(".seekbar").slider ( "moveTo" , ui.value );
+					} else {
+					} 
+				} );
+				$(".seekbar").slider ( "moveTo" , seekbarold );
+			} } );
+		});
+	</script>
+</head>
+<body class="flora">
+
+<div class='toolbar'>
+	<div class='basicplayback'>
+		<a class='button_play' href="/BasicCMD?cmd=playback.play">|></a>
+	</div>
+	<div class='seekbar'></div>
+</div>
+	
+</body>
+</html>

@@ -4,6 +4,7 @@
 if _VERSION ~= "Lua 5.1" then --TODO: Override?
 	error ( "This program needs lua 5.1 to work." )
 end
+package.path = package.path .. ";./libs/?.lua"
 
 module ( "lomp" , package.seeall )
 

@@ -7,7 +7,6 @@ require "socket"
 require "socket.url"
 require "copas"
 require "mime" -- For base64 decoding of authorisation
-require "xmlrpc"
 require "lfs"
 
 local mimetypes = { }
@@ -35,7 +34,10 @@ do
 		mimetypes["png"] = "image/png"
 	end
 end
-
+local function pathtomime ( path )
+	local _ , _ , extension = string.find ( path , "%.([^%.]+)$" ) 
+	return mimetypes [ extension ]
+end
 
 local httpcodes = {
 	[100] = "Continue",
@@ -80,9 +82,9 @@ local httpcodes = {
 	[505] = "HTTP Version not supported"
 	}
 	
-local function httpdate ( )
+local function httpdate ( time )
 	--eg, "Sun, 10 Apr 2005 20:27:03 GMT"
-	return os.date ( "!%a, %d %b %Y %H:%M:%S GMT" )
+	return os.date ( "!%a, %d %b %Y %H:%M:%S GMT" , time )
 end
 local function httpsend ( skt , requestdetails , status , headers , body )
 	if type ( status ) ~= "number" or status < 100 or status > 599 then error ( "Invalid http code" ) end
@@ -128,7 +130,9 @@ local function dispatch ( baseenv , name )
 	end
 	func = func [ select ( 3 , string.find ( name , "([^%.]+)$" ) ) ]
 	
-	return func
+	if type ( func ) ~= "function" then return false
+	else return func
+	end
 end
 
 local function auth ( headers )
@@ -157,6 +161,7 @@ local function auth ( headers )
 end
 
 local function xmlrpcserver ( skt , requestdetails , body )
+	require "xmlrpc"
 	local authorised , typ = auth ( requestdetails.headers )
 	if not authorised then
 		if typ == "basic" then
@@ -166,7 +171,6 @@ local function xmlrpcserver ( skt , requestdetails , body )
 			return false
 		end
 	else -- Authorised
-		--print (body)
 		local method_name , list_params = xmlrpc.srvDecode ( body )
 		list_params = list_params[1] --I don't know why it needs this, but it does
 		
@@ -206,8 +210,6 @@ local function basiccmdserver ( skt , requestdetails )
 		end		
 	else
 		local cmd = requestdetails.queryvars [ "cmd" ]
-		
-		--for k , v in pairs ( requestdetails.queryvars ) do print ( k,v ) end
 		
 		local i = 1
 		local params = { }
@@ -276,36 +278,46 @@ local function basiccmdserver ( skt , requestdetails )
 		end
 	end
 end
-local function webserver ( skt , requestdetails , body ) -- Serve html interface
-		local code , doc , hdr , mimetyp = 206 , nil , { } , "text/html"
+local function webserver ( skt , requestdetails ) -- Serve html interface
+		local code , doc , hdr , mimetyp = nil , nil , { } , "text/html"
 		local publicdir = "."
 		local allowdirectorylistings = true
 		
-		function pathtomime ( path )
-			local _ , _ , extension = string.find ( path , "%.(.+)$" )
-			return mimetypes [ extension ]
-		end
-
 		local defaultfiles = { "index.html" , "index.htm" }
 			
-		local sfile = string.gsub ( requestdetails.file , "/%.[^/]*" , "" ) -- Strip out ".." and "." of file request
+		--local sfile = string.gsub ( requestdetails.file , "/%.[^/]*" , "" ) -- Strip out ".." and "." of file request
+		local sfile = requestdetails.file 
+		
 		local path = publicdir .. sfile -- Prefix with public dir path
-			
-		if string.sub ( path , -1 ) ~= "/" and lfs.attributes ( path , "mode" ) ~= "directory" then -- Requesting a specific file
-			local f , filecontents
-			f = io.open ( path , "rb" )
-			if f then
-				filecontents = f:read ( "*all" )
-				f:close ( )
-				
-				code = 200
-				doc = filecontents
-			else -- no such file
+		local attributes = lfs.attributes ( path )
+		
+		if string.sub ( path , -1 ) ~= "/" then -- Requesting a specific path
+			if not attributes then -- Path doesn't exist
 				code = 404
-				return
+			elseif attributes.mode == "directory" then -- Its a directory: forward client to there
+				code = 301
+				hdr [ "location" ] = sfile .. "/"
+			elseif attributes.mode == "file" then -- Its a file: serve it up!			
+				local f , filecontents
+				f , err = io.open ( path , "rb" )
+				if f then
+					filecontents = f:read ( "*all" )
+					f:close ( )
+					
+					code = 200
+					doc = filecontents
+					hdr [ "content-type" ] = pathtomime ( path )
+					hdr [ "last-modified" ] = httpdate ( attributes.modification )
+					if string.match ( hdr [ "content-type" ] , "([^/]+)") == "image" then
+						hdr [ "expires" ] = httpdate ( os.time ( ) + 86400 ) -- 1 day in the future
+					else	
+						hdr [ "expires" ] = httpdate ( os.time ( ) + 30 ) -- 30 seconds in the future
+					end
+				else -- Could not access file
+					code = 403
+				end
 			end
-		else -- Want index file
-			if string.sub ( path , -1 ) ~= "/" then path = path .. "/" end -- Ensure path ends in directory seperator
+		else -- Want index file or directory listing
 			for i , v in ipairs ( defaultfiles ) do
 				local f , filecontents
 				f = io.open ( path .. v )
@@ -318,7 +330,7 @@ local function webserver ( skt , requestdetails , body ) -- Serve html interface
 					break
 				end
 			end
-			if not doc and lfs.attributes ( path , "mode" ) == "directory" and allowdirectorylistings then -- Directory listing
+			if not code and attributes.mode == "directory" and allowdirectorylistings then -- Directory listing
 				doc = "<html><head><title>" .. core._NAME .. ' ' .. core._VERSION .. " Directory Listing</title></head><body><h1>Listing of " .. sfile .. "</h1><ul>"
 				local t = { }
 				for entry in lfs.dir ( path ) do
@@ -329,27 +341,55 @@ local function webserver ( skt , requestdetails , body ) -- Serve html interface
 				table.sort ( t )
 				if sfile ~= "/" then doc = doc .. "<li><a href='" .. ".." .. "'>" .. ".." .. "</a></li>" end
 				for i , v in ipairs ( t ) do
-					doc = doc .. "<li><a href='" .. v .. "'>" .. v .. "</a></li>"
+					doc = doc .. "<li><a href='" .. sfile .. v .. "'>" .. v .. "</a></li>"
 				end
 				doc = doc .. "</ul></body></html>"
 				
 				code = 200
-			else -- If still around at this point: forbidden to list the directory
-				print ( path , doc,  lfs.attributes ( path , "mode" ) , allowdirectorylistings )
+			elseif not code then -- If still around at this point: forbidden to list the directory
 				code = 403
 			end
 		end
 		
-		hdr [ 'content-length' ]  = pathtomime ( path )
-		local code , str , bytessent = httpsend ( skt , requestdetails , code , hdr , doc )
+		--hdr [ 'content-length' ]  = pathtomime ( path )
+		local code , str , bytessent = httpsend ( skt , requestdetails , code or 404 , hdr , doc )
 			
 		-- Apache Log Format
-		local apachelog = string.format ( '%s - - [%s] "GET %s HTTP/%s.%s" %s %s "%s" "%s"', skt:getpeername ( ) , os.date ( "!%m/%b/%Y:%H:%M:%S GMT" ) , requestdetails.Path , requestdetails.Major , requestdetails.Minor , code , bytessent , ( requestdetails.headers [ "referer" ] or "-" ) , ( requestdetails.headers[ "agent" ] or "-" ) )
+		local apachelog = string.format ( '%s - - [%s] "GET %s HTTP/%s.%s" %s %s "%s" "%s"', requestdetails.peer , os.date ( "!%m/%b/%Y:%H:%M:%S GMT" ) , requestdetails.Path , requestdetails.Major , requestdetails.Minor , code , bytessent , ( requestdetails.headers [ "referer" ] or "-" ) , ( requestdetails.headers[ "agent" ] or "-" ) )
 		print ( apachelog )
 		
 		return true
 end
+local function jsonserver ( skt , requestdetails , body )
+	require "Json"
 
+	local o = Json.Decode ( body )
+	hdr = { ["content-type"] = "application/json" }
+	if type ( o ) == "table" and o [ 1 ] then
+		local t = { }
+		local code = 200
+		for i , v in ipairs ( o ) do
+			if v.cmd then
+				local func = dispatch ( _M , v.cmd )
+				if func then
+					t [ i ] = { pcall ( func , unpack ( v.params or { } ) ) }
+				else -- No such function
+					code = 206
+					t [ i ] = { false , "No such function" }
+				end
+			else -- Missing command
+				code = 206
+				t [ i ] = { false , "No such function" }
+			end
+		end
+		httpsend ( skt , requestdetails , code , hdr , Json.Encode ( t ) )
+
+	else -- Json decoding failed
+		httpsend ( skt , requestdetails , 400 , hdr , Json.Encode ( { false , "Could not decode Json" } ) )
+	end
+	
+	
+end
 local function lompserver ( skt )
 	while true do -- Keep doing it until connection is closed.
 		-- Retrive HTTP header
@@ -393,7 +433,7 @@ local function lompserver ( skt )
 		local headers = { } for k , v in string.gmatch ( request , "\r\n([^:]+): ([^\r\n]+)" ) do headers [ string.lower ( k ) ] = v end
 		if not headers [ "host" ] then headers [ "host" ] = "default" end
 		
-		local requestdetails = { Method = Method , Path = Path , Major = Major , Minor = Minor , file = file , querystring = querystring , queryvars = queryvars , headers = headers }
+		local requestdetails = { Method = Method , Path = Path , Major = Major , Minor = Minor , file = file , querystring = querystring , queryvars = queryvars , headers = headers , peer = skt:getpeername ( ) }
 		
 		local body
 		if headers [ "content-length" ] then body = copas.receive ( skt , headers [ "content-length" ] ) end
@@ -401,12 +441,14 @@ local function lompserver ( skt )
 		if Method == "POST" then
 			if file == "/LOMP" and headers [ "content-type" ] == "text/xml" then -- This is an xmlrpc command for lomp
 				xmlrpcserver ( skt , requestdetails , body )
+			elseif file == "/JSON" then
+				jsonserver ( skt , requestdetails , body )
 			end
 		elseif Method == "GET" then
 			if file == "/BasicCMD" then
-				basiccmdserver ( skt , requestdetails , headers )
+				basiccmdserver ( skt , requestdetails )
 			else
-				webserver ( skt , requestdetails , body )
+				webserver ( skt , requestdetails )
 			end
 		elseif Method == "HEAD" then	
 			httpsend ( skt , requestdetails , 501 , { Allow = "GET, POST" } )
