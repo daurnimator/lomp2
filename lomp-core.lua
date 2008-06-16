@@ -113,20 +113,22 @@ end
 vars.queue = setmetatable ( vars.hardqueue , {
 	__index = function( t , k )
 		if type ( k ) ~= "number" then return nil end
+		local o
 		if k >= 1 and k <= #vars.hardqueue then
-			return vars.hardqueue [ k ]
+			o = vars.hardqueue [ k ]
 		elseif k >= 1 then
 			local softqueuelen = #vars.pl [ vars.softqueuepl ]
 			if softqueuelen <= 0 then
-				return false
+				--return nil
 			else
 				local insoft = vars.ploffset + k - #vars.hardqueue
-				while insoft > softqueuelen do
+				if insoft > softqueuelen and vars.loop and ( insoft - softqueuelen ) < vars.ploffset then
 					insoft = insoft - softqueuelen
 				end
-				return vars.pl [ vars.softqueuepl ] [ insoft ]
+				o = vars.pl [ vars.softqueuepl ] [ insoft ] -- This could be a song OR nil
 			end
 		end
+		if o then return { o = o } else return nil end
 	end,
 })
 function core.clearhardqueue ( )

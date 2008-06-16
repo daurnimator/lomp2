@@ -34,13 +34,14 @@ end
 function core.listqueue ( )
 	local s = "Listing Queue\nState: " .. lomp.playback.state .. "\nSoft Queue is currently: " .. vars.softqueuepl .. "\n"
 	if vars.queue[0] then
-		s = s .. "Current Song: " .. " \t(" .. vars.queue[0].typ .. ") \tSource: '" .. vars.queue[0].source .. "'\n"
+		s = s .. "Current Song: " .. " \t(" .. vars.queue [ 0 ].o.typ .. ") \tSource: '" .. vars.queue [ 0 ].o.source .. "'\n"
 	end
-	local n = #vars.queue + #vars.pl [ vars.softqueuepl ]
-	for i=1,n do
+	i = 1
+	while true do
 		local v = vars.queue [ i ]
-		--print( v.source )
-		s = s .. "Entry #" .. i .. " \t(" .. v.typ .. ") \tSource: '" .. v.source .. "' " .. "\n"
+		if not v then break end
+		s = s .. "Entry #" .. i .. " \t(" .. v.o.typ .. ") \tSource: '" .. v.o.source .. "' " .. "\n"
+		i = i + 1
 	end
 	return vars.queue , s
 end
@@ -48,18 +49,18 @@ end
 function core.listplayed ( )
 	local s = "Listing Played Songs (most recent first) \t(Last Revision: " .. vars.played.revision .. ")\n"
 	for i , v in ipairs( vars.played ) do
-		s = s .. "Entry #" .. i .. " \t(" .. v.typ .. ") \tSource: '" .. v.source .. "'\n"
+		s = s .. "Entry #" .. i .. " \t(" .. v.o.typ .. ") \tSource: '" .. v.o.source .. "'\n"
 	end
 	return vars.played , s
 end
 
-	function playsongfrompl ( pl , pos )
-		core.setsoftqueueplaylist ( pl )
-		core.clearhardqueue ( )
-		playback.goto ( pos )
-		playback.play ( )
-		return true
-	end
+function playsongfrompl ( pl , pos )
+	core.setsoftqueueplaylist ( pl )
+	core.clearhardqueue ( )
+	playback.goto ( pos )
+	playback.play ( )
+	return true
+end
 	
 function demo ( )
 	core.refreshlibrary ( )
@@ -72,7 +73,8 @@ function demo ( )
 	pv ( )
 	
 
-	playback.play ( )
+	--playback.play ( )
+	--playback.nxt ( )
 	os.sleep ( 1 )
 	--print(player.getstate ( ))
 	playback.nxt ( )

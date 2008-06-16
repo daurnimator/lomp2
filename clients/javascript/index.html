@@ -14,7 +14,7 @@
 			$.post("/JSON", JSON.stringify(cmds) , callback , "json");			
 		}
 		$(function(){
-			$(".button_play").click ( function ( event ) {
+			$(".play").click ( function ( event ) {
 				event.preventDefault( ) 
 				sendCmd ( [{ cmd: "playback.play"  , params : [ ] }] , function ( data ) { if  ( data[0][0] == true ) {
 						//Command Successful
@@ -44,7 +44,7 @@
 
 <div class='toolbar'>
 	<div class='basicplayback'>
-		<a class='button_play' href="/BasicCMD?cmd=playback.play">|></a>
+		<div class='mediumbutton play'><a href="/BasicCMD?cmd=playback.play">|></a></div>
 	</div>
 	<div class='seekbar'></div>
 </div>

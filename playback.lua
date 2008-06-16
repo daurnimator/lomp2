@@ -13,7 +13,9 @@ function playback.play ( )
 		if not r then return false end
 	end
 	
-	local source = vars.queue [ 0 ].source
+	vars.queue [ 0 ].played = true
+	
+	local source = vars.queue [ 0 ].o.source
 	local offset = vars.queue [ 0 ].offset
 	
 	player.play ( source , offset )
@@ -68,26 +70,39 @@ function playback.nxt ( )
 end
 
 function playback.forward ( ) -- Moves forward one song in the queue
-	playback.stop ( )
-	if vars.queue[0] then
-		table.insert ( vars.played , 1 , vars.queue [ 0 ] ) -- Add current to played (history)
-		vars.played.revision = vars.played.revision + 1
+	if playback.state == "playing" then
+		player.changesong ( )
+	else
+		playback.stop ( )
 	end
-	if #vars.queue > 0 then -- Hard queue left
-		table.remove ( vars.queue , 0 ) -- Shifts all elements down
+	if vars.queue [ 0 ] then
+		if vars.queue [ 0 ].played then
+			table.insert ( vars.played , 1 , vars.queue [ 0 ] ) -- Add current to played (history)
+			vars.played.revision = vars.played.revision + 1
+		end
+	end
+	if #vars.hardqueue > 0 then -- Hard queue left
+		table.remove ( vars.hardqueue , 0 ) -- Shifts all elements down
 		
-		vars.queue.revision = vars.queue.revision + 1
+		vars.hardqueue.revision = vars.hardqueue.revision + 1
 		return true
 	else
-		vars.queue [ 0 ] = vars.queue [ 1 ]
-		
-		vars.ploffset = vars.ploffset + 1
-		if vars.ploffset > #vars.pl [ vars.softqueuepl ] then -- No songs left
-			if vars.loop then -- Restart soft queue
-				vars.ploffset = 0
-			else -- Stop?
-				
+		print ( "weee" )
+		if vars.queue [ 1 ] then
+			vars.queue [ 0 ] = vars.queue [ 1 ]
+			
+			vars.ploffset = vars.ploffset + 1
+			if vars.ploffset > #vars.pl [ vars.softqueuepl ] then -- No songs left
+				if vars.loop then -- Restart soft queue
+					vars.ploffset = 0
+				else -- Stop?
+					
+				end
 			end
+			return true
+		else
+			-- no more songs.
+			return false
 		end
 	end
 end
