@@ -89,7 +89,10 @@ local function httpdate ( time )
 	--eg, "Sun, 10 Apr 2005 20:27:03 GMT"
 	return os.date ( "!%a, %d %b %Y %H:%M:%S GMT" , time )
 end
-local function httpsend ( skt , requestdetails , status , headers , body )
+--local function httpsend ( skt , requestdetails , status , headers , body )
+local function httpsend ( skt , requestdetails , responsedetails )
+	local status , headers , body = responsedetails.status , responsedetails.headers , responsedetails.body
+	
 	if type ( status ) ~= "number" or status < 100 or status > 599 then error ( "Invalid http code" ) end
 	local reasonphrase = httpcodes [ status ]
 	
@@ -107,9 +110,8 @@ local function httpsend ( skt , requestdetails , status , headers , body )
 	do -- Zlib
 		local ok , zlib = pcall ( require , 'zlib' )
 		if type ( zlib ) == "table" and string.len ( body ) > 0 then
-			local acceptencoding = requestdetails.headers [ "accept-encoding" ]:lower ( )
+			local acceptencoding = ( requestdetails.headers [ "accept-encoding" ] or "" ):lower ( )
 			if ( string.find ( acceptencoding , "gzip" ) or string.find ( acceptencoding , "[^%w]*[^%w]" ) ) then
-				print ( "Sending gzip'd body" )
 				local zbody = zlib.compress( body , 9, nil, 15 + 16 )
 				if zbody:len ( ) < body:len() then
 					local vary = ( requestdetails.headers [ 'vary' ] or 'accept-encoding' ):lower ( )
@@ -143,6 +145,10 @@ local function httpsend ( skt , requestdetails , status , headers , body )
 	
 	local bytessent , err = copas.send ( skt , message )
 	
+	-- Apache Log Format
+	local apachelog = string.format ( '%s - - [%s] "GET %s HTTP/%s.%s" %s %s "%s" "%s"', requestdetails.peer , os.date ( "!%m/%b/%Y:%H:%M:%S GMT" ) , requestdetails.Path , requestdetails.Major , requestdetails.Minor , status , bytessent , ( requestdetails.headers [ "referer" ] or "-" ) , ( requestdetails.headers[ "agent" ] or "-" ) )
+	print ( apachelog )
+		
 	return status , reasonphrase , bytessent
 end
 local function dispatch ( baseenv , name )
@@ -190,7 +196,7 @@ local function xmlrpcserver ( skt , requestdetails , body )
 		if typ == "basic" then
 			-- Send a xml fault document
 			updatelog ( "Unauthorised login blocked." , 2 )
-			httpsend ( skt , requestdetails , 401 , { [ 'WWW-Authenticate' ] = 'Basic realm=" ' .. core._NAME .. ' ' .. core._VERSION .. '"' ; [ 'content-length' ] = "text/xml" } , xmlrpc.srvEncode ( { faultCode = 401 , faultString = httpcodes [ 401 ] } , true ) )
+			httpsend ( skt , requestdetails , { status = 401 , headers = { [ 'WWW-Authenticate' ] = 'Basic realm=" ' .. core._NAME .. ' ' .. core._VERSION .. '"' ; [ 'content-length' ] = "text/xml" } , body = xmlrpc.srvEncode ( { faultCode = 401 , faultString = httpcodes [ 401 ] } , true ) } )
 			return false
 		end
 	else -- Authorised
@@ -216,7 +222,7 @@ local function xmlrpcserver ( skt , requestdetails , body )
 				
 		local ok , result = interpret ( pcall ( func , depack ( list_params or { } ) ) )
 
-		httpsend ( skt , requestdetails , 200 , { [ 'content-length' ] = "text/xml" } , xmlrpc.srvEncode ( result , not ok) )
+		httpsend ( skt , requestdetails , { status = 200 , headers = { [ 'content-length' ] = "text/xml" } , body = xmlrpc.srvEncode ( result , not ok) } )
 			
 		return true
 	end
@@ -228,7 +234,7 @@ local function basiccmdserver ( skt , requestdetails )
 		if typ == "basic" then
 			-- Send an xml fault document
 			updatelog ( "Unauthorised login blocked." , 2 )
-			httpsend ( skt , requestdetails , 401 , { ['WWW-Authenticate'] = 'Basic realm=" ' .. core._NAME .. ' ' .. core._VERSION .. '"' } )
+			httpsend ( skt , requestdetails , { status = 401 , headers = { ['WWW-Authenticate'] = 'Basic realm=" ' .. core._NAME .. ' ' .. core._VERSION .. '"' } } )
 			return false
 		end		
 	else
@@ -252,7 +258,7 @@ local function basiccmdserver ( skt , requestdetails )
 				elseif t == "b" then
 					params [ i ] = true
 				else
-					httpsend ( skt , requestdetails , 400 )
+					httpsend ( skt , requestdetails , { status = 400 } )
 					return false
 				end
 			else break
@@ -293,10 +299,10 @@ local function basiccmdserver ( skt , requestdetails )
 				end
 			end
 			local status , doc = makeresponse ( pcall ( func , unpack ( params ) ) )
-			local code , str , msg , bytessent = httpsend ( skt , requestdetails , status , nil , doc )
+			local code , str , msg , bytessent = httpsend ( skt , requestdetails , { status = status , body = doc } )
 			return true
 		else 
-			httpsend ( skt , requestdetails , 404 )
+			httpsend ( skt , requestdetails , { status = 404 } )
 			return false
 		end
 	end
@@ -367,11 +373,7 @@ local function webserver ( skt , requestdetails ) -- Serve html interface
 		if not code then -- If still around at this point: couldn't access file or forbidden to list the directory
 			code = 403		
 		end
-		local code , str , bytessent = httpsend ( skt , requestdetails , code or 404 , hdr , doc )
-			
-		-- Apache Log Format
-		local apachelog = string.format ( '%s - - [%s] "GET %s HTTP/%s.%s" %s %s "%s" "%s"', requestdetails.peer , os.date ( "!%m/%b/%Y:%H:%M:%S GMT" ) , requestdetails.Path , requestdetails.Major , requestdetails.Minor , code , bytessent , ( requestdetails.headers [ "referer" ] or "-" ) , ( requestdetails.headers[ "agent" ] or "-" ) )
-		print ( apachelog )
+		local code , str , bytessent = httpsend ( skt , requestdetails , { status = ( code or 404 ) , headers = hdr , body = doc } )
 		
 		return true
 end
@@ -398,10 +400,10 @@ local function jsonserver ( skt , requestdetails , body )
 			end
 		end
 		print ( Json.Encode ( t ) )
-		httpsend ( skt , requestdetails , code , hdr , Json.Encode ( t ) )
+		httpsend ( skt , requestdetails , { status = code , headers = hdr , body = Json.Encode ( t ) } )
 
 	else -- Json decoding failed
-		httpsend ( skt , requestdetails , 400 , hdr , Json.Encode ( { false , "Could not decode Json" } ) )
+		httpsend ( skt , requestdetails , { status = 400 , headers = hdr , body = Json.Encode ( { false , "Could not decode Json" } ) } )
 	end
 	
 	
@@ -460,19 +462,17 @@ local function lompserver ( skt )
 			elseif file == "/JSON" then
 				jsonserver ( skt , requestdetails , body )
 			end
-		elseif Method == "GET" then
+		elseif Method == "GET" or Method == "HEAD" then
 			if file == "/BasicCMD" then
 				basiccmdserver ( skt , requestdetails )
 			else
 				webserver ( skt , requestdetails )
 			end
-		elseif Method == "HEAD" then	
-			httpsend ( skt , requestdetails , 501 , { Allow = "GET, POST" } )
 		elseif Method == "TRACE" then -- Send back request as body
 			httpsend ( skt , requestdetails , 200 , { [ 'content-type'] = "message/http" } , request )
 		--elseif Method == "PUT" or Method == "DELETE" or Method == "OPTIONS" then	
 		else
-			httpsend ( skt , requestdetails , 501 , { Allow = "GET, POST" } )
+			httpsend ( skt , requestdetails , { status = 501 , headers = { Allow = "GET, POST, HEAD" } } )
 		end
 		
 		break
