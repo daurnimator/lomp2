@@ -56,6 +56,8 @@
 			populateplaylists ( ); //Populate Playlist list
 			
 			bindBehaviors = function ( scope ) {
+
+
 				$( ".previous" , scope ).click ( function ( event ) {
 					event.preventDefault( );
 					var cmds = [ { cmd: "playback.previous"  , params : [ ] } ];
@@ -71,7 +73,7 @@
 						}
 						return false ;
 					} );
-				});
+				} );
 				$( ".stop" , scope ).click ( function ( event ) {
 					event.preventDefault( );
 					sendCmd ( [ { cmd: "playback.stop"  , params : [ ] } ] , function ( data ) { if  ( data [ 0 ] [ 0 ] == true ) {
@@ -84,7 +86,7 @@
 						}
 						return false ;
 					} );
-				});
+				} );
 				$( ".play" , scope ).click ( function ( event ) {
 					event.preventDefault( );
 					sendCmd ( [ { cmd: "playback.play"  , params : [ ] } ] , function ( data ) { if  ( data [ 0 ] [ 0 ] == true ) {
@@ -97,7 +99,7 @@
 						}
 						return false ;
 					} );
-				});
+				} );
 				$( ".pause" , scope ).click ( function ( event ) {
 					event.preventDefault( );
 					if ( state == "paused" ) {
@@ -123,7 +125,7 @@
 							return false ;
 						} );				
 					}
-				});
+				} );
 				$( ".next" , scope ).click ( function ( event ) {
 					event.preventDefault( );
 					var cmds = [ { cmd: "playback.next"  , params : [ ] } ];
@@ -139,7 +141,7 @@
 						}
 						return false ;
 					} );
-				});			
+				} );			
 				$( ".seekbar" , scope ).slider( { start: function ( event , ui ) {
 						seekbarold = ui.value;
 					}, change: function ( event , ui ) {
@@ -167,12 +169,12 @@
 						}
 						return false ;
 					} );
-				});
+				} );
 				
 				
 			}
 			bindBehaviors ( this );
-		});
+		} );
 	</script>
 	<style>
 		body {

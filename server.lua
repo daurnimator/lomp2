@@ -1,6 +1,8 @@
 --local format, gsub, strfind, strsub = string.format, string.gsub, string.find, string.sub
 --local concat, getn, tinsert = table.concat, table.getn, table.insert
 
+require "luarocks.require"
+
 module ( "lomp" )
 server = {}
 require "socket"
@@ -10,7 +12,7 @@ require "mime" -- For base64 decoding of authorisation
 require "lfs"
 
 local mimetypes = { }
-do
+do -- Load mime types
 	local f = io.open ( "/etc/mime.types" , "r" )
 	if f then
 		while true do
@@ -100,6 +102,26 @@ local function httpsend ( skt , requestdetails , status , headers , body )
 		body = body or ( "<html><head><title>HTTP Code " .. status .. "</title></head><body><h1>HTTP Code " .. status .. "</h1><p>" .. reasonphrase .. "</p></body></html>" )
 	else
 		body = ""
+	end
+	
+	do -- Zlib
+		local ok , zlib = pcall ( require , 'zlib' )
+		if type ( zlib ) == "table" and string.len ( body ) > 0 then
+			local acceptencoding = requestdetails.headers [ "accept-encoding" ]:lower ( )
+			if ( string.find ( acceptencoding , "gzip" ) or string.find ( acceptencoding , "[^%w]*[^%w]" ) ) then
+				print ( "Sending gzip'd body" )
+				local zbody = zlib.compress( body , 9, nil, 15 + 16 )
+				if zbody:len ( ) < body:len() then
+					local vary = ( requestdetails.headers [ 'vary' ] or 'accept-encoding' ):lower ( )
+					if string.find ( vary , '[^%w]accept-encoding[^%w]' ) then
+						aVary = aVary .. ',' .. 'accept-encoding'
+					end
+					sheaders [ 'vary' ] = vary
+					sheaders [ "Content-Encoding" ] = "gzip"
+					body = zbody
+				end
+			end
+		end
 	end
 	
 	local message = "HTTP/1.1 " .. status .. " " .. reasonphrase .. "\r\n" 
