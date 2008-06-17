@@ -38,8 +38,14 @@ do -- Load mime types
 	end
 end
 local function pathtomime ( path )
-	local _ , _ , extension = string.find ( path , "%.([^%.]+)$" ) 
-	return mimetypes [ extension ]
+	local mimetyp
+	local _ , _ , extension = string.find ( path , "%.([^%./]+)$" ) 
+	if extension then
+		mimetyp = mimetypes [ extension ] or "application/octet-stream"
+	else
+		mimetyp = "text/plain"
+	end
+	return mimetyp
 end
 
 local httpcodes = {
@@ -334,7 +340,7 @@ local function basiccmdserver ( skt , requestdetails )
 	end
 end
 local function webserver ( skt , requestdetails ) -- Serve html interface
-		local code , doc , hdr , mimetyp = nil , nil , { } , "text/html"
+		local code , doc , hdr = nil , nil , { }
 		local publicdir = "."
 		local allowdirectorylistings = true
 		
@@ -344,8 +350,8 @@ local function webserver ( skt , requestdetails ) -- Serve html interface
 		local sfile = requestdetails.file 
 		
 		local path = publicdir .. sfile -- Prefix with public dir path
-		local attributes = lfs.attributes ( path )
 		
+		local attributes = lfs.attributes ( path )
 		if string.sub ( path , -1 ) ~= "/" then -- Requesting a specific path
 			if not attributes then -- Path doesn't exist
 				code = 404
@@ -386,7 +392,7 @@ local function webserver ( skt , requestdetails ) -- Serve html interface
 					end
 					doc = filecontents
 					
-					hdr [ "content-type" ] = pathtomime ( path ) or mimetyp
+					hdr [ "content-type" ] = pathtomime ( path )
 					hdr [ "last-modified" ] = httpdate ( attributes.modification )
 					if string.match ( hdr [ "content-type" ] , "([^/]+)") == "image" then
 						hdr [ "expires" ] = httpdate ( os.time ( ) + 86400 ) -- 1 day in the future
