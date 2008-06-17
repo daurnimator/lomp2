@@ -166,7 +166,7 @@ local function httpsend ( skt , requestdetails , responsedetails )
 	local bytessent , err = copas.send ( skt , message )
 	
 	-- Apache Log Format
-	local apachelog = string.format ( '%s - - [%s] "GET %s HTTP/%s.%s" %s %s "%s" "%s"', requestdetails.peer , os.date ( "!%m/%b/%Y:%H:%M:%S GMT" ) , requestdetails.Path , requestdetails.Major , requestdetails.Minor , status , bytessent , ( requestdetails.headers [ "referer" ] or "-" ) , ( requestdetails.headers[ "agent" ] or "-" ) )
+	local apachelog = string.format ( '%s - - [%s] "GET %s HTTP/%s.%s" %s %s "%s" "%s"' , requestdetails.peer , os.date ( "!%m/%b/%Y:%H:%M:%S GMT" ) , requestdetails.Path , requestdetails.Major , requestdetails.Minor , status , bytessent , ( requestdetails.headers [ "referer" ] or "-" ) , ( requestdetails.headers[ "agent" ] or "-" ) )
 	print ( apachelog )
 		
 	return status , reasonphrase , bytessent
