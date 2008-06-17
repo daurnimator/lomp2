@@ -27,14 +27,14 @@ do -- Load mime types
 		end
 		f:close ( )
 	else
-		mimetypes["html"] = "text/html"
-		mimetypes["htm"] = "text/html"
-		mimetypes["css"] = "text/css"
-		mimetypes["txt"] = "text/plain"
-		mimetypes["jpg"] = "image/jpeg"
-		mimetypes["jpeg"] = "image/jpeg"
-		mimetypes["gif"] = "image/gif"
-		mimetypes["png"] = "image/png"
+		mimetypes [ "html" ] = "text/html"
+		mimetypes [ "htm" ] = "text/html"
+		mimetypes [ "css" ] = "text/css"
+		mimetypes [ "txt" ] = "text/plain"
+		mimetypes [ "jpg" ] = "image/jpeg"
+		mimetypes [ "jpeg" ] = "image/jpeg"
+		mimetypes [ "gif" ] = "image/gif"
+		mimetypes [ "png" ] = "image/png"
 	end
 end
 local function pathtomime ( path )
@@ -89,24 +89,20 @@ local function httpdate ( time )
 	--eg, "Sun, 10 Apr 2005 20:27:03 GMT"
 	return os.date ( "!%a, %d %b %Y %H:%M:%S GMT" , time )
 end
---local function httpsend ( skt , requestdetails , status , headers , body )
+local function httperrorpage ( status )
+	return "<html><head><title>HTTP Code " .. status .. "</title></head><body><h1>HTTP Code " .. status .. "</h1><p>" .. httpcodes [ status ] .. "</p><hr><i>Generated on " .. os.date ( ) .." by " .. core._NAME .. ' ' .. core._VERSION .. " </i></body></html>"
+end
 local function httpsend ( skt , requestdetails , responsedetails )
 	local status , headers , body = responsedetails.status , responsedetails.headers , responsedetails.body
 	
 	if type ( status ) ~= "number" or status < 100 or status > 599 then error ( "Invalid http code" ) end
-	local reasonphrase = httpcodes [ status ]
-	
+	if type ( body ) ~= "string" then body = httperrorpage ( status ) end
 	local sheaders = { }
-	for k , v in pairs ( ( headers or { } ) ) do
+	for k , v in pairs ( ( responsedetails.headers or { } ) ) do
 		sheaders [ string.lower ( k ) ] = v
 	end
-	
-	if requestdetails.Method ~= "HEAD" then 
-		body = body or ( "<html><head><title>HTTP Code " .. status .. "</title></head><body><h1>HTTP Code " .. status .. "</h1><p>" .. reasonphrase .. "</p></body></html>" )
-	else
-		body = ""
-	end
-	
+
+	if requestdetails.Method == "HEAD" then body = "" end
 	do -- Zlib
 		local ok , zlib = pcall ( require , 'zlib' )
 		if type ( zlib ) == "table" and string.len ( body ) > 0 then
@@ -116,18 +112,43 @@ local function httpsend ( skt , requestdetails , responsedetails )
 				if zbody:len ( ) < body:len() then
 					local vary = ( requestdetails.headers [ 'vary' ] or 'accept-encoding' ):lower ( )
 					if string.find ( vary , '[^%w]accept-encoding[^%w]' ) then
-						aVary = aVary .. ',' .. 'accept-encoding'
+						vary = vary .. ',' .. 'accept-encoding'
 					end
-					sheaders [ 'vary' ] = vary
+					sheaders [ "vary" ] = vary
 					sheaders [ "Content-Encoding" ] = "gzip"
 					body = zbody
 				end
 			end
 		end
 	end
-	
-	local message = "HTTP/1.1 " .. status .. " " .. reasonphrase .. "\r\n" 
+	do -- md5
+		local ok , md5 = pcall ( require , 'md5' )
+		if type ( md5 ) == "table" then
+			local bodymd5 = md5.sumhexa ( body )
+			sheaders [ "content-md5" ] = bodymd5
+			if string.len ( body ) > 0 then -- ETag (md5 of body)
+				local etag = requestdetails.headers [ "etag" ]
+				if not etag then 
+					sheaders [ "etag" ] = bodymd5
+				end
+			end
+		end
+	end
+	do -- If modified...
+		if status >= 200 and status < 300 then
+			local modifiedSince = requestdetails.headers [ 'if-modified-since' ] or 0
+			local lastModified = sheaders [ 'last-modified' ] or 1
+			local noneMatch = requestdetails.headers [ 'if-none-match' ] or 0
+			local etag = sheaders [ 'etag' ] or 1
+			
+			if modifiedSince == lastModified or noneMatch == etag then
+				status = 304
+				httperrorpage ( status )
+			end
+		end
+	end
 
+	local message = "HTTP/1.1 " .. status .. " " .. httpcodes [ status ] .. "\r\n" 
 	sheaders [ "date" ] = httpdate ( )
 	sheaders [ "server" ] = core._NAME .. ' ' .. core._VERSION
 	sheaders [ "content-type" ] = sheaders [ "content-type" ] or "text/html"
@@ -140,7 +161,6 @@ local function httpsend ( skt , requestdetails , responsedetails )
 	message = message .. "Connection: close\r\n" -- Multiple HTTP commands not allowed, tell client to close connection
 	
 	message = message .. "\r\n" -- Signal end of header(s)
-	
 	message = message .. body
 	
 	local bytessent , err = copas.send ( skt , message )
@@ -330,11 +350,36 @@ local function webserver ( skt , requestdetails ) -- Serve html interface
 				local f , filecontents
 				f , err = io.open ( path , "rb" )
 				if f then
-					filecontents = f:read ( "*all" )
+					local offset 
+					local length
+					
+					--print ( "Range: ", requestdetails.headers [ "range" ] )
+					--[[do
+						local s , e , r_A , r_B = string.find ( requestdetails.headers [ "range" ] , "(%d*)%s*-%s*(%d*)" )	
+						if s and e then
+							r_A = tonumber (r_A)
+							r_B = tonumber (r_B)
+							
+							if r_A then
+								f:seek ("set", r_A)
+								if r_B then return r_B + 1 - r_A end
+							else
+								if r_B then f:seek ("end", - r_B) end
+							end
+						end
+					end--]]
+					
+					f:seek ( "set" , offset )
+					filecontents = f:read ( length or "*all" )
 					f:close ( )
 					
-					code = 200
+					if offset and length then -- Partial Content
+						code = 206
+					else -- Standard OK
+						code = 200 
+					end
 					doc = filecontents
+					
 					hdr [ "content-type" ] = pathtomime ( path )
 					hdr [ "last-modified" ] = httpdate ( attributes.modification )
 					if string.match ( hdr [ "content-type" ] , "([^/]+)") == "image" then
