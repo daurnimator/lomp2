@@ -1,5 +1,4 @@
-#! /usr/local/bin/lua
--- Change the above as appropriate
+#! /usr/bin/env lua
 
 if _VERSION ~= "Lua 5.1" then --TODO: Override?
 	error ( "This program needs lua 5.1 to work." )

@@ -1,7 +1,7 @@
 --local format, gsub, strfind, strsub = string.format, string.gsub, string.find, string.sub
 --local concat, getn, tinsert = table.concat, table.getn, table.insert
 
-require "luarocks.require"
+pcall ( require , "luarocks.require" )
 
 module ( "lomp" )
 server = {}
@@ -105,25 +105,29 @@ local function httpsend ( skt , requestdetails , responsedetails )
 	if requestdetails.Method == "HEAD" then body = "" end
 	do -- Zlib
 		local ok , zlib = pcall ( require , 'zlib' )
-		if type ( zlib ) == "table" and string.len ( body ) > 0 then
-			local acceptencoding = ( requestdetails.headers [ "accept-encoding" ] or "" ):lower ( )
-			if ( string.find ( acceptencoding , "gzip" ) or string.find ( acceptencoding , "[^%w]*[^%w]" ) ) then
-				local zbody = zlib.compress( body , 9, nil, 15 + 16 )
-				if zbody:len ( ) < body:len() then
-					local vary = ( requestdetails.headers [ 'vary' ] or 'accept-encoding' ):lower ( )
-					if string.find ( vary , '[^%w]accept-encoding[^%w]' ) then
-						vary = vary .. ',' .. 'accept-encoding'
+		if ok and type ( zlib ) == "table" then 
+			if string.len ( body ) > 0 then
+				local acceptencoding = ( requestdetails.headers [ "accept-encoding" ] or "" ):lower ( )
+				if ( string.find ( acceptencoding , "gzip" ) or string.find ( acceptencoding , "[^%w]*[^%w]" ) ) then
+					local zbody = zlib.compress( body , 9, nil, 15 + 16 )
+					if zbody:len ( ) < body:len() then
+						local vary = ( requestdetails.headers [ 'vary' ] or 'accept-encoding' ):lower ( )
+						if string.find ( vary , '[^%w]accept-encoding[^%w]' ) then
+							vary = vary .. ',' .. 'accept-encoding'
+						end
+						sheaders [ "vary" ] = vary
+						sheaders [ "Content-Encoding" ] = "gzip"
+						body = zbody
 					end
-					sheaders [ "vary" ] = vary
-					sheaders [ "Content-Encoding" ] = "gzip"
-					body = zbody
 				end
 			end
+		else -- Don't have zlib
+			--print ( "Zlib missing" )
 		end
 	end
 	do -- md5
 		local ok , md5 = pcall ( require , 'md5' )
-		if type ( md5 ) == "table" then
+		if type ( md5 ) == "table" and md5.sumhexa then
 			local bodymd5 = md5.sumhexa ( body )
 			sheaders [ "content-md5" ] = bodymd5
 			if string.len ( body ) > 0 then -- ETag (md5 of body)
@@ -132,6 +136,8 @@ local function httpsend ( skt , requestdetails , responsedetails )
 					sheaders [ "etag" ] = bodymd5
 				end
 			end
+		else -- Don't have md5 library
+			--print ( "md5 library missing" )
 		end
 	end
 	do -- If modified...
