@@ -386,7 +386,7 @@ local function webserver ( skt , requestdetails ) -- Serve html interface
 					end
 					doc = filecontents
 					
-					hdr [ "content-type" ] = pathtomime ( path )
+					hdr [ "content-type" ] = pathtomime ( path ) or mimetyp
 					hdr [ "last-modified" ] = httpdate ( attributes.modification )
 					if string.match ( hdr [ "content-type" ] , "([^/]+)") == "image" then
 						hdr [ "expires" ] = httpdate ( os.time ( ) + 86400 ) -- 1 day in the future
