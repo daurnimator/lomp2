@@ -221,7 +221,7 @@ local function auth ( headers )
 	end
 end
 
-local function xmlrpcserver ( skt , requestdetails , body )
+local function xmlrpcserver ( skt , requestdetails )
 	require "xmlrpc"
 	local authorised , typ = auth ( requestdetails.headers )
 	if not authorised then
@@ -232,7 +232,7 @@ local function xmlrpcserver ( skt , requestdetails , body )
 			return false
 		end
 	else -- Authorised
-		local method_name , list_params = xmlrpc.srvDecode ( body )
+		local method_name , list_params = xmlrpc.srvDecode ( requestdetails.body )
 		list_params = list_params[1] --I don't know why it needs this, but it does
 		
 		local function d ( ... ) return dispatch ( _M , ... ) end
@@ -339,7 +339,7 @@ local function basiccmdserver ( skt , requestdetails )
 		end
 	end
 end
-local function webserver ( skt , requestdetails ) -- Serve html interface
+local function webserver ( skt , requestdetails )
 		local code , doc , hdr = nil , nil , { }
 		local publicdir = "."
 		local allowdirectorylistings = true
@@ -434,10 +434,10 @@ local function webserver ( skt , requestdetails ) -- Serve html interface
 		
 		return true
 end
-local function jsonserver ( skt , requestdetails , body )
+local function jsonserver ( skt , requestdetails )
 	require "Json"
-	print ( "Json cmd received: " .. body )
-	local o = Json.Decode ( body )
+	print ( "Json cmd received: " , requestdetails.body )
+	local o = Json.Decode ( requestdetails.body )
 	hdr = { ["content-type"] = "application/json" }
 	if type ( o ) == "table" and o [ 1 ] then
 		local t = { }
@@ -510,14 +510,15 @@ local function lompserver ( skt )
 		
 		local requestdetails = { Method = Method , Path = Path , Major = Major , Minor = Minor , file = file , querystring = querystring , queryvars = queryvars , headers = headers , peer = skt:getpeername ( ) }
 		
-		local body
-		if headers [ "content-length" ] then body = copas.receive ( skt , headers [ "content-length" ] ) end
+		if headers [ "content-length" ] then requestdetails.body = copas.receive ( skt , headers [ "content-length" ] ) end
 		
 		if Method == "POST" then
 			if file == "/LOMP" and headers [ "content-type" ] == "text/xml" then -- This is an xmlrpc command for lomp
-				xmlrpcserver ( skt , requestdetails , body )
+				xmlrpcserver ( skt , requestdetails )
 			elseif file == "/JSON" then
-				jsonserver ( skt , requestdetails , body )
+				jsonserver ( skt , requestdetails )
+			else
+				webserver ( skt , requestdetails )
 			end
 		elseif Method == "GET" or Method == "HEAD" then
 			if file == "/BasicCMD" then
@@ -536,7 +537,7 @@ local function lompserver ( skt )
 	end
 end
 function server.initiate ( host , port )
-	server.server , err = socket.bind ( host , port )
+	server.server , err = socket.bind ( host , port , 100 )
 	if server.server then 
 		--[[copas.addserver( server , function echoHandler ( skt )
 			while true do

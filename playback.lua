@@ -10,7 +10,7 @@ function playback.play ( )
 	if state ~= "stopped" then playback.stop ( ) end -- Remove eventually??
 	if not vars.queue [ 0 ] then 
 		local r = playback.forward ( ) 
-		if not r then return false end
+		if not r then return false , "Nothing to play" end
 	end
 	
 	vars.queue [ 0 ].played = true
@@ -99,8 +99,7 @@ function playback.forward ( ) -- Moves forward one song in the queue
 				end
 			end
 			return true
-		else
-			-- no more songs.
+		else -- No more songs.
 			return false
 		end
 	end
