@@ -5,17 +5,19 @@ module ( "lomp" , package.seeall )
 
 require "lomp-core"
 
-function core.listpl ( )
+function core.listpl ( str )
 	local t = { }
 	t [ 0 ] = { name = vars.pl [ 0 ].name , revision = vars.pl [ 0 ].revision }
 	for i , v in ipairs ( vars.pl ) do
 		t [ i ] = { name = v.name , revision = v.revision }
 	end
-	local s = "Playlists: (Last Revision: " .. vars.pl.revision .. ")\n"
-	for i , v in ipairs( t ) do
-		s = s .. "Playlist #" .. i .. "\t" .. v.name .. " \tRevision " .. v.revision.. "\n"
+	if str then
+		str = "Playlists: (Last Revision: " .. vars.pl.revision .. ")\n"
+		for i , v in ipairs( t ) do
+			str = str .. "Playlist #" .. i .. "\t" .. v.name .. " \tRevision " .. v.revision.. "\n"
+		end
 	end
-	return t , s
+	return t , str
 end
 
 function core.listentries ( pl )
@@ -57,6 +59,19 @@ function core.listplayed ( )
 		s = s .. "Entry #" .. i .. " \t(" .. v.o.typ .. ") \tSource: '" .. v.o.source .. "'\n"
 	end
 	return vars.played , s
+end
+
+function getvar ( varstring )
+	if type ( varstring ) ~= "string" then return false end
+	local var = vars
+	for k in string.gmatch ( varstring , "(%w+)%." ) do
+		var = var [ k ]
+	end
+	var = var [ select ( 3 , string.find ( varstring , "([^%.]+)$" ) ) ]
+	
+	if type ( var ) == "function" then return false
+	else return var
+	end
 end
 
 function playsongfrompl ( pl , pos )

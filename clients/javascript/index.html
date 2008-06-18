@@ -8,58 +8,103 @@
 	<link rel="stylesheet" href="jquery.ui-1.5/themes/flora/flora.all.css" type="text/css" media="screen" title="Flora (Default)" />
 
 	<script type="text/javascript">
-		sendCmd = function ( cmds , callback ) {
-			$.post("/JSON", JSON.stringify(cmds) , callback , "json");			
-		};
-		getplaylists = function ( callback ) {
-			sendCmd ( [ { cmd : "core.listpl" , params : [ ] } ] , function ( data ) { if  ( data [ 0 ] [ 0 ] == true ) {
-					var i = 0
-					while ( data [ 0 ] [ 1 ] [ i ] ) {
-						playlists [ i ] = { name : data [ 0 ] [ 1 ] [ i ].name , revision : data [ 0 ] [ 1 ] [ i ].revision };
-						i++;
-					};					
-				} else if  ( data [ 0 ] ) {
-					alert ( "pcall failed: " + data [ 0 ] [ 1 ] );
-				} else {
-					alert ( "bad response - not a json array" )
-				}
-				callback ( );
-			} );
-		};
-		populateplaylists = function ( ) {
-			getplaylists ( function ( ) {
+		$(function(){			
+			state = "stopped";
+			currentplaylist = 0
+			playlists = [ ]
+			
+			var sendCmd = function ( cmds , callback ) {
+				$.post("/JSON" , JSON.stringify ( cmds ) , function ( data ) { if  ( data ) {
+							callback ( data );
+						} else { // Command failed
+							alert ( "bad response - not a json array" );
+							callback ( false );
+						}
+					} , "json" );			
+			};
+			var paramsgetvar = function ( varname , callback ) {
+				return [ { cmd : "getvar" , params : [ varname ] } , function ( data ) { if  ( data [ 0 ] != false ) {
+							callback ( data [ 1] );
+						} else {
+							alert ( "pcall failed: " + data [ 0 ] [ 1 ] );
+							callback ( false );
+						}
+					} ]; 
+			};
+			var arrayplaylists = function ( data ) {
+				var i = 0
+				while ( data [ i ] ) {
+					playlists [ i ] = { name : data [ i ].name , revision : data [ i ].revision };
+					i++;
+				};
+			}
+			var paramsgetplaylists = function ( callback ) {
+				return [ { cmd : "core.listpl" , params : [ ] } , function ( data ) { if  ( data [ 0 ] != false ) {
+						arrayplaylists ( data [ 1 ] );
+						callback ( data );
+					} else {
+						alert ( "pcall failed: " + data [ 1 ] );
+						callback ( false );
+					}
+				} ];
+			};
+			var populateplaylists = function ( ) {
 				var playlistlist = document.createElement( 'ul' );
 				for ( i = 0 ; i < playlists.length ; i++ ) {
 					var li = document.createElement( 'li' );
-					if ( i == currentplaylist ) { $( li ).addClass ( "liselected" );
-					} else { $( li ).addClass ( "li" + ( i % 2 ) ); //For Alternate Colouring
-					}
+					
+					if ( i == currentplaylist ) { $( li ).addClass ( "liselected" ); }
+					$( li ).addClass ( "li" + ( i % 2 ) ); //For Alternate Colouring
+					
 					var a = document.createElement ( 'a' );
 					
 					a.appendChild ( document.createTextNode ( playlists [ i ].name ) );
 					$( a ).attr ( "href" , ( "/BasicCMD?cmd=core.setsoftqueueplaylist&1=" + i ) );
-					$( a ).addClass ( "setplaylist" );
-					$( a ).attr ( "playlist" , i );
-
+					$( a ).addClass ( "selectplaylist" );
+					a.playlist = i;
+					
 					li.appendChild ( a );
 					playlistlist.appendChild ( li );
 				}
 				$( ".playlistlist>ul" ).remove ( );
 				bindBehaviors ( playlistlist );
 				$( ".playlistlist" ).append ( playlistlist );
-			} );
-		};
-		$(function(){
-			state = "stopped";
-			currentplaylist = 0
-			playlists = [ ]
-			populateplaylists ( ); //Populate Playlist list
+			};
+			var populatecurrentpl = function ( data ) {
+				var a = $( ".selectplaylist" );
+				var li = a.parents ( "li" );
+				li.removeClass ( "liselected" );
+				a.each ( function ( ) { if  ( this.playlist == data ) { $( this ).parent ( "li" ).addClass ( "liselected" ); } } )
+			}
 			
+			var cmds	= [ ]
+			var funcs = [ ]
+			var addcmd = function ( obj ) {
+				var l = cmds.length;
+				cmds [ l ] = obj [ 0 ];
+				funcs [ l ] = obj [ 1 ];
+			};
+			
+			addcmd ( paramsgetplaylists ( populateplaylists ) );
+			addcmd ( paramsgetvar ( "softqueuepl" , populatecurrentpl ) );
+			
+			var docmds = function ( ) {
+				var func = function ( data ) {
+				for ( i = 0 ; i < funcs.length ; i++ ) {
+						funcs [ i ] ( data [ i ] );
+					};
+				};
+				sendCmd ( cmds , func );
+				
+				//cmds = [ ];
+				//funcs = [ ];
+			};
+			
+			docmds ( );
+
 			bindBehaviors = function ( scope ) {
-
-
 				$( ".previous" , scope ).click ( function ( event ) {
-					event.preventDefault( );
+					event.preventDefault ( );
 					var cmds = [ { cmd: "playback.previous"  , params : [ ] } ];
 					if ( state == "playing" ) {
 						cmds [ cmds.length ] = { cmd: "playback.play" };
@@ -71,11 +116,10 @@
 						} else {
 							alert ( "bad response - not a json array" )
 						}
-						return false ;
 					} );
 				} );
 				$( ".stop" , scope ).click ( function ( event ) {
-					event.preventDefault( );
+					event.preventDefault ( );
 					sendCmd ( [ { cmd: "playback.stop"  , params : [ ] } ] , function ( data ) { if  ( data [ 0 ] [ 0 ] == true ) {
 							//Command Successful
 							state = "stopped";
@@ -84,11 +128,10 @@
 						} else {
 							alert ( "bad response - not a json array" )
 						}
-						return false ;
 					} );
 				} );
 				$( ".play" , scope ).click ( function ( event ) {
-					event.preventDefault( );
+					event.preventDefault ( );
 					sendCmd ( [ { cmd: "playback.play"  , params : [ ] } ] , function ( data ) { if  ( data [ 0 ] [ 0 ] == true ) {
 							//Command Successful
 							state = "playing";
@@ -97,11 +140,10 @@
 						} else {
 							alert ( "bad response - not a json array" )
 						}
-						return false ;
 					} );
 				} );
 				$( ".pause" , scope ).click ( function ( event ) {
-					event.preventDefault( );
+					event.preventDefault ( );
 					if ( state == "paused" ) {
 						sendCmd ( [ { cmd: "playback.unpause"  , params : [ ] } ] , function ( data ) { if  ( data [ 0 ] [ 0 ] == true ) {
 								//Command Successful
@@ -111,7 +153,6 @@
 							} else {
 								alert ( "bad response - not a json array" )
 							}
-							return false ;
 						} );
 					} else if  ( state == "playing" ) {
 						sendCmd ( [ { cmd: "playback.pause"  , params : [ ] } ] , function ( data ) { if  ( data [ 0 ] [ 0 ] == true ) {
@@ -122,12 +163,11 @@
 							} else {
 								alert ( "bad response - not a json array" )
 							}
-							return false ;
 						} );				
 					}
 				} );
 				$( ".next" , scope ).click ( function ( event ) {
-					event.preventDefault( );
+					event.preventDefault ( );
 					var cmds = [ { cmd: "playback.next"  , params : [ ] } ];
 					if ( state == "playing" ) {
 						cmds [ cmds.length ] = { cmd: "playback.play" };
@@ -139,7 +179,6 @@
 						} else {
 							alert ( "bad response - not a json array" )
 						}
-						return false ;
 					} );
 				} );			
 				$( ".seekbar" , scope ).slider( { start: function ( event , ui ) {
@@ -156,22 +195,29 @@
 						} );
 					}, max: 354
 				} );
-				$( ".setplaylist" , scope ).click ( function ( event ) {
-					event.preventDefault( );
-					var pl = $( event.target ).attr ( "playlist" );
-					sendCmd ( [ { cmd: "core.setsoftqueueplaylist"  , params : [ pl ] } ] , function ( data ) { if  ( data [ 0 ] [ 0 ] == true ) {
-							//Command Successful
-							state = "stopped";
-						} else if  ( data [ 0 ] ) {
-							alert ( "pcall failed: " + data [ 0 ] [ 1 ] );
-						} else {
-							alert ( "bad response - not a json array" )
-						}
-						return false ;
-					} );
-				} );
-				
-				
+				$( ".selectplaylist" , scope ).click ( function ( event ) {
+					event.preventDefault ( );
+					if ( event.target.clickedrecently != true ) { // Single click
+						event.target.clickedrecently = true;
+						setTimeout ( function ( ) { event.target.clickedrecently = false; } , 200 ) ;
+						
+						var pl = event.target.playlist ;
+						// Change main playlist
+						
+					} else { // Double Click
+						var pl = event.target.playlist ;
+						// Set soft queue to double clicked playlist
+						sendCmd ( [ { cmd: "core.setsoftqueueplaylist"  , params : [ pl ] } ] , function ( data ) { if  ( data [ 0 ] [ 0 ] == true ) {
+								//Command Successful
+								getvar ( "softqueuepl" , populatecurrentpl ( ) );
+							} else if  ( data [ 0 ] ) {
+								alert ( "pcall failed: " + data [ 0 ] [ 1 ] );
+							} else {
+								alert ( "bad response - not a json array" )
+							}
+						} );
+					}
+				} );				
 			}
 			bindBehaviors ( this );
 		} );
@@ -194,6 +240,10 @@
 		}
 		.liselected > a {
 			background-color: #6090FF;
+			color: #FFF;
+		}
+		.liselected > a:hover {
+			background-color: #5080EE;
 			color: #FFF;
 		}
 		.center {

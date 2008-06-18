@@ -155,7 +155,7 @@ end
 -- History Stuff
 function core.clearhistory ( )
 	local oldrevision = vars.played.revision or 0
-	vars.played = { revision = ( oldrevision + 1 ) ; }
+	vars.played = { revision = ( oldrevision + 1 ) }
 	return true
 end
 function core.removefromhistory ( pos )

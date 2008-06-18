@@ -394,9 +394,12 @@ local function webserver ( skt , requestdetails )
 					
 					hdr [ "content-type" ] = pathtomime ( path )
 					hdr [ "last-modified" ] = httpdate ( attributes.modification )
-					if string.match ( hdr [ "content-type" ] , "([^/]+)") == "image" then
+					local mimemajor , mimeminor = string.match ( hdr [ "content-type" ] , "([^/]+)/(.+)") 
+					if mimemajor == "image" then
 						hdr [ "expires" ] = httpdate ( os.time ( ) + 86400 ) -- 1 day in the future
-					else	
+					elseif mimeminor = "css" then
+						hdr [ "expires" ] = httpdate ( os.time ( ) + 86400 ) -- 1 day in the future
+					else
 						hdr [ "expires" ] = httpdate ( os.time ( ) + 30 ) -- 30 seconds in the future
 					end
 				end
