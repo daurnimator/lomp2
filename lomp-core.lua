@@ -10,8 +10,11 @@
 ]]
 
 require "general"
-require "lfs"
 require "player"
+
+pcall ( require , "luarocks.require" )
+require "lfs"
+
 
 module ( "lomp" , package.seeall )
 print = print

@@ -81,7 +81,7 @@ function package.see ( env )
 	env = env or _G
 	return function ( module ) 
 		local t = type ( module )
-			assert ( t == "table" , "bad argument #1 to package.seefrom (table expected, got " .. t .. ")" )
+			assert ( t == "table" , "bad argument #1 to package.see (table expected, got " .. t .. ")" )
 			local meta = getmetatable ( module )
 			if not meta then
 				meta = { }

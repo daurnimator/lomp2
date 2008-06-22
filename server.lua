@@ -11,8 +11,10 @@
 
 pcall ( require , "luarocks.require" )
 
-module ( "lomp" )
-server = {}
+require "general"
+module ( "lomp.server" , package.see ( lomp ) )
+
+--server = {}
 require "socket"
 require "socket.url"
 require "copas"
@@ -107,7 +109,7 @@ local function httperrorpage ( status )
 	return "<html><head><title>HTTP Code " .. status .. "</title></head><body><h1>HTTP Code " .. status .. "</h1><p>" .. httpcodes [ status ] .. "</p><hr><i>Generated on " .. os.date ( ) .." by " .. core._NAME .. ' ' .. core._VERSION .. " </i></body></html>"
 end
 local function httpsend ( skt , requestdetails , responsedetails )
-	local status , headers , body = responsedetails.status , responsedetails.headers , responsedetails.body
+	local status , body = responsedetails.status , responsedetails.body
 	
 	if type ( status ) ~= "number" or status < 100 or status > 599 then error ( "Invalid http code" ) end
 	if type ( body ) ~= "string" then body = httperrorpage ( status ) end
@@ -192,10 +194,12 @@ local function httpsend ( skt , requestdetails , responsedetails )
 	return status , reasonphrase , bytessent
 end
 local function dispatch ( baseenv , name )
+	if type ( baseenv ) ~= "table" then return false end
 	if type ( name ) ~= "string" then return false end
 	local func = baseenv
 	for k in string.gmatch ( name , "(%w+)%." ) do
 		func = func [ k ]
+		if type ( func [ k ] ) ~= "table" then return false end
 	end
 	func = func [ select ( 3 , string.find ( name , "([^%.]+)$" ) ) ]
 	
@@ -405,7 +409,7 @@ local function webserver ( skt , requestdetails )
 					local mimemajor , mimeminor = string.match ( hdr [ "content-type" ] , "([^/]+)/(.+)") 
 					if mimemajor == "image" then
 						hdr [ "expires" ] = httpdate ( os.time ( ) + 86400 ) -- 1 day in the future
-					elseif mimeminor = "css" then
+					elseif mimeminor == "css" then
 						hdr [ "expires" ] = httpdate ( os.time ( ) + 86400 ) -- 1 day in the future
 					else
 						hdr [ "expires" ] = httpdate ( os.time ( ) + 30 ) -- 30 seconds in the future
@@ -449,7 +453,7 @@ local function jsonserver ( skt , requestdetails )
 	require "Json"
 	print ( "Json cmd received: " , requestdetails.body )
 	local o = Json.Decode ( requestdetails.body )
-	hdr = { ["content-type"] = "application/json" }
+	local hdr = { ["content-type"] = "application/json" }
 	if type ( o ) == "table" and o [ 1 ] then
 		local t = { }
 		local code = 200
@@ -547,9 +551,10 @@ local function lompserver ( skt )
 		break
 	end
 end
-function server.initiate ( host , port )
-	server.server , err = socket.bind ( host , port , 100 )
-	if server.server then 
+function initiate ( host , port )
+	local err
+	server , err = socket.bind ( host , port , 100 )
+	if server then 
 		--[[copas.addserver( server , function echoHandler ( skt )
 			while true do
 				local data = copas.receive( skt )
@@ -562,13 +567,13 @@ function server.initiate ( host , port )
 				end
 			end
 		end ) --]] -- Echo Handler
-		copas.addserver ( server.server , lompserver )
+		copas.addserver ( server , lompserver )
 		updatelog ( "Server started; bound to '" .. host .. "', port #" .. port , 4 ) 
 		return true
 	else
 		return ferror ( "Server could not be started: " .. err , 0 )
 	end
 end
-function server.step ( )
+function step ( )
 	copas.step ( )
 end
