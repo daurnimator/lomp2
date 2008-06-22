@@ -2,18 +2,41 @@ LOMP - Lua Open Music Player
 By Daurnimator
 
 Dependencies:
-	Lua 5.1				http://www.lua.org/
-		download:		http://www.lua.org/ftp/lua-5.1.2.tar.gz
-	ex (Lua Extension proposal)	http://lua-users.org/wiki/ExtensionProposal
-		download: 		http://luaforge.net/projects/lua-ex/
-	LuaSocket			http://www.tecgraf.puc-rio.br/~diego/professional/luasocket/
-		download:		http://luaforge.net/projects/luasocket/
-	Copas				http://www.keplerproject.org/copas/index.html
-		download:		http://luaforge.net/frs/?group_id=100
-	LuaXMLRPC			http://www.keplerproject.org/luaxmlrpc/
+	Lua 5.1						http://www.lua.org/
+		download:				http://www.lua.org/ftp/lua-5.1.2.tar.gz
+	
+	(temporarily): ex (Lua Extension proposal)		http://lua-users.org/wiki/ExtensionProposal
+		download: 				http://luaforge.net/projects/lua-ex/
+	
+	(temporarily): ogg123
+		ogg123 is part of the vorbis-tools package.
+		download:				http://www.xiph.org/downloads/
+	
+	LuaSocket					http://www.tecgraf.puc-rio.br/~diego/professional/luasocket/
+		download:				http://luaforge.net/projects/luasocket/
+	
+	Copas						http://www.keplerproject.org/copas/index.html
+		download:				http://luaforge.net/frs/?group_id=100
+		can be obtained via: luarocks install copas
+		Depends on:
+			Coxpcall				http://coxpcall.luaforge.net/
+			can be obtained via: luarocks install coxpcall
+	
+	LuaXMLRPC					http://www.keplerproject.org/luaxmlrpc/
 		(included)
-		Which depends on:
-		LuaExpat		http://www.keplerproject.org/luaexpat/
-			download:	http://luaforge.net/frs/?group_id=13
+		Depends on:
+			LuaExpat				http://www.keplerproject.org/luaexpat/
+				download:		http://luaforge.net/frs/?group_id=13
+				can be obtained via: luarocks install luaexpat
+	
+	LuaFileSystem					http://www.keplerproject.org/luafilesystem/
+		can be obtained via: luarocks install luafilesystem
 
-	mplayer
+Optional Dependencies:
+	luarocks						http://luarocks.org/
+	
+	lzlib	(for http gzip compression)	http://luaforge.net/projects/lzlib/
+		can be obtained via: luarocks install lzlib
+
+	md5							http://www.inf.puc-rio.br/~roberto/md5/md5-5/md5.html
+		can be obtained via: luarocks install md5
