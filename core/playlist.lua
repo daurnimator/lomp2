@@ -51,8 +51,21 @@ function clear ( pl )
 	repeat
 		table.remove ( vars.pl [ pl ]  )
 	until not vars.pl [ pl ] [ 1 ] 
+	
 	vars.pl [ pl ].revision = vars.pl [ pl ].revision + 1
 	
 	updatelog ( "Cleared playlist #" .. pl .. " (" .. vars.pl [ pl ].name .. ")" , 4 )
+	return pl
+end
+function randomise ( pl )
+	if type ( pl ) == "string" then pl = table.valuetoindex ( vars.pl , "name" , pl ) end
+	if type ( pl ) ~= "number" or pl < 0 or pl > #vars.pl then 
+		return ferror ( "'Randomise playlist' called with invalid playlist" , 1 ) 
+	end
+	
+	table.randomize ( vars.pl [ pl ] )
+	vars.pl [ pl ].revision = vars.pl [ pl ].revision + 1
+	
+	updatelog ( "Randomised playlist #" .. pl .. " (" .. vars.pl [ pl ].name .. ")" , 4 )
 	return pl
 end

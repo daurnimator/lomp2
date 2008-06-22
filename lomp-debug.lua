@@ -35,17 +35,17 @@ end
 function core.listentries ( pl )
 	if type( pl ) == "string" then pl = valuetoindex ( vars.pl , "name" , key ) end
 	assert ( type ( pl ) == "number" , "Provide a playlist" )
-	local s = "Listing Playlist #" .. pl .. " \t(Last Revision: " .. vars.pl[pl].revision .. ")\n"
+	local s = "Listing Playlist #" .. pl .. " \t(Last Revision: " .. vars.pl [ pl ].revision .. ")\n"
 	for i , v in ipairs( vars.pl[pl] ) do
 		s = s .. "Entry #" .. i .. " \t(" .. v.typ .. ") \tSource: '" .. v.source .. "'\n"
 	end
-	return vars.pl [ pl ] , s
+	return pl , vars.pl [ pl ] , s
 end
 
 function core.listallentries ( )
 	local s = ""
 	for i,v in ipairs(lomp.vars.pl) do
-		s = s .. select ( 2, lomp.core.listentries ( i ) )
+		s = s .. select ( 3, lomp.core.listentries ( i ) )
 	end
 	return vars.pl , s
 end
@@ -121,7 +121,7 @@ function a ( ... ) print ("testing!", ... ) return "test done" end
 function pv ( )
 	p ( "Current State: " .. playback.state )
 	p ( select( 2 , core.listpl ( ) ) )
-	p ( select( 2 , core.listentries ( 0 ) ) )
+	p ( select( 3 , core.listentries ( 0 ) ) )
 	p ( select( 2 , core.listallentries ( ) ) )
 	p ( select( 2 , core.listqueue ( ) ) )
 	p ( select( 2 , core.listplayed ( ) ) )

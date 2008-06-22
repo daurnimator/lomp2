@@ -10,8 +10,9 @@
 	<script type="text/javascript">
 		$(function(){			
 			state = "stopped";
-			currentplaylist = 0
-			playlists = [ ]
+			softplaylist = 0;
+			viewplaylist = 0;
+			playlists = [ ];
 			
 			var sendCmd = function ( cmds , callback ) {
 				$.post("/JSON" , JSON.stringify ( cmds ) , function ( data ) { if  ( data ) {
@@ -34,7 +35,13 @@
 			var arrayplaylists = function ( data ) {
 				var i = 0
 				while ( data [ i ] ) {
-					playlists [ i ] = { name : data [ i ].name , revision : data [ i ].revision };
+					if ( !playlists [ i ] ) { playlists [ i ] = { } };
+					playlists [ i ].name = data [ i ].name ;
+					if ( playlists [ i ].revision != data [ i ].revision ) {
+						playlists [ i ].contents = null;
+						populateplaylist ( i );
+					}
+					playlists [ i ].revision = data [ i ].revision;
 					i++;
 				};
 			}
@@ -53,7 +60,8 @@
 				for ( i = 0 ; i < playlists.length ; i++ ) {
 					var li = document.createElement( 'li' );
 					
-					if ( i == currentplaylist ) { $( li ).addClass ( "liselected" ); }
+					if ( i == softplaylist ) { $( li ).addClass ( "liarrowed" ); }
+					if ( i == viewplaylist ) { $( li ).addClass ( "liselected" ); }
 					$( li ).addClass ( "li" + ( i % 2 ) ); //For Alternate Colouring
 					
 					var a = document.createElement ( 'a' );
@@ -70,129 +78,226 @@
 				bindBehaviors ( playlistlist );
 				$( ".playlistlist" ).append ( playlistlist );
 			};
+			var arrayplaylist = function ( data ) {
+				var pl = data [ 1 ];
+				var obj = data [ 2 ];
+				var i = 1;
+				playlists [ pl ].contents = [ ];
+				while ( obj [ i ] ) {
+					playlists [ pl ].contents [ i ] = { source : obj [ i ].source , typ : obj [ i ].typ };
+					i++;
+				};
+			}
+			var paramsgetplaylistcontents = function ( pl , callback ) {
+				return [ { cmd : "core.listentries" , params : [ pl ] } , function ( data ) {  if  ( data [ 0 ] != false ) {
+						callback ( data );
+					} else {
+						alert ( "pcall failed: " + data [ 1 ] );
+						callback ( false );
+					}
+				} ];
+			};			
+			var populateplaylist = function ( pl ) {
+				if ( pl == null ) { pl = viewplaylist }
+				function go ( playlist ) {
+					var table = document.createElement( 'table' );
+					$( table ).attr ( "border" , "0");
+					$( table ).attr ( "cellpadding" , "0" );
+					$( table ).attr ( "cellspacing" , "1" );
+					var thead = document.createElement( 'thead' );
+					
+					var tr = document.createElement( 'tr' );
+					var th
+					
+					th = document.createElement ( 'th' );
+					th.appendChild ( document.createTextNode ( "#" ) );
+					tr.appendChild ( th );
+
+					th = document.createElement ( 'th' );
+					th.appendChild ( document.createTextNode ( "Source" ) );
+					tr.appendChild ( th );
+
+					th = document.createElement ( 'th' );
+					th.appendChild ( document.createTextNode ( "Source Type" ) );
+					tr.appendChild ( th );
+					
+					thead.appendChild ( tr );
+					table.appendChild ( thead );				
+					
+					var tbody = document.createElement( 'tbody' );
+					for ( var i = 1 ; i < playlist.length ; i++ ) {
+						var tr = document.createElement( 'tr' );
+						var td
+						
+						td = document.createElement ( 'td' );
+						td.appendChild ( document.createTextNode ( i ) );
+						tr.appendChild ( td );
+						
+						td = document.createElement ( 'td' );
+						td.appendChild ( document.createTextNode ( playlist [ i ].source ) );
+						tr.appendChild ( td );
+						
+						td = document.createElement ( 'td' );
+						td.appendChild ( document.createTextNode ( playlist [ i ].typ ) );
+						tr.appendChild ( td );
+						
+						tbody.appendChild ( tr );
+					};
+					table.appendChild ( tbody );
+					$( ".currentplaylist>table" ).remove ( );
+					bindBehaviors ( table );
+					$( ".currentplaylist" ).append ( table );
+				};
+				if ( playlists [ pl ].contents != null ) {
+					go ( playlists [ pl ].contents ); 
+				} else {
+					cmdstructure = new cmdtosend ( );
+					cmdstructure.addcmd ( paramsgetplaylistcontents ( pl , function ( data ) {
+						arrayplaylist ( data ); 
+						go ( playlists [ pl ].contents ); 
+					} ) );
+					cmdstructure.docmds ( );
+				};
+			};
 			var populatecurrentpl = function ( data ) {
+				softplaylist = data
+				
 				var a = $( ".selectplaylist" );
 				var li = a.parents ( "li" );
-				li.removeClass ( "liselected" );
-				a.each ( function ( ) { if  ( this.playlist == data ) { $( this ).parent ( "li" ).addClass ( "liselected" ); } } )
+				li.removeClass ( "liarrowed" );
+				a.each ( function ( ) { if  ( this.playlist == softplaylist ) { $( this ).parent ( "li" ).addClass ( "liarrowed" ); } } )
 			}
-			
-			var cmds	= [ ]
-			var funcs = [ ]
-			var addcmd = function ( obj ) {
-				var l = cmds.length;
-				cmds [ l ] = obj [ 0 ];
-				funcs [ l ] = obj [ 1 ];
+			var changemainpl = function ( pl ) {
+				viewplaylist = pl;
+				populateplaylist ( pl );
+			}
+			function cmdtosend ( ) { 
+				this.cmds = [ ];
+				this.funcs = [ ];
 			};
-			
-			addcmd ( paramsgetplaylists ( populateplaylists ) );
-			addcmd ( paramsgetvar ( "softqueuepl" , populatecurrentpl ) );
-			
-			var docmds = function ( ) {
+			cmdtosend.prototype.addcmd = function ( obj ) {
+				var l = this.cmds.length;
+				this.cmds [ l ] = obj [ 0 ];
+				this.funcs [ l ] = obj [ 1 ];
+			};
+			cmdtosend.prototype.docmds = function ( ) {
+				var cmds = this.cmds;
+				var funcs = this.funcs;
 				var func = function ( data ) {
-				for ( i = 0 ; i < funcs.length ; i++ ) {
-						funcs [ i ] ( data [ i ] );
+					for ( var i = 0 ; i < cmds.length ; i++ ) {
+						if  ( funcs [ i ] ) { funcs [ i ] ( data [ i ] ); }
 					};
 				};
 				sendCmd ( cmds , func );
-				
-				//cmds = [ ];
-				//funcs = [ ];
+
+				this.cmds = [ ];
+				this.funcs = [ ];
 			};
 			
-			docmds ( );
+			cmdstructure = new cmdtosend ( );
+			cmdstructure.addcmd ( paramsgetvar ( "softqueuepl" , function ( data ) { populatecurrentpl ( data ); viewplaylist = softplaylist;  } ) );
+			cmdstructure.addcmd ( paramsgetplaylists ( populateplaylists ) );
+			cmdstructure.docmds ( );
 
+			updateall = function ( ) {
+				cmdstructure = new cmdtosend ( );
+				cmdstructure.addcmd ( paramsgetvar ( "softqueuepl" , populatecurrentpl ) );
+				cmdstructure.addcmd ( paramsgetplaylists ( populateplaylists ) );
+				cmdstructure.docmds ( );
+			}
+			
 			bindBehaviors = function ( scope ) {
 				$( ".previous" , scope ).click ( function ( event ) {
 					event.preventDefault ( );
-					var cmds = [ { cmd: "playback.previous"  , params : [ ] } ];
-					if ( state == "playing" ) {
-						cmds [ cmds.length ] = { cmd: "playback.play" };
-					}
-					sendCmd ( cmds , function ( data ) { if  ( data [ 0 ] [ 0 ] == true ) {
+					var cmdstructure = new cmdtosend ( );
+					cmdstructure.addcmd ( [ { cmd: "playback.previous"  , params : [ ] } , function ( data ) { if  ( data [ 0 ] != false ) {
 							//Command Successful
-						} else if  ( data [ 0 ] ) {
-							alert ( "pcall failed: " + data [ 0 ] [ 1 ] );
 						} else {
-							alert ( "bad response - not a json array" )
-						}
-					} );
+							alert ( "pcall failed: " + data [ 0 ] [ 1 ] );
+						} 
+					} ] );
+					if ( state == "playing" ) {
+						cmdstructure.addcmd ( [ { cmd: "playback.play" } ] );
+					}					
+					cmdstructure.docmds ( );
 				} );
 				$( ".stop" , scope ).click ( function ( event ) {
 					event.preventDefault ( );
-					sendCmd ( [ { cmd: "playback.stop"  , params : [ ] } ] , function ( data ) { if  ( data [ 0 ] [ 0 ] == true ) {
+					var cmdstructure = new cmdtosend ( );
+					cmdstructure.addcmd ( [ { cmd: "playback.stop"  , params : [ ] } , function ( data ) { if  ( data [ 0 ] != false ) {
 							//Command Successful
 							state = "stopped";
-						} else if  ( data [ 0 ] ) {
-							alert ( "pcall failed: " + data [ 0 ] [ 1 ] );
 						} else {
-							alert ( "bad response - not a json array" )
-						}
-					} );
+							alert ( "pcall failed: " + data [ 0 ] [ 1 ] );
+						} 
+					} ] );
+					cmdstructure.docmds ( );
 				} );
 				$( ".play" , scope ).click ( function ( event ) {
 					event.preventDefault ( );
-					sendCmd ( [ { cmd: "playback.play"  , params : [ ] } ] , function ( data ) { if  ( data [ 0 ] [ 0 ] == true ) {
+					var cmdstructure = new cmdtosend ( );
+					cmdstructure.addcmd ( [ { cmd: "playback.play"  , params : [ ] } , function ( data ) { if  ( data [ 0 ] != false ) {
 							//Command Successful
 							state = "playing";
-						} else if  ( data [ 0 ] ) {
-							alert ( "pcall failed: " + data [ 0 ] [ 1 ] );
 						} else {
-							alert ( "bad response - not a json array" )
-						}
-					} );
+							alert ( "pcall failed: " + data [ 0 ] [ 1 ] );
+						} 
+					} ] );
+					cmdstructure.docmds ( );
 				} );
 				$( ".pause" , scope ).click ( function ( event ) {
 					event.preventDefault ( );
 					if ( state == "paused" ) {
-						sendCmd ( [ { cmd: "playback.unpause"  , params : [ ] } ] , function ( data ) { if  ( data [ 0 ] [ 0 ] == true ) {
+						var cmdstructure = new cmdtosend ( );
+						cmdstructure.addcmd ( [ { cmd: "playback.unpause"  , params : [ ] } , function ( data ) { if  ( data [ 0 ] != false ) {
 								//Command Successful
 								state = "playing";
-							} else if  ( data [ 0 ] ) {
-								alert ( "pcall failed: " + data [ 0 ] [ 1 ] );
 							} else {
-								alert ( "bad response - not a json array" )
-							}
-						} );
+								alert ( "pcall failed: " + data [ 0 ] [ 1 ] );
+							} 
+						} ] );
+						cmdstructure.docmds ( );
 					} else if  ( state == "playing" ) {
-						sendCmd ( [ { cmd: "playback.pause"  , params : [ ] } ] , function ( data ) { if  ( data [ 0 ] [ 0 ] == true ) {
+						var cmdstructure = new cmdtosend ( );
+						cmdstructure.addcmd ( [ { cmd: "playback.pause"  , params : [ ] } , function ( data ) { if  ( data [ 0 ] != false ) {
 								//Command Successful
 								state = "paused";
-							} else if  ( data [ 0 ] ) {
-								alert ( "pcall failed: " + data [ 0 ] [ 1 ] );
 							} else {
-								alert ( "bad response - not a json array" )
-							}
-						} );				
+								alert ( "pcall failed: " + data [ 0 ] [ 1 ] );
+							} 
+						} ] );
+						cmdstructure.docmds ( );			
 					}
 				} );
 				$( ".next" , scope ).click ( function ( event ) {
 					event.preventDefault ( );
-					var cmds = [ { cmd: "playback.next"  , params : [ ] } ];
-					if ( state == "playing" ) {
-						cmds [ cmds.length ] = { cmd: "playback.play" };
-					}
-					sendCmd ( cmds , function ( data ) { if  ( data [ 0 ] [ 0 ] == true ) {
+					var cmdstructure = new cmdtosend ( );
+					cmdstructure.addcmd ( [ { cmd: "playback.next"  , params : [ ] } , function ( data ) { if  ( data [ 0 ] != false ) {
 							//Command Successful
-						} else if  ( data [ 0 ] ) {
-							alert ( "pcall failed: " + data [ 0 ] [ 1 ] );
 						} else {
-							alert ( "bad response - not a json array" )
-						}
-					} );
+							alert ( "pcall failed: " + data [ 0 ] [ 1 ] );
+						} 
+					} ] );
+					if ( state == "playing" ) {
+						cmdstructure.addcmd ( [ { cmd: "playback.play" } ] );
+					}					
+					cmdstructure.docmds ( );
 				} );			
 				$( ".seekbar" , scope ).slider( { start: function ( event , ui ) {
 						seekbarold = ui.value;
 					}, change: function ( event , ui ) {
-						event.stopPropagation( ); 
-						sendCmd ( [ { cmd: "playback.seek"  , params : [ ui.value ] } ] , function ( data ) { 
-							if  ( data [ 1 ] == true ) {
-								$(".seekbar").slider ( "moveTo" , ui.value );
+						var cmdstructure = new cmdtosend ( );
+						cmdstructure.addcmd ( [ { cmd: "playback.seek"  , params : [ ui.value ] } , function ( data ) { if  ( data [ 0 ] != false ) {
+								//Command Successful
+								if  ( data [ 1 ] == true ) {
+									$(".seekbar").slider ( "moveTo" , ui.value );
+								}
 							} else {
-							} 
-							$(".seekbar").slider ( "moveTo" , seekbarold ); // Move back to where it started until callback comes.
-							return false ;
-						} );
+								alert ( "pcall failed: " + data [ 0 ] [ 1 ] );
+							}
+						} ] );
+						$(".seekbar").slider ( "moveTo" , seekbarold ); // Move back to where it started until callback comes.
+						cmdstructure.docmds ( );
 					}, max: 354
 				} );
 				$( ".selectplaylist" , scope ).click ( function ( event ) {
@@ -203,23 +308,40 @@
 						
 						var pl = event.target.playlist ;
 						// Change main playlist
-						
+						changemainpl ( pl )
 					} else { // Double Click
+						event.target.clickedrecently = false;
+						
 						var pl = event.target.playlist ;
 						// Set soft queue to double clicked playlist
-						sendCmd ( [ { cmd: "core.setsoftqueueplaylist"  , params : [ pl ] } ] , function ( data ) { if  ( data [ 0 ] [ 0 ] == true ) {
+						var cmdstructure = new cmdtosend ( );
+						cmdstructure.addcmd ( [ { cmd: "core.setsoftqueueplaylist"  , params : [ pl ] } , function ( data ) { if  ( data [ 0 ] != false ) {
 								//Command Successful
-								getvar ( "softqueuepl" , populatecurrentpl ( ) );
-							} else if  ( data [ 0 ] ) {
-								alert ( "pcall failed: " + data [ 0 ] [ 1 ] );
 							} else {
-								alert ( "bad response - not a json array" )
-							}
-						} );
+								alert ( "pcall failed: " + data [ 0 ] [ 1 ] );
+							} 
+						} ] );
+						cmdstructure.addcmd ( paramsgetvar ( "softqueuepl" , populatecurrentpl ) );
+						cmdstructure.docmds ( );
 					}
-				} );				
+				} );
+				$( ".randomise" , scope ).click ( function ( event ) {
+					event.preventDefault ( );
+					var pl = viewplaylist;
+					var cmdstructure = new cmdtosend ( );
+					cmdstructure.addcmd ( [ { cmd: "core.playlist.randomise"  , params : [ pl ] } , function ( data ) { if  ( data [ 0 ] != false ) {
+							//Command Successful
+							playlists [ pl ].contents = null;
+							populateplaylist ( pl );
+						} else {
+							alert ( "pcall failed: " + data [ 0 ] [ 1 ] );
+						} 
+					} ] );
+					cmdstructure.docmds ( );
+				} );
 			}
 			bindBehaviors ( this );
+			ua = setInterval ( "updateall()" , 5000 );
 		} );
 	</script>
 	<style>
@@ -246,6 +368,9 @@
 			background-color: #5080EE;
 			color: #FFF;
 		}
+		.liarrowed > a:before {
+			content: "--> ";
+		}
 		.center {
 			margin-left: auto;
 			margin-right: auto;
@@ -258,51 +383,75 @@
 		}
 		div.toolbar {
 			display: block;
+			clear: both;
 			margin: 5px;
-			vertical-align: middle;
+			width: 100%;
 		}
-		.top {
-			margin: 0 10px 10px 10px;
-			padding: 10px 10px 5px 10px;
+		.toolbar > * {
 			display: inline-block;
-			border-top: 1px solid #000000;
+		}
+		.seperator {
+			border: 1px solid #666;
+			margin: 0px 3px;
+			min-height: 16px;
+			display: inline-block;
+		}
+		.medium > .seperator {
+			min-height: 32px;
+		}
+		.large > .seperator {
+			min-height: 64px;
+		}
+		.verticaldivide {
+			position: relative;
+			display: inline-block;
+		}
+		.horizontaldivide {
+			position: relative;
+			display: inline-block;
+			white-space: nowrap;
+		}
+		.border {
+			border-top: 3px solid #000000;
 			border-left: 3px solid #000000;
 			border-bottom: 3px solid #000000;
 			border-right: 3px solid #000000;
+		}
+		.top {
+			margin-top: 0px;
+			padding: 10px 10px 5px 10px;
+			border-top: 1px solid #000000;
 			-moz-border-radius-bottomleft: 40px;
 			-moz-border-radius-bottomright: 40px;
 		}
+		.top .border {
+			border-top: 1px solid #000000;
+		}
 		.left {
-			margin: 10px 10px 10px 0px;
+			float: left;
+			margin-left: 0px;
 			padding: 15px 10px 15px 5px;
-			display: inline-block;
-			border-top: 3px solid #000000;
-			border-left: 1px solid #000000;
-			border-bottom: 3px solid #000000;
-			border-right: 3px solid #000000;
 			-moz-border-radius-topright: 40px;
 			-moz-border-radius-bottomright: 40px;
-			float: left;
 		}
-		.main {
-			margin: 10px 10px 10px 10px;
-			padding: 15px 15px 15px 15px;
-			display: inline-block;
-			border-top: 3px solid #000000;
-			border-left: 3px solid #000000;
-			border-bottom: 3px solid #000000;
-			border-right: 3px solid #000000;
+		.left .border {
+			border-left: 1px solid #000000;
 		}
-		.imgbutton {
+		.medium > .imgbutton {
+			width: 32px;
+			height: 32px;
+			padding-top: 1px;
+		}
+		.large > .imgbutton  {
 			width: 64px;
 			height: 64px;
-			margin-top: 1px;
+			padding-top: 1px;
 		}
 		.imgbutton > img {
 			border: none;
 		}
 		.imgbutton:hover {
-			margin-top: 0;
+			padding-top: 0;
 			border-bottom: 1px solid #CCC;
 		}
 		.seekbar {
@@ -316,33 +465,72 @@
 			border: 1px solid #000
 		}
 		.playlistlist > ul > li > a {
+			font-family: Georgia;
+			font-size: 10pt;
 			text-decoration: none;
 			display: block;
 			width: 200px;
 		}
+		.currentplaylist {
+			overflow-x: auto;
+		}
+		.currentplaylist > table > tbody {
+			overflow-y: auto;
+		}
+		.currentplaylist > table {
+			font-family: Georgia;
+			margin: 0;
+			font-size: 10pt;
+			text-align: left;
+		}
+		.currentplaylist > table thead tr th , .currentplaylist > table tfoot tr th {
+			background-color: #e6EEEE;
+			border: 1px solid #FFF;
+			font-size: 10pt;
+			padding: 4px;
+		}
+		.currentplaylist > table td {
+			padding: 0px 2px;
+			white-space: nowrap;
+		}
 	</style>
 </head>
 <body>
-	<div class='utils'>
+	<div class='left utils'>
+		<a href="/BasicCMD?cmd=demo">Add shit</a>
+	</div>
 	<div class='center'>
-		<div class='top center'>
-			<div class='toolbar'>
+		<div class='top center verticaldivide border'>
+			<div class='toolbar large'>
 				<a class='imgbutton previous' href="/BasicCMD?cmd=playback.prv"><img src="images/media-skip-backward-64.png" alt="&lt;&lt;|" title="Previous" /></a>
 				<a class='imgbutton stop' href="/BasicCMD?cmd=playback.stop"><img src="images/media-playback-stop-64.png" alt="[]" title="Stop" /></a>
 				<a class='imgbutton play' href="/BasicCMD?cmd=playback.play"><img src="images/media-playback-start-64.png" alt="|&gt;" title="Play" /></a>
 				<a class='imgbutton pause' href="/BasicCMD?cmd=playback.pause"><img src="images/media-playback-pause-64.png" alt="||" title="Pause" /></a>
 				<a class='imgbutton next' href="/BasicCMD?cmd=playback.nxt"><img src="images/media-skip-forward-64.png" alt="|&gt;&gt;" title="Next" /></a>
 			</div>
-			<div class="toolbar">Time Played<div class='seekbar'></div>Total Time</div>
+			<div class="toolbar"><span>Time Played</span><div class='seekbar'></div><span>Total Time</span></div>
 		</div>
 	</div>
-	<div class='left'>
-		<div class='searchbar'>Searchbar</div>
-		<hr>
-		<div class='playlistlist'>Select a playlist:</div>
-	</div>
-	<div class="main">
-		<div><a >WEEE</a></div>
+	<div class="horizontaldivide">
+		<div class='left verticaldivide border'>
+			<div class='searchbar'>Searchbar</div>
+			<hr>
+			<div class='playlistlist'>Select a playlist:</div>
+		</div>
+		<div class="verticaldivide border">
+			<div class="toolbar medium">
+				<a class='imgbutton' href="#"><img src="images/folder-open-32.png" alt="+Fo" title="Add Folder" /></a>
+				<a class='imgbutton' href="#"><img src="images/list-add-32.png" alt="+Fi" title="Add File" /></a>
+				<span class="seperator"></span>
+				<a class='imgbutton randomise' href="#"><img src="images/view-refresh-32.png" alt="Randomise" title="Randomise (Shuffles active playlist)" /></a>
+			</div>
+			<div class="currentplaylist"></div>
+			<div class="horizontaldivide">
+				<div class="albumart"></div>
+				<div class="queue"></div>
+				<div class="eq"></div>
+			</div>
+		</div>
 	</div>
 </body>
 </html>

@@ -132,7 +132,7 @@ local function httpsend ( skt , requestdetails , responsedetails )
 							vary = vary .. ',' .. 'accept-encoding'
 						end
 						sheaders [ "vary" ] = vary
-						sheaders [ "Content-Encoding" ] = "gzip"
+						sheaders [ "content-encoding" ] = "gzip"
 						body = zbody
 					end
 				end
@@ -187,9 +187,13 @@ local function httpsend ( skt , requestdetails , responsedetails )
 	
 	local bytessent , err = copas.send ( skt , message )
 	
-	-- Apache Log Format
-	local apachelog = string.format ( '%s - - [%s] "GET %s HTTP/%s.%s" %s %s "%s" "%s"' , requestdetails.peer , os.date ( "!%m/%b/%Y:%H:%M:%S GMT" ) , requestdetails.Path , requestdetails.Major , requestdetails.Minor , status , bytessent , ( requestdetails.headers [ "referer" ] or "-" ) , ( requestdetails.headers[ "agent" ] or "-" ) )
-	print ( apachelog )
+	if not bytessent then
+		print ( err , requestdetails.body , message )
+	else
+		-- Apache Log Format
+		local apachelog = string.format ( '%s - - [%s] "GET %s HTTP/%s.%s" %s %s "%s" "%s"' , requestdetails.peer , os.date ( "!%m/%b/%Y:%H:%M:%S GMT" ) , requestdetails.Path , requestdetails.Major , requestdetails.Minor , status , bytessent , ( requestdetails.headers [ "referer" ] or "-" ) , ( requestdetails.headers[ "agent" ] or "-" ) )
+		print ( apachelog )
+	end
 		
 	return status , reasonphrase , bytessent
 end
@@ -199,7 +203,7 @@ local function dispatch ( baseenv , name )
 	local func = baseenv
 	for k in string.gmatch ( name , "(%w+)%." ) do
 		func = func [ k ]
-		if type ( func [ k ] ) ~= "table" then return false end
+		if type ( func ) ~= "table" then return false end
 	end
 	func = func [ select ( 3 , string.find ( name , "([^%.]+)$" ) ) ]
 	

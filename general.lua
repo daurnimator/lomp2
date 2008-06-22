@@ -56,6 +56,31 @@ function table.randomize ( tbl , n , count )
 	return true , tbl
 end
 
+-- Sort a table stabily
+function table.stablesort ( a , equalitycheck , func )
+	equalitycheck = equalitycheck or function ( e1 , e2 ) if e1 < e2 then return true else return false end end
+	func = func or function ( ) end
+	
+	local n = #a
+	local index = { }
+	for i = 1 , n do index [ i ] = i end
+
+	local function stable_lt ( i , j )
+		local ai , aj = a [ i ], a [ j ]
+		if equalitycheck ( ai , aj ) then return true end
+		if equalitycheck ( aj , ai ) then return false end
+		return i < j
+	end
+	table.sort ( index , stable_lt )
+
+	for i = 1 , n do index [ i ] = a [ index [ i ] ] end
+	for i = 1 , n do 
+		a [ i ] = index [ i ] 
+		func ( a [ i ] )
+	end
+end
+
+-- Returns a copy of tbl
 function table.copy ( tbl )
 	local t = { }
 	for k , v in pairs ( tbl ) do
