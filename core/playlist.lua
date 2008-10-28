@@ -69,3 +69,32 @@ function randomise ( pl )
 	updatelog ( "Randomised playlist #" .. pl .. " (" .. vars.pl [ pl ].name .. ")" , 4 )
 	return pl
 end
+function sort ( pl , reverse , field , subfield )
+	if type ( pl ) == "string" then pl = table.valuetoindex ( vars.pl , "name" , pl ) end
+	if type ( pl ) ~= "number" or pl < 0 or pl > #vars.pl then 
+		return ferror ( "'Sort playlist' called with invalid playlist" , 1 ) 
+	end
+
+	if type ( field ) ~= "string" then return ferror ( "'Sort playlist' called with invalid field" , 1 ) end
+	if subfield and type ( subfield ) ~= "string" then return ferror ( "'Sort playlist' called with invalid subfield" , 1 ) end
+	
+	local function eq ( e1 , e2 )
+		e1 = e1.details [ field ]
+		e2 = e2.details [ field ]
+		if subfield then
+			e1 = e1 [ subfield ]
+			e2 = e2 [ subfield ]
+		end
+		
+		if not reverse then
+			if e1 < e2 then return true else return false end
+		else
+			if e1 > e2 then return true else return false end
+		end
+	end
+	table.stablesort ( vars.pl [ pl ] , eq )
+	vars.pl [ pl ].revision = vars.pl [ pl ].revision + 1
+	
+	updatelog ( "Sorted playlist #" .. pl .. " (" .. vars.pl [ pl ].name .. ")" , 4 )
+	return pl
+end

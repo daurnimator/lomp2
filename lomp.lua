@@ -29,7 +29,7 @@ do
 	print ( str )
 
 	-- Load Configuration
-	require("config")
+	require("core.config")
 
 	-- Log File Stuff
 	local file , err = io.open ( config.logfile , "w+" )
@@ -72,8 +72,10 @@ end
 
 require "general"
 require "lomp-core"
-require "playback"
-require "server"
+
+require "modules.tags"
+require "modules.server"
+require "modules.albumart"
 
 steps = { }
 function addstep ( func )
@@ -96,7 +98,7 @@ end
 
 updatelog ( "Loading plugins." , 3 )
 for i , v in ipairs ( config.plugins ) do
-	local name = dofile ( v ) or v
+	local name = dofile ( "plugins/" .. v .. "/" .. v .. ".lua" ) or v
 	updatelog ( "Loaded plugin '" .. name .. "'" , 3 )
 end
 updatelog ( "All Plugins Loaded" , 3 )

@@ -24,7 +24,7 @@ config = {
 }
 
 -- Load config
-local compiledchunk = loadfile ( "config" )
+local compiledchunk = loadfile ( "config" ) -- path from pwd
 setfenv ( compiledchunk , config )
 
 module ( "config" )
@@ -44,6 +44,11 @@ end
 if type ( statefile ) ~= "string" then 
 	warn ( 'Invalid or no statefile path defined, using "~/.lomp/lomp.state"' )
 	statefile = "~/.lomp/lomp.state"
+end
+
+if type ( tagcachefile ) ~= "string" then 
+	warn ( 'Invalid or no tagcachefile path defined, using "~/.lomp/lomp.tagcache"' )
+	tagcachefile = "~/.lomp/lomp.tagcache"
 end
 
 if type ( history ) ~= "number" or history <=0 then 
@@ -87,10 +92,24 @@ if type ( plugins ) ~= "table" then
 	plugins = { }
 end
 
+if type ( savetagedits ) ~= "boolean" then
+	warn ( 'savetagedits not a valid boolean value, defaulting to false' )
+	savetagedits = false
+end
+
+if type ( tagpatterns ) ~= "table" then
+	warn ( 'tagpatterns is not a valid table, no patterns found' )
+	tagpatterns = { }
+else
+	tagpatterns.default = tagpatterns [ tagpatterndefault ]
+end
+
+
 if type ( banextensions ) ~= "table" then 
 	banextensions = { } 
 end
 
 if type ( sortcaseinsensitive ) ~= "boolean" then 
+	warn ( 'sortcaseinsensitive not a valid boolean value, defaulting to true' )
 	sortcaseinsensitive = true 
 end

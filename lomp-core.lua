@@ -12,12 +12,8 @@
 require "general"
 require "player"
 
-pcall ( require , "luarocks.require" )
-require "lfs"
-
-
 module ( "lomp" , package.seeall )
-print = print
+
 local t = os.time ( )
 core = { 
 	_NAME = "LOMP" , 
@@ -48,23 +44,26 @@ vars = {
 }
 
 function core.quit ( )
+	if tags.savecache then
+		local ok , err = tags.savecache ( )
+	end
 	if core.savestate then 
 		local ok , err = core.savestate ( )
 	end
 	local ok = player.stop ( )
 	
+	updatelog ( "Quiting by request" , 4 )
+	
 	os.exit ( )
 end
 
+require "core.playback"
 require "core.savestate"
 require "core.playlist"
-require "core.entries"
+require "core.item"
 
-function core.addfile ( path , pl , pos )
-	-- Check path exists
-	if type ( path ) ~= "string" then return ferror ( "'Add file' called with invalid path" , 1 ) end
-	
-	local _ , _ , extension = string.find ( path , ".+%.(.-)$" )
+function core.checkfileaccepted ( filename )
+	local _ , _ , extension = string.find ( filename , "%.?([^%./]+)$" )
 	extension = string.lower ( extension )
 	
 	local accepted = false
@@ -73,59 +72,28 @@ function core.addfile ( path , pl , pos )
 	end
 	if accepted == true then 
 		for i , v in ipairs ( config.banextensions ) do
-			if extension == v then return ferror ( "Banned file extension attempted to be added: " .. extension , 2 ) end
+			local found = string.find ( extension , v )
+			if found then return false , ( "Banned file extension (" .. extension .. "): " .. filename )  end
 		end
-	else	return ferror ( "Attempt to add invalid file type (" .. extension .. "): " .. path , 2 )
+	else	return false, ( "Invalid file type (" .. extension .. "): " .. filename )
 	end
-	
-	local o = { typ = "file" , source = path }
-	
-	return core.addentry ( o , pl , pos )
+	return true
 end
+
+--[[
 function core.addstream ( url , pl , pos )
 	-- Check url is valid
+	-- TODO: additional testing
 	if type ( url ) ~= "string" then return ferror ( "'Add stream' called with invalid url" , 1 ) end
 	
 	local o = { typ = "stream" , source = url }
 	
-	return core.addentry ( o , pl , pos )
-end
-function core.addfolder ( path , pl , pos , recurse )
-	-- Check path exists
-	if type ( path ) ~= "string" then return ferror ( "'Add folder' called with invalid path" , 1 ) end
-	if string.sub ( path , -1) == "/" then path = string.sub ( path , 1 , ( string.len( path ) - 1 ) ) end -- Remove trailing slash if needed
-	
-	if type ( pl ) == "string" then pl = table.valuetoindex ( vars.pl , "name" , pl ) end
-	if type ( pl ) ~= "number" or pl < 0 or pl > #vars.pl then return ferror ( "'Add folder' called with invalid playlist" , 1 ) end
-	if type ( pos ) ~= "number" then pos = nil end
-	
-	local dircontents = { }
-	for entry in lfs.dir ( path ) do
-		local fullpath = path .. "/" .. entry
-		local mode = lfs.attributes ( fullpath , "mode" )
-		if mode == "file" then
-			dircontents [ #dircontents + 1 ] = fullpath
-		elseif mode == "directory" then
-			if recurse then core.addfolder ( fullpath , pl , true , true ) end
-		end
-	end
-	if config.sortcaseinsensitive then table.sort ( dircontents , function ( a , b ) if string.lower ( a ) < string.lower ( b ) then return true end end ) end-- Put in alphabetical order of path (case insensitive) 
-	local firstpos = nil
-	for i , v in ipairs ( dircontents ) do
-		local a , b = core.addfile ( v , pl , pos )
-		if a then --If not failed
-			pl , pos = a , ( b + 1 ) -- Increment playlist position
-			firstpos = firstpos or b
-		end -- keep going (even after a failure)
-	end
-	
-	return pl , firstpos , dircontents
-end
-
+	return core.item.additem ( o , pl , pos )
+end--]]
 
 -- Queue Stuff  
 vars.queue = setmetatable ( vars.hardqueue , {
-	__index = function( t , k )
+	__index = function ( t , k )
 		if type ( k ) ~= "number" then return nil end
 		local o
 		if k >= 1 and k <= #vars.hardqueue then
@@ -139,10 +107,10 @@ vars.queue = setmetatable ( vars.hardqueue , {
 				if insoft > softqueuelen and vars.loop and ( insoft - softqueuelen ) < vars.ploffset then
 					insoft = insoft - softqueuelen
 				end
-				o = vars.pl [ vars.softqueuepl ] [ insoft ] -- This could be a song OR nil
+				o = vars.pl [ vars.softqueuepl ] [ insoft ] -- This could be an item OR nil
 			end
 		end
-		if o then return { o = o } else return nil end
+		return o
 	end,
 })
 function core.clearhardqueue ( )
@@ -173,23 +141,26 @@ function core.clearhistory ( )
 	return true
 end
 function core.removefromhistory ( pos )
+	if pos > #vars.played then return ferror ( "Invalid history item." , 1 ) end
+	
 	table.remove ( vars.played , pos )
+	
 	vars.played.revision = vars.played.revision + 1
 	return true
 end
 
 -- Misc Helper Functions
-function core.refreshlibrary ( )
+function core.reloadlibrary ( )
 	core.playlist.clear ( 0 )
 	for i , v in ipairs ( config.library ) do
-		core.addfolder ( v , 0 )
+		core.localfileio.addfolder ( v , 0 )
 	end
 end
 function core.enablelooping ( )
 	vars.loop = true
-	return true
+	return true , vars.loop
 end
 function core.disablelooping ( )
 	vars.loop = false
-	return true
+	return true , vars.loop
 end

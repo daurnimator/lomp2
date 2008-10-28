@@ -11,50 +11,51 @@
 
 require "general"
 
-module ( "lomp.core" , package.see ( lomp ) )
+module ( "lomp" , package.seeall )
 
 function core.savestate ( )
 	local s = core._NAME .. "\t" .. core._VERSION .. " State File.\tCreated: " .. os.date ( ) .. "\n"
-	s = s .. "rpt = " .. tostring ( vars.rpt ) .. ";\n"
-	s = s .. "loop = " .. tostring ( vars.loop ) .. ";\n"
+	s = s .. "vars = {\n"
+	s = s .. "\trpt = " .. tostring ( vars.rpt ) .. ";\n"
+	s = s .. "\tloop = " .. tostring ( vars.loop ) .. ";\n"
 	-- Queue
-	s = s .. "softqueuepl = " .. vars.softqueuepl .. ";\n"
-	s = s .. "ploffset = " .. vars.ploffset .. ";\n"
-	s = s .. "hardqueue = {\n"
-	for i = 1 , ( #vars.hardqueue ) do -- Not current song
-		s = s .. "\t{typ = '" .. vars.hardqueue [ i ].typ .. "';source = '" .. vars.hardqueue [ i ].source .. "'};\n"
+	s = s .. "\tsoftqueuepl = " .. vars.softqueuepl .. ";\n"
+	s = s .. "\tploffset = " .. vars.ploffset .. ";\n"
+	s = s .. "\thardqueue = {\n"
+	if vars.hardqueue [ 0 ] then s = s .. '\t\t[0] = core.item.create("' .. string.format ( '%q' , vars.hardqueue [ 0 ].typ ) .. '",' .. string.format ( '%q' , vars.hardqueue [ 0 ].source ) .. '") ;\n' end
+	for i = 1 , ( #vars.hardqueue ) do
+		s = s .. '\t\tcore.item.create(' .. string.format ( '%q' , vars.hardqueue [ i ].typ ) .. '","' .. string.format ( '%q' , vars.hardqueue [ i ].source ) .. '") ;\n'
 	end
-	s = s .. "};\n"
+	s = s .. "\t};\n"
 	
 	-- Playlists
-	s = s .. "pl = {\n"
+	s = s .. "\tpl = {\n"
 	for i = 0 , #vars.pl do
-		s = s .. "\t[" .. i .. "] = { revision = 0 ; name = '" .. vars.pl [ i ].name .. "';\n"
+		s = s .. "\t\t[" .. i .. "]={ revision = 0 ; name = " .. string.format ( '%q' , vars.pl [ i ].name ) .. ';\n'
 		for j , entry in ipairs ( vars.pl [ i ] ) do
-			s = s .. "\t\t{typ = '" .. entry.typ .. "';source = '" .. entry.source .. "'};\n"
+			s = s .. '\t\t\tcore.item.create(' .. string.format ( '%q' , entry.typ ) .. ',' .. string.format ( '%q' , entry.source ) .. ') ;\n'
 		end
-		s = s .. "\t};\n"
+		s = s .. '\t\t};\n'
 	end
-	s = s .. "};\n"
+	s = s .. '\t};\n'
 	
 	-- History (played)
-	s = s .. "played = {\n"
+	s = s .. "\tplayed = {\n"
 	local n
 	if #vars.played > config.history then n = config.history else n = #vars.played end
 	for i = 1 , n do
-		s = s .. "\t{typ = '" .. vars.played [ i ].typ .. "';source = '" .. vars.played [ i ].source .. "'};\n"
+		s = s .. '\t\tcore.item.create(' .. string.format ( '%q' , vars.played [ i ].typ ) .. '","' .. string.format ( '%q' , vars.played [ i ].source ) .. '") ;\n'
 	end
-	s = s .. "};\n"
+	s = s .. "\t};\n"
 	
-	--- Tag lib?
+	s = s .. "};\n"
 	
 	-- Plugin specified things??
 	
 	
 	local file, err = io.open( config.statefile , "w+" )
 	if err then 
-		updatelog ( "Could not open state file: '" .. err , 2 ) 
-		return false , "Could not open state file: '" .. err
+		return ferror ( "Could not open state file: '" .. err , 2 ) 
 	end
 	file:write ( s )
 	file:flush ( )
@@ -70,8 +71,7 @@ function core.restorestate ( )
 	if file then -- Restoring State.
 		local v = file:read ( )
 		if not v then
-			updatelog ( "Invalid state file" , 1 )
-			return false , "Invalid state file"
+			return ferror ( "Invalid state file" , 1 )
 		end 
 		local _ , _ , program , major , minor , inc = string.find ( v , "^([^%s]+)%s+(%d+)%.(%d+)%.(%d+)" )
 		if type ( program ) == "string" and program == "LOMP" and tonumber ( major ) <= core._MAJ and tonumber ( minor ) <= core._MIN and tonumber ( inc ) <= core._INC then
@@ -79,21 +79,18 @@ function core.restorestate ( )
 			file:close ( )
 			local f , err = loadstring ( s , "Saved State" )
 			if not f then
-				updatelog ( "Could not load state file: " .. err , 1 )
-				return false , "Could not load state file: " .. err
+				return ferror ( "Could not load state file: " .. err , 1 )
 			end
-			local t = { }
+			local t = { core = core } -- To make functions available - security issues?
 			setfenv ( f , t )
 			f ( )
-			table.inherit ( vars , t , true )
+			table.inherit ( _M , t , true )
 		else
 			file:close ( )
-			updatelog ( "Invalid state file" , 1 )
-			return false , "Invalid state file"
+			return ferror ( "Invalid state file" , 1 )
 		end
 	else
-		updatelog ( "Could not find state file: '" .. err .. "'" , 2 )
-		return false , "Could not find state file: '" .. err .. "'"
+		return ferror ( "Could not find state file: '" .. err .. "'" , 2 )
 	end
 	return true
 end

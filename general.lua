@@ -57,6 +57,8 @@ function table.randomize ( tbl , n , count )
 end
 
 -- Sort a table stabily
+ -- a is table to sort
+ -- func is a function to run on each element after it's sorted.
 function table.stablesort ( a , equalitycheck , func )
 	equalitycheck = equalitycheck or function ( e1 , e2 ) if e1 < e2 then return true else return false end end
 	func = func or function ( ) end
@@ -91,6 +93,7 @@ end
 
 -- Copy tbl2's values into tbl1 where the matching tbl1 key (or index) doesn't exist
 function table.inherit ( tbl1 , tbl2 , overwrite )
+	if tbl1 == tbl2 then return tbl1 end
 	local t
 	if overwrite then t = tbl1 else t = table.copy ( tbl1 ) end
 	for k , v in pairs ( tbl2 ) do

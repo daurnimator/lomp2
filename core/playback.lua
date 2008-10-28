@@ -11,81 +11,81 @@
 
 require "general"
 
-module ( "lomp" , package.seeall )
+module ( "lomp.core.playback" , package.see ( lomp ) )
 
 require "player"
 
-playback = { state = "stopped" }
+state = "stopped"
 
-function playback.play ( )
-	if state ~= "stopped" then playback.stop ( ) end -- Remove eventually??
+function play ( )
+	if state ~= "stopped" then stop ( ) end -- Remove eventually??
 	if not vars.queue [ 0 ] then 
-		local r = playback.forward ( ) 
+		local r = forward ( ) 
 		if not r then return false , "Nothing to play" end
 	end
 	
 	vars.queue [ 0 ].played = true
 	
-	local source = vars.queue [ 0 ].o.source
+	local source = vars.queue [ 0 ].source
 	local offset = vars.queue [ 0 ].offset
 	
 	player.play ( source , offset )
-	playback.state = "playing"
+	state = "playing"
 	
 	return true
 end
 
-function playback.stop ( )
+function stop ( )
 	player.stop ( )
-	playback.state = "stopped"
+	state = "stopped"
 	
 	return true
 end
-function playback.pause ( )
+function pause ( )
 	player.pause ( )
-	playback.state = "paused"
+	state = "paused"
 	
 	return true
 end
-function playback.unpause ( )
+function unpause ( )
 	player.unpause ( )
-	playback.state = "playing"
+	state = "playing"
 	
 	return true
 end
 
-function playback.goto ( songnum )
+function goto ( songnum )
+	stop ( )
+	
 	if songnum == 0 then -- Stop?
 		
 	elseif songnum > 0 then
+		local r
 		for i = 1 , songnum do
-			local r = playback.forward ( )
+			r = forward ( )
 			if not r then break end
 		end
-		return true
+		return r
 	elseif songnum < 0 then
+		local r
 		for i = 1 , -songnum do
-			local r = playback.backward ( )
+			r = backward ( )
 			if not r then break end
 		end
-		return true
+		return r
 	end
 end
 
-function playback.previous ( )
-	return playback.goto ( -1 )
+function previous ( )
+	return goto ( -1 )
 end
 
-function playback.next ( )
-	return playback.goto ( 1 )
+function next ( )
+	return goto ( 1 )
 end
 
-function playback.forward ( ) -- Moves forward one song in the queue
-	if playback.state == "playing" then
-		player.changesong ( )
-	else
-		playback.stop ( )
-	end
+function forward ( ) -- Moves forward one song in the queue
+	local m -- More songs left?
 	if vars.queue [ 0 ] then
 		if vars.queue [ 0 ].played then
 			table.insert ( vars.played , 1 , vars.queue [ 0 ] ) -- Add current to played (history)
@@ -96,7 +96,7 @@ function playback.forward ( ) -- Moves forward one song in the queue
 		table.remove ( vars.hardqueue , 0 ) -- Shifts all elements down
 		
 		vars.hardqueue.revision = vars.hardqueue.revision + 1
-		return true
+		m = true
 	else
 		if vars.queue [ 1 ] then
 			vars.queue [ 0 ] = vars.queue [ 1 ]
@@ -109,14 +109,23 @@ function playback.forward ( ) -- Moves forward one song in the queue
 					
 				end
 			end
-			return true
+			m = true
 		else -- No more songs.
-			return false
+			m = false
 		end
 	end
+	if state == "playing" then
+		if m then 
+			vars.queue [ 0 ].played = true
+			player.changesong ( vars.queue [ 0 ].source ) 
+		end
+	else
+		stop ( ) -- Stop if in non-playing state (eg, paused)
+	end
+	if m then return true else return false end
 end
-function playback.backward ( ) -- Moves back one song from the history
-	playback.stop ( )
+function backward ( ) -- Moves back one song from the history
+	stop ( )
 	if vars.played [ 1 ] then
 		table.insert ( vars.queue , 0 , vars.played [ 1 ] ) -- Move most recent history to current, shifting current to hardqueue (and shifting any others up)
 		table.remove ( vars.played , 1 ) -- Shifts all elements down

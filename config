@@ -9,6 +9,11 @@ logfile = 			"lomp.log"
  -- Default to ~/.lomp/lomp.state
 statefile = 		"lomp.state"
 
+-- Location of tagcache file
+ -- Contains tag library
+ -- Default to ~/.lomp/lomp.tagcache
+tagcachefile =		"lomp.tagcache"
+
 -- Playback History
  -- How much history to remember
  -- Default to 200
@@ -20,7 +25,6 @@ history =			200
  -- eg: library = { "/media/music" , "/media/music2" }
 library = {		"/media/sdc1/Random Downloaded/" ,
 }
-
 
 
 -- Server Parameters
@@ -36,7 +40,7 @@ port = 			5667
  
  -- Authorisation
   -- Enable Auth? (Only http basic authentication at this point in time. Passwords will sent in plain text.)
-   -- As a secure alternative, run LOMP over stunnel ( http://stunnel.mirt.net/ )
+   -- As a secure alternative, run LOMP over some secure tunnel.
    -- Defaults to false
 authorisation =	true
    -- Username
@@ -51,15 +55,33 @@ password = 		"changeme"
 -- Plugins
  -- Additional plugins to use
  -- Seperate with commas.
- -- eg, plugins = { "awesome" , "cool" , }
-plugins = {		
+ -- eg, plugins = { "myawesomeplugin" , "coolplugin1234" , }
+plugins = {		"scrobbler"
 }
 
+-- Tagging
+ -- Save tag edits? (When a tag is changed, do we save the change to the file?)
+  -- Default to false
+savetagedits = true
+
+ -- Tag matching patterns
+  -- Let tags be guessed by file paths
+   -- Tags are surrounded by //
+   -- //_// is a junk operator
+   -- ? makes the preceding character optional
+tagpatterns = {
+	Basic = "//Artist// - //Title//" ,
+	Daurn = "//Album Artist//, //Album// ?{?//Release//}?/[//Track//] //Artist// - //Title//" ,
+	EAC = "//Artist// - //Album// (//Year//)//_/////Track// - //Title//" , 
+}
+  -- Default - must be the name of a pattern from above.
+tagpatterndefault = "EAC"
 
 -- Pedantics
- -- File extensions to add/allow
-banextensions = {	"wvc",
-				"m3u",
+ -- File extensions to ban
+  -- You can use lua patterns here. (eg, mp.* matches mp, mp2, mp3, mpd, mpz, ....)
+banextensions = {	"wvc" ,
+			"m3u" ,
 }
 
  -- When adding a folder, how do we sort? (by path)

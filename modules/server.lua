@@ -9,22 +9,23 @@
 	You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ]]
 
-pcall ( require , "luarocks.require" )
-
 require "general"
+
 module ( "lomp.server" , package.see ( lomp ) )
 
---server = {}
+pcall ( require , "luarocks.require" ) -- Activates luarocks if available.
 require "socket"
 require "socket.url"
 require "copas"
 require "mime" -- For base64 decoding of authorisation
 require "lfs"
 
+local apachelog = ""
+
 local mimetypes = { }
 do -- Load mime types
 	local f = io.open ( "/etc/mime.types" , "r" )
-	if f then
+	if f then -- On a unix based system, and mime types file available.
 		while true do
 			local line = f:read ( )
 			if not line then break end
@@ -36,7 +37,7 @@ do -- Load mime types
 			end
 		end
 		f:close ( )
-	else
+	else -- Else just load up some basic mime types
 		mimetypes [ "html" ] = "text/html"
 		mimetypes [ "htm" ] = "text/html"
 		mimetypes [ "css" ] = "text/css"
@@ -191,8 +192,8 @@ local function httpsend ( skt , requestdetails , responsedetails )
 		print ( err , requestdetails.body , message )
 	else
 		-- Apache Log Format
-		local apachelog = string.format ( '%s - - [%s] "GET %s HTTP/%s.%s" %s %s "%s" "%s"' , requestdetails.peer , os.date ( "!%m/%b/%Y:%H:%M:%S GMT" ) , requestdetails.Path , requestdetails.Major , requestdetails.Minor , status , bytessent , ( requestdetails.headers [ "referer" ] or "-" ) , ( requestdetails.headers[ "agent" ] or "-" ) )
-		print ( apachelog )
+		apachelog = apachelog .. string.format ( '%s - - [%s] "GET %s HTTP/%s.%s" %s %s "%s" "%s"' , requestdetails.peer , os.date ( "!%m/%b/%Y:%H:%M:%S GMT" ) , requestdetails.Path , requestdetails.Major , requestdetails.Minor , status , bytessent , ( requestdetails.headers [ "referer" ] or "-" ) , ( requestdetails.headers[ "agent" ] or "-" ) ) .. "\n"
+		--print ( "Apache Style Log: " .. apachelog )
 	end
 		
 	return status , reasonphrase , bytessent
@@ -243,8 +244,8 @@ local function xmlrpcserver ( skt , requestdetails )
 	if not authorised then
 		if typ == "basic" then
 			-- Send a xml fault document
-			updatelog ( "Unauthorised login blocked." , 2 )
-			httpsend ( skt , requestdetails , { status = 401 , headers = { [ 'WWW-Authenticate' ] = 'Basic realm=" ' .. core._NAME .. ' ' .. core._VERSION .. '"' ; [ 'content-length' ] = "text/xml" } , body = xmlrpc.srvEncode ( { faultCode = 401 , faultString = httpcodes [ 401 ] } , true ) } )
+			updatelog ( "Unauthorised login blocked." , 3 )
+			httpsend ( skt , requestdetails , { status = 401 , headers = { [ 'WWW-Authenticate' ] = 'Basic realm="' .. core._NAME .. ' ' .. core._VERSION .. '"' ; [ 'content-length' ] = "text/xml" } , body = xmlrpc.srvEncode ( { faultCode = 401 , faultString = httpcodes [ 401 ] } , true ) } )
 			return false
 		end
 	else -- Authorised
@@ -281,7 +282,7 @@ local function basiccmdserver ( skt , requestdetails )
 	if not authorised then
 		if typ == "basic" then
 			-- Send an xml fault document
-			updatelog ( "Unauthorised login blocked." , 2 )
+			updatelog ( "Unauthorised login blocked." , 3 )
 			httpsend ( skt , requestdetails , { status = 401 , headers = { ['WWW-Authenticate'] = 'Basic realm=" ' .. core._NAME .. ' ' .. core._VERSION .. '"' } } )
 			return false
 		end		

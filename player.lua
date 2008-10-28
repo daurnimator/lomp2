@@ -11,7 +11,9 @@
 
 require "ex"
 
-module ( "lomp.player" , package.seeall )
+require "core.triggers"
+
+module ( "lomp.player" , package.see ( lomp ) )
 
 extensions = {	"ogg" ,
 				"flac" ,
@@ -30,6 +32,8 @@ function play ( source , offset )
 	}
 	
 	if tonumber ( offset ) then table.insert ( cmd , 2 , "--skip " .. offset ) end
+	
+	triggers.songchanged ( )
 	
 	proc = os.spawn ( cmd );
 	--rin:close( ) ; wout:close( ) ; werr:close( )

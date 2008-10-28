@@ -17,25 +17,26 @@ module ( "lomp" , package.seeall )
 
 require "lomp-core"
 
-function core.listpl ( str )
+function core.listpl ( )
 	local t = { }
 	t [ 0 ] = { name = vars.pl [ 0 ].name , revision = vars.pl [ 0 ].revision }
 	for i , v in ipairs ( vars.pl ) do
 		t [ i ] = { name = v.name , revision = v.revision }
 	end
-	if str then
-		str = "Playlists: (Last Revision: " .. vars.pl.revision .. ")\n"
-		for i , v in ipairs( t ) do
-			str = str .. "Playlist #" .. i .. "\t" .. v.name .. " \tRevision " .. v.revision.. "\n"
-		end
+	
+	str = "Playlists: (Last Revision: " .. vars.pl.revision .. ")\n"
+	str = str .. "Playlist #" .. 0 .. "\t" .. vars.pl[0].name .. " \tRevision " .. vars.pl[0].revision.. " Contains " .. #vars.pl[0] .. " items.\n"
+	for i , v in ipairs( vars.pl ) do
+		str = str .. "Playlist #" .. i .. "\t" .. v.name .. " \tRevision " .. v.revision.. " Contains " .. #v .. " items.\n"
 	end
+	
 	return t , str
 end
 
 function core.listentries ( pl )
 	if type( pl ) == "string" then pl = valuetoindex ( vars.pl , "name" , key ) end
 	assert ( type ( pl ) == "number" , "Provide a playlist" )
-	local s = "Listing Playlist #" .. pl .. " \t(Last Revision: " .. vars.pl [ pl ].revision .. ")\n"
+	local s = "Listing Playlist #" .. pl .. " \t(Revision: " .. vars.pl [ pl ].revision .. ")\n"
 	for i , v in ipairs( vars.pl[pl] ) do
 		s = s .. "Entry #" .. i .. " \t(" .. v.typ .. ") \tSource: '" .. v.source .. "'\n"
 	end
@@ -51,15 +52,16 @@ function core.listallentries ( )
 end
 
 function core.listqueue ( )
-	local s = "Listing Queue\nState: " .. lomp.playback.state .. "\nSoft Queue is currently: " .. vars.softqueuepl .. "\n"
+	local s = "Listing Queue\nSoft Queue is currently: " .. vars.softqueuepl .. "\n"
+	s = s .. "Currently Looping? " .. tostring ( vars.loop ) .. "\n"
 	if vars.queue[0] then
-		s = s .. "Current Song: " .. " \t(" .. vars.queue [ 0 ].o.typ .. ") \tSource: '" .. vars.queue [ 0 ].o.source .. "'\n"
+		s = s .. "Current Song: " .. " \t(" .. vars.queue [ 0 ].typ .. ") \tSource: '" .. vars.queue [ 0 ].source .. "'\n"
 	end
 	i = 1
 	while true do
 		local v = vars.queue [ i ]
 		if not v then break end
-		s = s .. "Entry #" .. i .. " \t(" .. v.o.typ .. ") \tSource: '" .. v.o.source .. "' " .. "\n"
+		s = s .. "Entry #" .. i .. " \t(" .. v.typ .. ") \tSource: '" .. v.source .. "' " .. "\n"
 		i = i + 1
 	end
 	return vars.queue , s
@@ -68,7 +70,7 @@ end
 function core.listplayed ( )
 	local s = "Listing Played Songs (most recent first) \t(Last Revision: " .. vars.played.revision .. ")\n"
 	for i , v in ipairs( vars.played ) do
-		s = s .. "Entry #" .. i .. " \t(" .. v.o.typ .. ") \tSource: '" .. v.o.source .. "'\n"
+		s = s .. "Entry #" .. i .. " \t(" .. v.typ .. ") \tSource: '" .. v.source .. "'\n"
 	end
 	return vars.played , s
 end
@@ -89,28 +91,28 @@ end
 function playsongfrompl ( pl , pos )
 	core.setsoftqueueplaylist ( pl )
 	core.clearhardqueue ( )
-	playback.goto ( pos )
-	playback.play ( )
+	core.playback.goto ( pos )
+	core.playback.play ( )
 	return true
 end
 	
 function demo ( )
-	core.refreshlibrary ( )
+	core.reloadlibrary ( )
 	local pl = core.playlist.new ( "Flac Files" )
-	core.addfile ( '/media/sdd1/Temp/Done Torrents/Daft Punk - Aerodynamic,Aerodynamite (2001) [FLAC] {CDS}/01 - Aerodynamic.flac' , pl )
-	core.addfile ( '/media/sdd1/Temp/Torrents/Rage Against The Machine - Rage Against The Machine (1992) [FLAC]/02 - Killing In The Name.flac' , pl )
-	core.addfile ( '/media/sdd1/Temp/Done Torrents/Daft Punk - Aerodynamic,Aerodynamite (2001) [FLAC] {CDS}/02 - Aerodynamite.flac' , pl )
-	--core.addfile ( "/media/sdc1/Downloaded/Zombie Nation, Kernkraft 400 CDS/[03] Zombie Nation - Kernkraft 400.wv" , pl ) 
+	core.localfileio.addfile ( '/media/sdd1/Temp/Done Torrents/Daft Punk - Aerodynamic,Aerodynamite (2001) [FLAC] {CDS}/01 - Aerodynamic.flac' , pl )
+	core.localfileio.addfile ( '/media/sdd1/Temp/Torrents/Rage Against The Machine - Rage Against The Machine (1992) [FLAC]/02 - Killing In The Name.flac' , pl )
+	core.localfileio.addfile ( '/media/sdd1/Temp/Done Torrents/Daft Punk - Aerodynamic,Aerodynamite (2001) [FLAC] {CDS}/02 - Aerodynamite.flac' , pl )
+	--core.localfileio.addfile ( "/media/sdc1/Downloaded/Zombie Nation, Kernkraft 400 CDS/[03] Zombie Nation - Kernkraft 400.wv" , pl ) 
 	core.setsoftqueueplaylist ( 1 )
 	pv ( )
-	
+	core.setsoftqueueplaylist ( 0 )
 
-	--playback.play ( )
-	--playback.nxt ( )
-	os.sleep ( 1 )
+	--core.playback.play ( )
+	core.playback.next ( )
+	--os.sleep ( 1 )
 	--print(player.getstate ( ))
-	playback.next ( )
-	playback.play ( )
+	core.playback.next ( )
+	core.playback.play ( )
 	--os.sleep ( 1 )
 	--playsongfrompl ( 0 , 2 )
 	--os.sleep ( 5 )
@@ -119,12 +121,14 @@ function demo ( )
 end
 function a ( ... ) print ("testing!", ... ) return "test done" end
 function pv ( )
-	p ( "Current State: " .. playback.state )
+	p ( "=========== PRINT OUT OF STATE: \n" )
+	p ( "Current State: " .. core.playback.state .. "\n")
 	p ( select( 2 , core.listpl ( ) ) )
 	p ( select( 3 , core.listentries ( 0 ) ) )
 	p ( select( 2 , core.listallentries ( ) ) )
 	p ( select( 2 , core.listqueue ( ) ) )
 	p ( select( 2 , core.listplayed ( ) ) )
+	p ( "=========== END PRINT OUT" )
 	return true
 end
 --[[function p (...)
