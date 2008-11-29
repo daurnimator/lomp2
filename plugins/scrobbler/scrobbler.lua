@@ -71,7 +71,7 @@ function handshake ( user , md5pass , count )
 	end
 end	
 
-function nowplaying ( songpath )
+function nowplaying ( typ , songpath )
 	if not sessionid then 
 		local w , cap , err = handshake ( user , md5pass )
 		if not w then ferror ( "Last.fm Handshake error: " .. err , 1 ) end
@@ -85,7 +85,7 @@ function nowplaying ( songpath )
 	local album = url.escape ( songdetails.tags [ "album" ] )
 	local length = url.escape ( songdetails.length or "" )
 	local tracknumber = url.escape ( songdetails.tags [ "track" ] )
-	local musicbrainzid = url.escape ( "" )
+	local musicbrainzid = ""
 	
 	local rbody = "s=" .. sessionid .. "&a=" .. artistname .. "&t=" .. trackname .. "&b=" .. album .. "&l=" .. length .. "&n=" .. tracknumber .. "&m=" .. musicbrainzid
 	
@@ -98,9 +98,65 @@ function nowplaying ( songpath )
 		elseif cap == "BADSESSION" then
 			ferror ( "Bad last.fm session, re-handshaking" , 2 )
 			sessionid = nil
-			nowplaying ( )
+			nowplaying ( songpath )
 		end
 	end
 end
 
-lomp.triggers.registercallback ( "songchanged" , nowplaying , "Scrobbler Now-Playing" )
+lomp.triggers.registercallback ( "songstarted" , nowplaying , "Scrobbler Now-Playing" )
+
+submissionsqueue = { }
+function submissions ( )
+	if not sessionid then 
+		local w , cap , err = handshake ( user , md5pass )
+		if not w then ferror ( "Last.fm Handshake error: " .. err , 1 ) end
+	end
+	
+	local rbody = "s=" .. sessionid
+	
+	for i , v in ipairs ( submissionsqueue ) do
+		rbody = rbody .. "&a[" .. i .. "]=" .. v.artist
+		rbody = rbody .. "&t[" .. i .. "]=" .. v.title
+		rbody = rbody .. "&i[" .. i .. "]=" .. v.starttime
+		rbody = rbody .. "&o[" .. i .. "]=" .. v.source
+		rbody = rbody .. "&r[" .. i .. "]=" .. v.rating
+		rbody = rbody .. "&l[" .. i .. "]=" .. v.length
+		rbody = rbody .. "&b[" .. i .. "]=" .. v.album
+		rbody = rbody .. "&n[" .. i .. "]=" .. v.tracknumber
+		rbody = rbody .. "&m[" .. i .. "]=" .. v.musicbrainz
+
+	end
+	
+	local body , code , h = http.request ( submissionurl , rbody )
+	
+	if code == 200 then
+		local i , j , cap = string.find ( body , "([^\n]+)" )
+		if cap == "OK" then
+			-- Remove tracks from submit queue
+			submissionsqueue = { }
+			return true
+		elseif cap == "BADSESSION" then
+			ferror ( "Bad last.fm session, re-handshaking" , 2 )
+			sessionid = nil
+			submissions ( )
+		elseif string.find ( cap , "^FAILED" ) then
+		end
+	end
+end
+function addtosubmissions ( typ , source )
+	local d = tags.getdetails ( source )
+	if d.length <= 30 then return false end -- Has to be > 30 seconds in length to submit
+	local t = { }
+	t.artist = url.escape ( d.tags [ "artist" ] )
+	t.title = url.escape ( d.tags [ "title" ] )
+	t.starttime = os.time ( )
+	if typ == "file" then t.source = "P" elseif typ == "stream" then t.source "R" else t.source = "P" end
+	t.rating = "" -- Should check track rating and maybe give "L" ....
+	t.length = url.escape ( d.length or "" )
+	t.album = url.escape ( d.tags [ "album" ] )
+	t.tracknumber = url.escape ( d.tags [ "track" ] )
+	t.musicbrainz = ""
+	table.insert ( submissionsqueue , t )
+end
+lomp.triggers.registercallback ( "songstarted" , addtosubmissions , "Scrobbler Add Song To Submit Queue" )
+lomp.triggers.registercallback ( "songstopped" , function ( typ , source , stopoffset ) if stopoffset > 240 or ( stopoffset / tags.getdetails ( source ).length ) > 0.5 then submissions ( ) else table.remove ( submissionsqueue ) end end , "Scrobbler Submissions" )

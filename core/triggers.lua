@@ -13,8 +13,8 @@ require "general"
 
 module ( "lomp.triggers" , package.see ( lomp ) )
 
-local callbacks = { songchanged = { } , songfinished = { } , }
--- songchanged ( newsource )
+local callbacks = { songstarted = { } , songfinished = { } , songstopped = { } , }
+-- songstarted ( typ , source )
 
 function registercallback ( callback , func , name )
 	local pos = #callbacks [ callback ] + 1
@@ -26,7 +26,7 @@ function triggercallback ( callback , ... )
 	for i , v in ipairs ( callbacks [ callback ] ) do v ( ... ) end
 end
 
-registercallback ( "songchanged" , function ( )
+registercallback ( "songstarted" , function ( )
 		-- Print new song stats
 		local t = vars.queue [ 0 ].details
 		print( "--------------------Now playing file: ", t.filename )

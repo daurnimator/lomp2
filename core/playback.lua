@@ -17,7 +17,7 @@ require "player"
 
 state = "stopped"
 
-function play ( )
+function play ( fromoffset )
 	if state ~= "stopped" then stop ( ) end -- Remove eventually??
 	if not vars.queue [ 0 ] then 
 		local r = forward ( ) 
@@ -26,18 +26,27 @@ function play ( )
 	
 	vars.queue [ 0 ].played = true
 	
+	local typ = vars.queue [ 0 ].typ
 	local source = vars.queue [ 0 ].source
-	local offset = vars.queue [ 0 ].offset
+	local offset 
+	if type( fromoffset ) == "boolean" then offset = vars.queue [ 0 ].offset
+	else offset = fromoffset end
 	
-	player.play ( source , offset )
+	player.play ( typ , source , offset )
 	state = "playing"
+	triggers.triggercallback ( "songstarted" , typ , source )
 	
 	return true
 end
 
 function stop ( )
+	local stopoffset 
+	local typ = vars.queue [ 0 ].typ
+	local source = vars.queue [ 0 ].source
+	
 	player.stop ( )
 	state = "stopped"
+	triggers.triggercallback ( "songstopped" , typ , source , stopoffset )
 	
 	return true
 end

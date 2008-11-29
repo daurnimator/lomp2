@@ -19,7 +19,7 @@ extensions = {	"ogg" ,
 				"flac" ,
 }
 
-function play ( source , offset )
+function play ( typ , source , offset )
 	--cmd = io.popen ( "ogg123 " .. source )
 	--rin, win = io.pipe( )
 	--rout, wout = io.pipe( )
@@ -32,8 +32,6 @@ function play ( source , offset )
 	}
 	
 	if tonumber ( offset ) then table.insert ( cmd , 2 , "--skip " .. offset ) end
-	
-	triggers.triggercallback ( "songchanged" , source )
 	
 	proc = os.spawn ( cmd );
 	--rin:close( ) ; wout:close( ) ; werr:close( )
