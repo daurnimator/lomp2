@@ -33,7 +33,7 @@ function play ( source , offset )
 	
 	if tonumber ( offset ) then table.insert ( cmd , 2 , "--skip " .. offset ) end
 	
-	triggers.songchanged ( )
+	triggers.triggercallback ( "songchanged" , source )
 	
 	proc = os.spawn ( cmd );
 	--rin:close( ) ; wout:close( ) ; werr:close( )

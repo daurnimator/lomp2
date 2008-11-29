@@ -16,10 +16,11 @@ module ( "lomp.tags" , package.see ( lomp ) )
 --[[
 Format:
 cache [ path ] = item
-item.tags [ "Title" ] (etc)
+item.tags [ "title" ] (etc)
 item.filename
 item.extension
 item.path
+??item.length
 ??: size, format, bitrate
 --]]
 
