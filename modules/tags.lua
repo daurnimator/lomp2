@@ -13,8 +13,6 @@ require "general"
 
 module ( "lomp.tags" , package.see ( lomp ) )
 
-require "modules.tagging.flac"
-
 --[[
 Format:
 cache [ path ] = item
@@ -56,19 +54,29 @@ function tagfrompath ( path , format , donotescapepattern )
 end
 
 local function gettags ( path )
-	local item = {}
+	local item
+	do
+		local fd = io.open ( path , r )
+		local s = fd:read ( 4 )
+
+		if s == "fLaC" then -- Flac file
+			require "modules.fileinfo.flac"
+			item = fileinfo.flac.info ( fd )
+		elseif s == "wvpk" then -- Wavpack file
+			item = { }
+		else
+			item = { tags = tagfrompath ( path , config.tagpatterns.default ) }
+			item.length = 30 -- TODO: Remove
+		end
+		
+		fd:close ( )
+	end
 	item.path = path
 	local _ , _ , filename = string.find ( path , "([^/]+)$" )
 	item.filename = filename
 	local _ , _ , extension = string.find ( filename , "%.([^%./]+)$" )
 	item.extension = extension
-	
-	--item.random = math.random ( )
-	-- TODO: file info reading
-	item.length = 30
-	-- TODO: actual tag reading
-	item.tags = tagfrompath ( path , config.tagpatterns.default )
-	
+
 	setmetatable ( item.tags , { 
 		__index = function ( t , k )
 			return "Unknown " .. k
