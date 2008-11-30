@@ -15,6 +15,7 @@ module ( "lomp.triggers" , package.see ( lomp ) )
 
 local callbacks = { songstarted = { } , songfinished = { } , songstopped = { } , }
 -- songstarted ( typ , source )
+-- songstopped ( typ , source , stopoffset )
 
 function registercallback ( callback , func , name )
 	local pos = #callbacks [ callback ] + 1

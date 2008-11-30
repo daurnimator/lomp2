@@ -13,6 +13,8 @@ require "general"
 
 module ( "lomp.tags" , package.see ( lomp ) )
 
+require "modules.tagging.flac"
+
 --[[
 Format:
 cache [ path ] = item
