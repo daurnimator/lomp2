@@ -9,24 +9,24 @@
 	You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ]]
 
+local dir = dir -- Grab vars needed
+
 -- Scrobbler Plugin
  -- Sends data to last.fm, etc
 
--- Please fill in your last.fm login details:
- -- Your last.fm username
-local user = "daurnimator"  
- -- md5sum of your last.fm password
-local md5pass = "changeme"
-
-
-
 module ( "scrobbler" , package.seeall )
+
+_NAME = "Last.fm Audio Scrobbler"
+_VERSION = 0.1
 
 pcall ( require , "luarocks.require" ) -- Activates luarocks if available.
 
 http = require "socket.http"
 url = require("socket.url")
 require "md5" 
+
+loadfile ( dir .. "sconfig.lua" ) ( )
+print(user)
 
 local clientid = "tst"
 local clientver = "1.0"
@@ -90,7 +90,7 @@ function nowplaying ( typ , songpath )
 	local rbody = "s=" .. sessionid .. "&a=" .. artistname .. "&t=" .. trackname .. "&b=" .. album .. "&l=" .. length .. "&n=" .. tracknumber .. "&m=" .. musicbrainzid
 	
 	local body , code , h = http.request ( nowplayingurl , rbody )
-	
+
 	if code == 200 then
 		local i , j , cap = string.find ( body , "([^\n]+)" )
 		if cap == "OK" then
@@ -109,8 +109,9 @@ submissionsqueue = { }
 function submissions ( )
 	if not sessionid then 
 		local w , cap , err = handshake ( user , md5pass )
-		if not w then ferror ( "Last.fm Handshake error: " .. err , 1 ) end
+		if not w then return ferror ( "Last.fm Handshake error: " .. err , 1 ) end
 	end
+	if not submissionsqueue [ 1 ] then return true , "Nothing to submit" end
 	
 	local rbody = "s=" .. sessionid
 	
@@ -144,7 +145,7 @@ function submissions ( )
 	end
 end
 function addtosubmissions ( typ , source )
-	local d = tags.getdetails ( source )
+	local d = lomp.tags.getdetails ( source )
 	if d.length <= 30 then return false end -- Has to be > 30 seconds in length to submit
 	local t = { }
 	t.artist = url.escape ( d.tags [ "artist" ] )
@@ -159,4 +160,6 @@ function addtosubmissions ( typ , source )
 	table.insert ( submissionsqueue , t )
 end
 lomp.triggers.registercallback ( "songstarted" , addtosubmissions , "Scrobbler Add Song To Submit Queue" )
-lomp.triggers.registercallback ( "songstopped" , function ( typ , source , stopoffset ) if stopoffset > 240 or ( stopoffset / tags.getdetails ( source ).length ) > 0.5 then submissions ( ) else table.remove ( submissionsqueue ) end end , "Scrobbler Submissions" )
+lomp.triggers.registercallback ( "songstopped" , function ( typ , source , stopoffset ) if stopoffset > 240 or ( stopoffset / lomp.tags.getdetails ( source ).length ) > 0.5 then submissions ( ) else table.remove ( submissionsqueue ) end end , "Scrobbler Submissions" )
+
+return _NAME , _VERSION

@@ -22,7 +22,7 @@ item.source = source path
 require "core.localfileio"
 
 function create ( typ , source )
-	local item = { typ = typ , source = source }
+	local item = { typ = typ , source = source , laststarted = false }
 	item.details = tags.getdetails ( source )
 	return item
 end

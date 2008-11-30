@@ -62,10 +62,16 @@ local function gettags ( path )
 	item.extension = extension
 	
 	--item.random = math.random ( )
-	
+	-- TODO: file info reading
+	item.length = 30
 	-- TODO: actual tag reading
 	item.tags = tagfrompath ( path , config.tagpatterns.default )
 	
+	setmetatable ( item.tags , { 
+		__index = function ( t , k )
+			return "Unknown " .. k
+		end ,
+	} )
 	return item
 end
 
@@ -75,7 +81,7 @@ cache = setmetatable ( cache, {
 		local item = gettags ( k )
 		t [ k ] = item
 		return item
-	end,
+	end ,
 })
 
 

@@ -34,21 +34,27 @@ function play ( fromoffset )
 	
 	player.play ( typ , source , offset )
 	state = "playing"
+	vars.queue [ 0 ].laststarted = os.time ( )
 	triggers.triggercallback ( "songstarted" , typ , source )
 	
 	return true
 end
 
 function stop ( )
-	local stopoffset 
-	local typ = vars.queue [ 0 ].typ
-	local source = vars.queue [ 0 ].source
-	
-	player.stop ( )
-	state = "stopped"
-	triggers.triggercallback ( "songstopped" , typ , source , stopoffset )
-	
-	return true
+	if vars.queue [ 0 ] then -- There shouldn't be anything playing if there is nothing in current playing slot....
+		local stopoffset = os.time ( ) - ( vars.queue [ 0 ].laststarted or os.time ( ) ) -- TODO: get current offset
+		local typ = vars.queue [ 0 ].typ
+		local source = vars.queue [ 0 ].source
+		
+		player.stop ( )
+		state = "stopped"
+		
+		triggers.triggercallback ( "songstopped" , typ , source , stopoffset )
+		
+		return true
+	else -- Nothing to stop...
+		return false
+	end
 end
 function pause ( )
 	player.pause ( )
