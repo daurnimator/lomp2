@@ -10,6 +10,7 @@
 ]]
 
 local dir = dir -- Grab vars needed
+local updatelog , ferror = updatelog , ferror
 
 -- Scrobbler Plugin
  -- Sends data to last.fm, etc
@@ -30,13 +31,14 @@ loadfile ( dir .. "config.lua" ) ( ) -- Load config
 local clientid = "tst"
 local clientver = "1.0"
 
+local enabled = false
 local sessionid , nowplayingurl , submissionurl = false , false , false
 
 -- Handshake
 function handshake ( user , md5pass , count )
 	count = ( count or 0 ) + 1
 	if count > 4 then -- Max 3 retries
-		ferror ( "Could not handshake with last.fm" , 1 )
+		return ferror ( "Could not handshake with last.fm" , 1 )
 	end
 	
 	local time = os.time ( )
@@ -73,7 +75,7 @@ end
 function nowplaying ( typ , songpath )
 	if not sessionid then 
 		local w , cap , err = handshake ( user , md5pass )
-		if not w then ferror ( "Last.fm Handshake error: " .. err , 1 ) end
+		if not w then return ferror ( "Last.fm Handshake error: " .. err , 1 ) end
 	end
 	
 	--local songpath = lomp.vars.queue [ 0 ].source
@@ -95,14 +97,12 @@ function nowplaying ( typ , songpath )
 		if cap == "OK" then
 			return true
 		elseif cap == "BADSESSION" then
-			ferror ( "Bad last.fm session, re-handshaking" , 2 )
+			updatelog ( "Bad last.fm session, re-handshaking" , 2 )
 			sessionid = nil
 			nowplaying ( songpath )
 		end
 	end
 end
-
-lomp.triggers.registercallback ( "songstarted" , nowplaying , "Scrobbler Now-Playing" )
 
 submissionsqueue = { }
 function submissions ( )
@@ -136,7 +136,7 @@ function submissions ( )
 			submissionsqueue = { }
 			return true
 		elseif cap == "BADSESSION" then
-			ferror ( "Bad last.fm session, re-handshaking" , 2 )
+			updatelog ( "Bad last.fm session, re-handshaking" , 2 )
 			sessionid = nil
 			submissions ( )
 		elseif string.find ( cap , "^FAILED" ) then
@@ -158,7 +158,25 @@ function addtosubmissions ( typ , source )
 	t.musicbrainz = ""
 	table.insert ( submissionsqueue , t )
 end
-lomp.triggers.registercallback ( "songstarted" , addtosubmissions , "Scrobbler Add Song To Submit Queue" )
-lomp.triggers.registercallback ( "songstopped" , function ( typ , source , stopoffset ) if stopoffset > 240 or ( stopoffset / lomp.tags.getdetails ( source ).length ) > 0.5 then submissions ( ) else table.remove ( submissionsqueue ) end end , "Scrobbler Submissions" )
+
+function enablescrobbler ( )
+	lomp.triggers.registercallback ( "songstarted" , nowplaying , "Scrobbler Now-Playing" )
+
+	lomp.triggers.registercallback ( "songstarted" , addtosubmissions , "Scrobbler Add Song To Submit Queue" )
+	lomp.triggers.registercallback ( "songstopped" , function ( typ , source , stopoffset ) if stopoffset > 240 or ( stopoffset / lomp.tags.getdetails ( source ).length ) > 0.5 then submissions ( ) else table.remove ( submissionsqueue ) end end , "Scrobbler Submissions" )
+	
+	enabled = true
+end
+function disablescrobbler ( )
+	deregistercallback ( "songstarted" , "Scrobbler Now-Playing" )
+	deregistercallback ( "songstarted" , "Scrobbler Add Song To Submit Queue" )
+	deregistercallback ( "songstopped" , "Scrobbler Submissions" )
+	
+	enabled = false
+end
+
+if enable then
+	enablescrobbler ( )
+end
 
 return _NAME , _VERSION

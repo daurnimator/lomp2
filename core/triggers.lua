@@ -22,6 +22,10 @@ function registercallback ( callback , func , name )
 	callbacks [ callback ] [ name ] = pos
 	return pos
 end
+function deregistercallback ( callback , name )
+	table.remove ( callbacks [ callback ] , callbacks [ callback ] [ name ] )
+	callbacks [ callback ] [ name ] = nil
+end
 function triggercallback ( callback , ... )
 	for i , v in ipairs ( callbacks [ callback ] ) do v ( ... ) end
 end
