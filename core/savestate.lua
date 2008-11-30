@@ -22,9 +22,9 @@ function core.savestate ( )
 	s = s .. "\tsoftqueuepl = " .. vars.softqueuepl .. ";\n"
 	s = s .. "\tploffset = " .. vars.ploffset .. ";\n"
 	s = s .. "\thardqueue = {\n"
-	if vars.hardqueue [ 0 ] then s = s .. '\t\t[0] = core.item.create("' .. string.format ( '%q' , vars.hardqueue [ 0 ].typ ) .. '",' .. string.format ( '%q' , vars.hardqueue [ 0 ].source ) .. '") ;\n' end
+	if vars.hardqueue [ 0 ] then s = s .. '\t\t[0] = core.item.create(' .. string.format ( '%q' , vars.hardqueue [ 0 ].typ ) .. ',' .. string.format ( '%q' , vars.hardqueue [ 0 ].source ) .. ') ;\n' end
 	for i = 1 , ( #vars.hardqueue ) do
-		s = s .. '\t\tcore.item.create(' .. string.format ( '%q' , vars.hardqueue [ i ].typ ) .. '","' .. string.format ( '%q' , vars.hardqueue [ i ].source ) .. '") ;\n'
+		s = s .. '\t\tcore.item.create(' .. string.format ( '%q' , vars.hardqueue [ i ].typ ) .. ',' .. string.format ( '%q' , vars.hardqueue [ i ].source ) .. ') ;\n'
 	end
 	s = s .. "\t};\n"
 	
@@ -44,7 +44,7 @@ function core.savestate ( )
 	local n
 	if #vars.played > config.history then n = config.history else n = #vars.played end
 	for i = 1 , n do
-		s = s .. '\t\tcore.item.create(' .. string.format ( '%q' , vars.played [ i ].typ ) .. '","' .. string.format ( '%q' , vars.played [ i ].source ) .. '") ;\n'
+		s = s .. '\t\tcore.item.create(' .. string.format ( '%q' , vars.played [ i ].typ ) .. ',' .. string.format ( '%q' , vars.played [ i ].source ) .. ') ;\n'
 	end
 	s = s .. "\t};\n"
 	

@@ -115,11 +115,23 @@ function serialisecache ( )
 	s = s .. "cache = {\n"
 	for k , v in pairs ( cache ) do
 		s = s .. '[' .. string.format ( '%q' , k ) ..'] = {'
-		for k , v in pairs ( v ) do
+		for k , v in pairs ( v ) do -- items
 			if type ( v ) == "table" then
 				s = s .. '\t' .. k .. ' = {\n'
-				for k , v in pairs ( v ) do
-					s = s .. '[' .. string.format ( '%q' , k ) .. '] = ' .. string.format ( '%q' , v ) .. ';'
+				for k , v in pairs ( v ) do -- eg, tags
+					if type ( v ) == "table" then
+						s = s .. '\t\t[' .. string.format ( '%q' , k ) .. '] = {\n'
+						for k , v in pairs ( v ) do -- eg, artist
+							s = s .. '\t\t\t[' .. k .. '] = ' .. string.format ( '%q' , v ) .. ';\n'
+						end
+						s = s .. '\t\t};\n'
+					elseif type ( v ) == "string" then
+						s = s .. '\t\t[' .. string.format ( '%q' , k ) .. '] = ' .. string.format ( '%q' , v ) .. ';\n'
+					elseif type ( v ) == "number" then
+						s = s .. '\t\t[' .. string.format ( '%q' , k ) .. '] = ' .. v .. ';\n'
+					elseif type ( v ) == "boolean" then
+						s = s .. '\t\t[' .. string.format ( '%q' , k ) .. '] = ' .. tostring(v) .. ';\n'
+					end
 				end
 				s = s .. '\t};\n'
 			elseif type ( v ) == "string" then

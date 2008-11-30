@@ -40,7 +40,9 @@ registercallback ( "songstarted" , function ( )
 			if k == "tags" then
 				print ( "==== Tags:" )
 				for tag , val in pairs ( v ) do
-					print ( "Tag:" , tag , " = " , val ) 
+					for i , v in ipairs ( val ) do
+						print ( "Tag:" , tag , " = " , v ) 
+					end
 				end
 			end
 		end
