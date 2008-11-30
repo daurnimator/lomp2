@@ -81,11 +81,11 @@ function nowplaying ( typ , songpath )
 	--local songpath = lomp.vars.queue [ 0 ].source
 	local songdetails = lomp.tags.getdetails ( songpath )
 	
-	local artistname = url.escape ( songdetails.tags [ "artist" ] )
-	local trackname = url.escape ( songdetails.tags [ "title" ] )
-	local album = url.escape ( songdetails.tags [ "album" ] )
+	local artistname = url.escape ( table.concat ( songdetails.tags.artist , " , " ) )
+	local trackname = url.escape ( table.concat ( songdetails.tags.title , " , " ) )
+	local album = url.escape ( table.concat ( songdetails.tags.album , " , " ) )
 	local length = url.escape ( songdetails.length or "" )
-	local tracknumber = url.escape ( songdetails.tags [ "track" ] )
+	local tracknumber = url.escape ( table.concat ( songdetails.tags.tracknumber , " , " ) )
 	local musicbrainzid = ""
 	
 	local rbody = "s=" .. sessionid .. "&a=" .. artistname .. "&t=" .. trackname .. "&b=" .. album .. "&l=" .. length .. "&n=" .. tracknumber .. "&m=" .. musicbrainzid
@@ -147,14 +147,14 @@ function addtosubmissions ( typ , source )
 	local d = lomp.tags.getdetails ( source )
 	if d.length <= 30 then return false end -- Has to be > 30 seconds in length to submit
 	local t = { }
-	t.artist = url.escape ( d.tags [ "artist" ] )
-	t.title = url.escape ( d.tags [ "title" ] )
+	t.artist = url.escape ( table.concat ( d.tags.artist , " , " ) )
+	t.title = url.escape ( table.concat ( d.tags.title , " , " ) )
 	t.starttime = os.time ( )
 	if typ == "file" then t.source = "P" elseif typ == "stream" then t.source "R" else t.source = "P" end
 	t.rating = "" -- Should check track rating and maybe give "L" ....
 	t.length = url.escape ( d.length or "" )
-	t.album = url.escape ( d.tags [ "album" ] )
-	t.tracknumber = url.escape ( d.tags [ "track" ] )
+	t.album = url.escape ( table.concat ( d.tags.album , " , " ) )
+	t.tracknumber = url.escape ( table.concat ( d.tags.tracknumber , " , " ) )
 	t.musicbrainz = ""
 	table.insert ( submissionsqueue , t )
 end

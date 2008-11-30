@@ -79,7 +79,7 @@ local function gettags ( path )
 
 	setmetatable ( item.tags , { 
 		__index = function ( t , k )
-			return "Unknown " .. k
+			return { "Unknown " .. k }
 		end ,
 	} )
 	return item
