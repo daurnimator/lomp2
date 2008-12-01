@@ -56,15 +56,50 @@ end
 local function gettags ( path )
 	local item
 	do
-		local fd = io.open ( path , r )
-		local s = fd:read ( 4 )
+		local fd = io.open ( path , rb )
+		
+		do 
+			-- Check if flac
+			fd:seek ( "set" )
+			local s = fd:read ( 4 ) -- 32 bit identifier
+			if s == "fLaC" then -- Flac file
+				require "modules.fileinfo.flac"
+				item = fileinfo.flac.info ( fd )
+				return
+			end
+			
+			-- Check for APE tag
+			fd:seek ( "set" )
+			local s = fd:read ( 8 ) -- At start of file
+			if s == "APETAGEX" then
+				return
+			end
+			fd:seek ( "end" , -32 ) -- At end of file
+			local s = fd:read ( 8 ) 
+			if s == "APETAGEX" then
+				return
+			end
+			
+			-- Check for ID3v2
+			fd:seek ( "set" )
+			local s = fd:read ( 3 ) -- At start of file
+			if s == "ID3" then
+				return
+			end
+			fd:seek ( "end" , -10 ) -- At end of file
+			local s = fd:read ( 8 ) 
+			if s == "3DI" then
+				return
+			end
+			
+			-- Check for ID3v1 or ID3v1.1 tag
+			fd:seek ( "end" , -128 ) -- At end of file
+			local s = fd:read ( 3 ) 
+			if s == "ID3" then
+				return
+			end
 
-		if s == "fLaC" then -- Flac file
-			require "modules.fileinfo.flac"
-			item = fileinfo.flac.info ( fd )
-		elseif s == "wvpk" then -- Wavpack file
-			item = { }
-		else
+			-- If you get to here, there is probably no tag....
 			item = { tags = tagfrompath ( path , config.tagpatterns.default ) }
 			item.length = 30 -- TODO: Remove
 		end
