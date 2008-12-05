@@ -68,6 +68,14 @@ local function gettags ( path )
 				return
 			end
 			
+			-- Check if vorbis (eg: ogg)
+			fd:seek ( "set" , 1 )
+			local s = fd:read ( 6 ) -- six octet identifier
+			if s == "vorbis" then -- Flac file
+				
+				return
+			end			
+			
 			-- Check for APE tag
 			fd:seek ( "set" )
 			local s = fd:read ( 8 ) -- At start of file
