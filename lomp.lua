@@ -46,7 +46,7 @@ function updatelog ( data , level , env )
 	
 	if not level then level = 2 end
 	
-	if level == 0 then data = "Fatal error: \t" .. data
+	if level == 0 then data = "Fatal error: \t\t" .. data
 	elseif level == 1 then data = "NonFatal error: \t" .. data 
 	elseif level == 2 then data = "Warning: \t\t" .. data
 	elseif level == 3 then data = "Message: \t\t" .. data
@@ -68,7 +68,9 @@ function updatelog ( data , level , env )
 	return true
 end
 function ferror ( data , level , env )
-	updatelog ( data , level , env )
+	if not env or not env.updatelog then env = _G end
+	if updatelog and not env.updatelog then env.updatelog = updatelog end
+	env.updatelog ( data , level , env )
 	return false , data
 end
 
@@ -76,7 +78,7 @@ require "general"
 require "lomp-core"
 
 require "modules.tags"
---require "modules.server"
+--require "modules.server" -- Now a lane
 require "modules.albumart"
 
 do -- Restore State
@@ -84,6 +86,15 @@ do -- Restore State
 	if not ok then
 		core.playlist.new ( "Library" , 0 ) -- Create Library (Just playlist 0)
 	end
+end
+
+pcall ( require , "luarocks.require" ) -- Activates luarocks if available.
+require "lanes" -- Loads up lanes (multithreading)
+local lindas = { }
+function newlinda ( )
+	local pos = #lindas + 1
+	lindas [ pos ] = lanes.linda ( )
+	return lindas [ pos ] , pos
 end
 
 updatelog ( "Loading plugins." , 3 )
@@ -101,16 +112,8 @@ updatelog ( "LOMP Loaded " .. os.date ( "%c" ) , 3 )
 
 require "lomp-debug"
 
-pcall ( require , "luarocks.require" ) -- Activates luarocks if available.
-require "lanes"
-local lindas = { }
-local function newlinda ( )
-	local pos = #lindas + 1
-	lindas [ pos ] = lanes.linda ( )
-	return lindas [ pos ] , pos
-end
-
-func = lanes.gen ( "base,package,math,table,string,io,os" , { globals = { linda = newlinda ( ) , updatelog = updatelog , config = config } } , function ( ... ) package.path = package.path .. ";./libs/?.lua;./libs/?/init.lua" require "modules.server" lane ( ... ) end )
+-- Server
+func = lanes.gen ( "base,package,math,table,string,io,os" , { globals = { linda = newlinda ( ) , updatelog = updatelog , ferror = ferror , config = config } } , function ( ... ) package.path = package.path .. ";./libs/?.lua;./libs/?/init.lua" require "modules.server" lane ( ... ) end )
 serverlane = func ( config.address , config.port )
 
 local i = 1

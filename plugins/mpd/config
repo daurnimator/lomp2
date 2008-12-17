@@ -1,0 +1,10 @@
+-- Server Parameters
+ -- Addresss and port to bind to on the local host. 
+  -- Address can be an IP address or a host name. 
+  -- If address is '*', the system binds to all local interfaces using the INADDR_ANY constant.
+  -- Default to "*"
+address =		"*"
+
+ -- Port must be an integer number in the range [0..64K).  If port is 0, the system automatically chooses an ephemeral port. 
+  -- Default for an mpd server is 6600, but of course, you can use whatever you want :)
+port = 			6601
