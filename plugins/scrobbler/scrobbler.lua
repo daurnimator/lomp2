@@ -26,7 +26,7 @@ http = require "socket.http"
 url = require("socket.url")
 require "md5" 
 
-loadfile ( dir .. "config.lua" ) ( ) -- Load config
+loadfile ( dir .. "config" ) ( ) -- Load config
 
 local clientid = "tst"
 local clientver = "1.0"
