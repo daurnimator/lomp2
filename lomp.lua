@@ -18,7 +18,7 @@ package.path = package.path .. ";./libs/?.lua;./libs/?/init.lua"
 
 module ( "lomp" , package.seeall )
 
-local verbosity = 3
+local verbosity = 4
 
 do 
 	log = ""
@@ -41,7 +41,9 @@ do
 	log = nil
 end
 	
-function updatelog ( data , level )
+function updatelog ( data , level , env )
+	env = env or _G
+	
 	if not level then level = 2 end
 	
 	if level == 0 then data = "Fatal error: \t" .. data
@@ -51,12 +53,12 @@ function updatelog ( data , level )
 	elseif level == 4 then data = "Confirmation: \t\t" .. data
 	end
 	
-	data = os.time ( ) .. ": \t" .. data
-	if level <= verbosity then print ( data ) end
+	data = env.os.time ( ) .. ": \t" .. data
+	if level <= verbosity then env.print ( data ) end
 	
 	data = data .. "\n"
 	
-	local file , err = io.open ( config.logfile , "a+" )
+	local file , err = env.io.open ( env.config.logfile , "a+" )
 	if err then error ( data .. "Could not open log file: '" .. err .. "'\n" ) end
 	file:seek ( "end" )
 	file:write ( data )
@@ -65,8 +67,8 @@ function updatelog ( data , level )
 	if level == 0 then error ( data ) end
 	return true
 end
-function ferror ( data , level )
-	updatelog ( data , level )
+function ferror ( data , level , env )
+	updatelog ( data , level , env )
 	return false , data
 end
 
@@ -74,19 +76,8 @@ require "general"
 require "lomp-core"
 
 require "modules.tags"
-require "modules.server"
+--require "modules.server"
 require "modules.albumart"
-
-steps = { }
-function addstep ( func )
-	for i , v in ipairs ( steps ) do 
-		if v == func then return false end
-	end
-	table.insert ( steps , func )
-	return true
-end
-
-addstep ( server.step )
 
 do -- Restore State
 	local ok , err = core.restorestate ( )
@@ -94,7 +85,6 @@ do -- Restore State
 		core.playlist.new ( "Library" , 0 ) -- Create Library (Just playlist 0)
 	end
 end
-
 
 updatelog ( "Loading plugins." , 3 )
 for i , v in ipairs ( config.plugins ) do
@@ -107,15 +97,50 @@ for i , v in ipairs ( config.plugins ) do
 end
 updatelog ( "All Plugins Loaded" , 3 )
 
-server.initiate ( config.address , config.port )
-
 updatelog ( "LOMP Loaded " .. os.date ( "%c" ) , 3 )
 
 require "lomp-debug"
 
-local s = 1
+pcall ( require , "luarocks.require" ) -- Activates luarocks if available.
+require "lanes"
+local lindas = { }
+local function newlinda ( )
+	local pos = #lindas + 1
+	lindas [ pos ] = lanes.linda ( )
+	return lindas [ pos ] , pos
+end
+
+func = lanes.gen ( "base,package,math,table,string,io,os" , { globals = { linda = newlinda ( ) , updatelog = updatelog , config = config } } , function ( ... ) package.path = package.path .. ";./libs/?.lua;./libs/?/init.lua" require "modules.server" lane ( ... ) end )
+serverlane = func ( config.address , config.port )
+
+local i = 1
+local timeout = 0.1
 while true do
-	steps [ s ] ( )
-	s = s + 1
-	if s > #steps then s = 1 end
+	do -- Check for cmds to run
+		local val , key = lindas [ i ]:receive ( timeout , "cmd" )		
+		if type ( val ) == "table" and type ( val.cmd ) == "string" and not ( val.params and type ( val.params ) ~= "table" ) then
+			local func , fail
+			do -- Find function from string.
+				func = getfenv ( 1 )
+				for k in string.gmatch ( val.cmd , "(%w+)%." ) do
+					func = func [ k ]
+					if type ( func ) ~= "table" then fail = "No function found" end
+				end
+				func = func [ select ( 3 , string.find ( val.cmd , "([^%.]+)$" ) ) ]
+				if type ( func ) ~= "function" then fail = "No function found" end
+			end
+			if fail then
+				lindas [ i ]:send ( timeout , "returnedcmd" , { false , fail } )
+			else
+				local function interpret ( ok , err , ... )
+					if not ok then return ok , err
+					else return ok , { err , ... } end
+				end
+				lindas [ i ]:send ( timeout , "returnedcmd" , { interpret ( pcall ( func , unpack ( val.params or { } ) ) ) } )
+			end
+		end
+	end
+	
+	i = i + 1 
+	if i > #lindas then i = 1 end
 end

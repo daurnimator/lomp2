@@ -9,9 +9,7 @@
 	You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ]]
 
-require "general"
-
-module ( "lomp.server" , package.see ( lomp ) )
+local versionstring = "Lomp Server 0.0.1" --core._NAME .. ' ' .. core._VERSION
 
 pcall ( require , "luarocks.require" ) -- Activates luarocks if available.
 require "socket"
@@ -32,7 +30,7 @@ do -- Load mime types
 			local _ , _ , typ , name = string.find ( line , "^(.*)\t+([^\t]+)$" )
 			if typ then
 				for e in string.gmatch ( name , "([^%s]+)" ) do
-					mimetypes[e] = typ
+					mimetypes [ e ] = typ
 				end
 			end
 		end
@@ -52,7 +50,7 @@ local function pathtomime ( path )
 	local mimetyp
 	local _ , _ , extension = string.find ( path , "%.([^%./]+)$" ) 
 	if extension then
-		mimetyp = mimetypes [ extension ] or "application/octet-stream"
+		mimetyp = mimetypes [ extension ] or "application/octet-stream" 
 	else
 		mimetyp = "text/plain"
 	end
@@ -107,7 +105,7 @@ local function httpdate ( time )
 	return os.date ( "!%a, %d %b %Y %H:%M:%S GMT" , time )
 end
 local function httperrorpage ( status )
-	return "<html><head><title>HTTP Code " .. status .. "</title></head><body><h1>HTTP Code " .. status .. "</h1><p>" .. httpcodes [ status ] .. "</p><hr><i>Generated on " .. os.date ( ) .." by " .. core._NAME .. ' ' .. core._VERSION .. " </i></body></html>"
+	return "<html><head><title>HTTP Code " .. status .. "</title></head><body><h1>HTTP Code " .. status .. "</h1><p>" .. httpcodes [ status ] .. "</p><hr><i>Generated on " .. os.date ( ) .." by " .. versionstring .. " </i></body></html>"
 end
 local function httpsend ( skt , requestdetails , responsedetails )
 	local status , body = responsedetails.status , responsedetails.body
@@ -123,7 +121,7 @@ local function httpsend ( skt , requestdetails , responsedetails )
 	do -- Zlib
 		local ok , zlib = pcall ( require , 'zlib' )
 		if ok and type ( zlib ) == "table" then 
-			if string.len ( body ) > 0 then
+			if string.len ( body ) > 32 then
 				local acceptencoding = ( requestdetails.headers [ "accept-encoding" ] or "" ):lower ( )
 				if ( string.find ( acceptencoding , "gzip" ) or string.find ( acceptencoding , "[^%w]*[^%w]" ) ) then
 					local zbody = zlib.compress( body , 9, nil, 15 + 16 )
@@ -173,7 +171,7 @@ local function httpsend ( skt , requestdetails , responsedetails )
 
 	local message = "HTTP/1.1 " .. status .. " " .. httpcodes [ status ] .. "\r\n" 
 	sheaders [ "date" ] = httpdate ( )
-	sheaders [ "server" ] = core._NAME .. ' ' .. core._VERSION
+	sheaders [ "server" ] = versionstring
 	sheaders [ "content-type" ] = sheaders [ "content-type" ] or "text/html"
 	sheaders [ "content-length" ] = string.len ( body )
 	
@@ -198,21 +196,19 @@ local function httpsend ( skt , requestdetails , responsedetails )
 		
 	return status , reasonphrase , bytessent
 end
-local function dispatch ( baseenv , name )
-	if type ( baseenv ) ~= "table" then return false end
+local function execute ( name , parameters )
+	-- Returns a function, given a string
+	-- Example of string: core.playback.play
 	if type ( name ) ~= "string" then return false end
-	local func = baseenv
-	for k in string.gmatch ( name , "(%w+)%." ) do
-		func = func [ k ]
-		if type ( func ) ~= "table" then return false end
-	end
-	func = func [ select ( 3 , string.find ( name , "([^%.]+)$" ) ) ]
+	if parameters and type ( parameters ) ~= "table" then return false end
 	
-	if type ( func ) ~= "function" then return false
-	else return func
-	end
+	local timeout = nil
+	
+	linda:send ( timeout , "cmd" , { cmd = name , params = parameters } )
+	
+	local val , key = linda:receive ( timeout , "returnedcmd" )
+	return unpack ( val )
 end
-
 local function auth ( headers )
 	if config.authorisation then
 		local preferred = "basic" -- Preferred method is basic auth (Only thing currently supported)
@@ -244,16 +240,24 @@ local function xmlrpcserver ( skt , requestdetails )
 	if not authorised then
 		if typ == "basic" then
 			-- Send a xml fault document
-			updatelog ( "Unauthorised login blocked." , 3 )
-			httpsend ( skt , requestdetails , { status = 401 , headers = { [ 'WWW-Authenticate' ] = 'Basic realm="' .. core._NAME .. ' ' .. core._VERSION .. '"' ; [ 'content-length' ] = "text/xml" } , body = xmlrpc.srvEncode ( { faultCode = 401 , faultString = httpcodes [ 401 ] } , true ) } )
+			updatelog ( "Unauthorised login blocked." , 3 , _G )
+			httpsend ( skt , requestdetails , { status = 401 , headers = { [ 'WWW-Authenticate' ] = 'Basic realm="' .. versionstring .. '"' ; [ 'content-length' ] = "text/xml" } , body = xmlrpc.srvEncode ( { faultCode = 401 , faultString = httpcodes [ 401 ] } , true ) } )
 			return false
 		end
 	else -- Authorised
 		local method_name , list_params = xmlrpc.srvDecode ( requestdetails.body )
-		list_params = list_params[1] --I don't know why it needs this, but it does
+		list_params = list_params [ 1 ] -- KLUDGE: I don't know why it needs this, but it does -- ooo, maybe its so you can have multiple methodnames?? but then wtf is the previous cmd...
 		
-		local function d ( ... ) return dispatch ( _M , ... ) end
-		xmlrpc.srvMethods ( d )
+		local function depack ( t , i , j )
+			i = i or 1
+			if ( j and i > j ) or ( not j and t [ tostring ( i ) ] == nil ) then return end 
+			return t [ tostring ( i ) ] , depack ( t , i + 1 , j )
+		end
+		list_params = { depack ( list_params or { } ) }
+		
+		local ok , result = execute ( method_name , list_params )
+		--[[xmlrpc.srvMethods ( dispatch )
+		
 		local func = xmlrpc.dispatch ( method_name )
 		local function interpret ( ok , err , ... )
 			if not ok then
@@ -262,14 +266,8 @@ local function xmlrpcserver ( skt , requestdetails )
 				return ok , { err , ... }
 			end
 		end
-
-		local function depack ( t , i , j )
-			i = i or 1
-			if ( j and i > j ) or ( not j and t [ tostring ( i ) ] == nil ) then return end 
-			return t [ tostring ( i ) ] , depack ( t , i + 1 , j )
-		end 
-				
-		local ok , result = interpret ( pcall ( func , depack ( list_params or { } ) ) )
+	
+		local ok , result = interpret ( pcall ( func , depack ( list_params or { } ) ) )--]]
 
 		httpsend ( skt , requestdetails , { status = 200 , headers = { [ 'content-length' ] = "text/xml" } , body = xmlrpc.srvEncode ( result , not ok) } )
 			
@@ -282,8 +280,8 @@ local function basiccmdserver ( skt , requestdetails )
 	if not authorised then
 		if typ == "basic" then
 			-- Send an xml fault document
-			updatelog ( "Unauthorised login blocked." , 3 )
-			httpsend ( skt , requestdetails , { status = 401 , headers = { ['WWW-Authenticate'] = 'Basic realm=" ' .. core._NAME .. ' ' .. core._VERSION .. '"' } } )
+			updatelog ( "Unauthorised login blocked." , 3 , _G )
+			httpsend ( skt , requestdetails , { status = 401 , headers = { ['WWW-Authenticate'] = 'Basic realm=" ' .. versionstring .. '"' } } )
 			return false
 		end		
 	else
@@ -315,14 +313,12 @@ local function basiccmdserver ( skt , requestdetails )
 			i = i + 1
 		end
 		
-		local func = dispatch ( _M , cmd )
-		
-		if func then 
+		do
 			local doc
-			local function makeresponse ( pcallok , ok , ... )
-				if pcallok and ok then
+			local function makeresponse ( ok , response )
+				if ok then
 					doc = "<html><head><title>Completed Command: " .. cmd .. "</title></head><body><h1>Completed Command: " .. cmd .. "</h1><h2>Results:</h2><ul>" 
-					for i , v in ipairs ( { ok , ... } ) do
+					for i , v in ipairs ( response ) do
 						if tostring ( v ) then
 							doc = doc .. "<li>" .. tostring ( v ) .. "</li>"
 						else
@@ -334,25 +330,16 @@ local function basiccmdserver ( skt , requestdetails )
 				else
 					doc = "<html><head><title>Failure in: " .. cmd .. "</title></head><body><h1>Failure in: " .. cmd .. "</h1><h2>Error:</h2>" 
 					if not pcallok then
-						doc = doc .. "<p>" .. ok .. "</p>"
-					else
-						doc = doc .. "<ul>"
-						for i , v in ipairs ( { ok , ... } ) do
-							doc = doc .. "<li>" .. tostring ( v ) .. "</li>"
-						end
-						doc = doc .. "</ul>"
-					end
+						doc = doc .. "<p>" .. response .. "</p>"
+					end					
 					doc = doc .. "</body></html>" 
 					
 					return 500 , doc
 				end
 			end
-			local status , doc = makeresponse ( pcall ( func , unpack ( params ) ) )
+			local status , doc = makeresponse ( execute ( cmd , params ) )
 			local code , str , msg , bytessent = httpsend ( skt , requestdetails , { status = status , body = doc } )
 			return true
-		else 
-			httpsend ( skt , requestdetails , { status = 404 } )
-			return false
 		end
 	end
 end
@@ -430,7 +417,7 @@ local function webserver ( skt , requestdetails )
 				end
 			end
 			if not code and allowdirectorylistings then -- Directory listing
-				doc = "<html><head><title>" .. core._NAME .. ' ' .. core._VERSION .. " Directory Listing</title></head><body><h1>Listing of " .. sfile .. "</h1><ul>"
+				doc = "<html><head><title>" .. versionstring .. " Directory Listing</title></head><body><h1>Listing of " .. sfile .. "</h1><ul>"
 				local t = { }
 				for entry in lfs.dir ( path ) do
 					if string.sub ( entry , 1 , 1 ) ~= "." then
@@ -454,7 +441,7 @@ local function webserver ( skt , requestdetails )
 		
 		return true
 end
-local function jsonserver ( skt , requestdetails )
+local function jsonserver ( skt , requestdetails ) -- Unknown if still working, json client was lost when I ran svn-clean, cbf coding another one
 	require "Json"
 	print ( "Json cmd received: " , requestdetails.body )
 	local o = Json.Decode ( requestdetails.body )
@@ -464,16 +451,10 @@ local function jsonserver ( skt , requestdetails )
 		local code = 200
 		for i , v in ipairs ( o ) do
 			if v.cmd then
-				local func = dispatch ( _M , v.cmd )
-				if func then
-					t [ i ] = { pcall ( func , unpack ( v.params or { } ) ) }
-				else -- No such function
-					code = 206
-					t [ i ] = { false , "No such function" }
-				end
+				t [ i ] = { execute ( v.cmd , v.params ) }
 			else -- Missing command
 				code = 206
-				t [ i ] = { false , "No such function" }
+				t [ i ] = { false , "Provide a function" }
 			end
 		end
 		print ( Json.Encode ( t ) )
@@ -482,8 +463,6 @@ local function jsonserver ( skt , requestdetails )
 	else -- Json decoding failed
 		httpsend ( skt , requestdetails , { status = 400 , headers = hdr , body = Json.Encode ( { false , "Could not decode Json" } ) } )
 	end
-	
-	
 end
 local function lompserver ( skt )
 	while true do -- Keep doing it until connection is closed.
@@ -557,9 +536,9 @@ local function lompserver ( skt )
 	end
 end
 function initiate ( host , port )
-	local err
-	server , err = socket.bind ( host , port , 100 )
-	if server then 
+	local srv, err
+	srv , err = socket.bind ( host , port , 100 )
+	if srv then 
 		--[[copas.addserver( server , function echoHandler ( skt )
 			while true do
 				local data = copas.receive( skt )
@@ -572,8 +551,8 @@ function initiate ( host , port )
 				end
 			end
 		end ) --]] -- Echo Handler
-		copas.addserver ( server , lompserver )
-		updatelog ( "Server started; bound to '" .. host .. "', port #" .. port , 4 ) 
+		copas.addserver ( srv , lompserver )
+		updatelog ( "Server started; bound to '" .. host .. "', port #" .. port , 4 , _G ) 
 		return true
 	else
 		return ferror ( "Server could not be started: " .. err , 0 )
@@ -581,4 +560,11 @@ function initiate ( host , port )
 end
 function step ( )
 	copas.step ( )
+end
+
+function lane ( address , port )
+	initiate ( address , port )
+	while true do
+		step ( )
+	end
 end
