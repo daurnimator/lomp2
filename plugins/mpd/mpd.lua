@@ -26,7 +26,16 @@ loadfile ( dir .. "config" ) ( ) -- Load config
 if type ( address ) ~= "string" then address = "*" end
 if type ( port ) ~= "number" or port > 65535 or port <= 0 then port = 6600 end
 
-func = lanes.gen ( "base,package,math,table,string,io,os" , { globals = { linda = newlinda ( ) , updatelog = updatelog , ferror = ferror , config = config } } , function ( ... ) package.path = package.path .. ";./libs/?.lua;./libs/?/init.lua" loadfile ( dir .. "lane.lua" ) ( ) lane ( ... ) end )
+func = lanes.gen ( "base,package,math,table,string,io,os" , { globals = { linda = newlinda ( ) , updatelog = updatelog , ferror = ferror , config = config } } , function ( ... ) 
+	package.path = package.path .. ";./libs/?.lua;./libs/?/init.lua" 
+	local a , b = loadfile ( dir .. "lane.lua" ) 
+	if not a then
+		print ( a , b )
+	else
+		a ( )
+	end
+	lane ( ... ) 
+end )
 mpdserverlane = func ( address , port )
 
 --print(mpdserverlane:join())

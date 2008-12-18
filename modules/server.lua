@@ -197,7 +197,7 @@ local function httpsend ( skt , requestdetails , responsedetails )
 	return status , reasonphrase , bytessent
 end
 local function execute ( name , parameters )
-	-- Returns a function, given a string
+	-- Executes a function, given a string
 	-- Example of string: core.playback.play
 	if type ( name ) ~= "string" then return false end
 	if parameters and type ( parameters ) ~= "table" then return false end
