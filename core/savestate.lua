@@ -16,42 +16,8 @@ module ( "lomp" , package.seeall )
 function core.savestate ( )
 	local s = core._NAME .. "\t" .. core._VERSION .. " State File.\tCreated: " .. os.date ( ) .. "\n"
 	s = s .. "vars = {\n"
-	s = s .. "\trpt = " .. tostring ( vars.rpt ) .. ";\n"
-	s = s .. "\tloop = " .. tostring ( vars.loop ) .. ";\n"
-	-- Queue
-	s = s .. "\tsoftqueuepl = " .. vars.softqueuepl .. ";\n"
-	s = s .. "\tploffset = " .. vars.ploffset .. ";\n"
-	s = s .. "\thardqueue = {\n"
-	if vars.hardqueue [ 0 ] then s = s .. '\t\t[0] = core.item.create(' .. string.format ( '%q' , vars.hardqueue [ 0 ].typ ) .. ',' .. string.format ( '%q' , vars.hardqueue [ 0 ].source ) .. ') ;\n' end
-	for i = 1 , ( #vars.hardqueue ) do
-		s = s .. '\t\tcore.item.create(' .. string.format ( '%q' , vars.hardqueue [ i ].typ ) .. ',' .. string.format ( '%q' , vars.hardqueue [ i ].source ) .. ') ;\n'
-	end
-	s = s .. "\t};\n"
-	
-	-- Playlists
-	s = s .. "\tpl = {\n"
-	for i = 0 , #vars.pl do
-		s = s .. "\t\t[" .. i .. "]={ revision = 0 ; name = " .. string.format ( '%q' , vars.pl [ i ].name ) .. ';\n'
-		for j , entry in ipairs ( vars.pl [ i ] ) do
-			s = s .. '\t\t\tcore.item.create(' .. string.format ( '%q' , entry.typ ) .. ',' .. string.format ( '%q' , entry.source ) .. ') ;\n'
-		end
-		s = s .. '\t\t};\n'
-	end
-	s = s .. '\t};\n'
-	
-	-- History (played)
-	s = s .. "\tplayed = {\n"
-	local n
-	if #vars.played > config.history then n = config.history else n = #vars.played end
-	for i = 1 , n do
-		s = s .. '\t\tcore.item.create(' .. string.format ( '%q' , vars.played [ i ].typ ) .. ',' .. string.format ( '%q' , vars.played [ i ].source ) .. ') ;\n'
-	end
-	s = s .. "\t};\n"
-	
+	s = s .. table.recurseserialise ( vars , "\t" )
 	s = s .. "};\n"
-	
-	-- Plugin specified things??
-	
 	
 	local file, err = io.open( config.statefile , "w+" )
 	if err then 

@@ -120,6 +120,7 @@ function package.see ( env )
 end
 
 function table.recurseserialise ( t , prefix )
+	prefix = prefix or ""
 	s = ""
 	for k , v in pairs ( t ) do
 		if type ( k ) == "number" then 
@@ -130,7 +131,7 @@ function table.recurseserialise ( t , prefix )
 		
 		if type ( v ) == "table" then
 			s = s .. prefix .. k .. '= {\n'
-			s = s .. table.recurseserialise ( v , ( prefix or "" ) .. "\t" )
+			s = s .. table.recurseserialise ( v , prefix .. "\t" )
 			s = s .. prefix .. '};\n'
 		elseif type ( v ) == "string" then
 			s = s .. prefix .. k .. '= ' .. string.format ( '%q' , v ) .. ';\n'
