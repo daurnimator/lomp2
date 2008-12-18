@@ -24,12 +24,11 @@ do
 	log = ""
 
 	-- Output Loading Annoucement
-	print ( )
 	local str = "LOMP Loading " .. os.date ( "%c" ) .. "\n"
-	print ( str )
+	print ( "\n" .. str )
 
 	-- Load Configuration
-	require("core.config")
+	require "core.config"
 
 	-- Log File Stuff
 	local file , err = io.open ( config.logfile , "w+" )
@@ -117,7 +116,7 @@ func = lanes.gen ( "base,package,math,table,string,io,os" , { globals = { linda 
 serverlane = func ( config.address , config.port )
 
 local i = 1
-local timeout = 0.1
+local timeout = 0.01
 while true do
 	do -- Check for cmds to run
 		local val , key = lindas [ i ]:receive ( timeout , "cmd" )		
@@ -143,7 +142,48 @@ while true do
 			end
 		end
 	end
-	
+	do -- Check for var gets.
+		local val , key = lindas [ i ]:receive ( timeout , "var" )		
+		if type ( val ) == "string" then
+			local var , fail
+			--[[do -- Find variable from string.
+				var = getfenv ( 1 )
+				for k in string.gmatch ( val , "(%w+)%." ) do
+					var = var [ k ]
+					if type ( var ) ~= "table" then fail = "No variable found" end
+				end
+				var = var [ select ( 3 , string.find ( val , "([^%.]+)$" ) ) ]
+				if not var then fail = "No variable found" end
+			end--]]
+			
+			local fn = assert ( loadstring ( "return " .. val ) )
+			
+			local function buildMetatable ( ref )
+				return { __index = function ( t , k )
+					if type ( ref [ k ] ) == 'string' or type ( ref [ k ]) == 'number' then
+						return ref [ k ]
+					elseif type ( ref [ k ] ) == 'table' then
+						return setmetatable ( { } , buildMetatable ( ref [ k ] ) )
+					else
+						return nil
+					end
+				end }
+			end
+
+			setfenv ( fn , setmetatable ( { } , buildMetatable ( _M ) ) )
+			local var = fn ( )
+			
+			if fail then
+				lindas [ i ]:send ( timeout , "returnedvar" , { false , fail } )
+			else
+				local function interpret ( ok , err , ... )
+					if not ok then return ok , err
+					else return ok , { err , ... } end
+				end
+				lindas [ i ]:send ( timeout , "returnedvar" , { true , var } )
+			end
+		end
+	end
 	i = i + 1 
 	if i > #lindas then i = 1 end
 end

@@ -60,13 +60,22 @@ function pause ( )
 	player.pause ( )
 	state = "paused"
 	
-	return true
+	return state
 end
 function unpause ( )
 	player.unpause ( )
 	state = "playing"
 	
-	return true
+	return state
+end
+function togglepause ( )
+	if state == "playing" then
+		return pause ( )
+	elseif state == "paused" then
+		return unpause ( )
+	else
+		return ferror ( "Tried to toggle pause when neither playing or paused" )
+	end
 end
 
 function goto ( songnum )

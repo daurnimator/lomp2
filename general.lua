@@ -118,3 +118,27 @@ function package.see ( env )
 		meta.__index = env
 	end
 end
+
+function table.recurseserialise ( t , prefix )
+	s = ""
+	for k , v in pairs ( t ) do
+		if type ( k ) == "number" then 
+			k = '[' .. k .. ']'
+		else -- Its a string
+			k = '[' .. string.format ( '%q' , k ) .. ']'
+		end
+		
+		if type ( v ) == "table" then
+			s = s .. prefix .. k .. '= {\n'
+			s = s .. table.recurseserialise ( v , ( prefix or "" ) .. "\t" )
+			s = s .. prefix .. '};\n'
+		elseif type ( v ) == "string" then
+			s = s .. prefix .. k .. '= ' .. string.format ( '%q' , v ) .. ';\n'
+		elseif type ( v ) == "number" then
+			s = s .. prefix .. k .. '= ' .. v .. ';\n'
+		elseif type ( v ) == "boolean" then
+			s = s .. prefix .. k .. '= ' .. tostring ( v ) .. ';\n'
+		end
+	end
+	return s
+end

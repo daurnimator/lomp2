@@ -16,9 +16,27 @@ require "copas"
 local mpdversion = "0.13.0"
 
 local commands = { }
-local allcommands = { 	command_list_begin = true , command_list_ok_begin = true , 
+local allcommands = { 	
+				-- Protocol things
+				command_list_begin = true , command_list_ok_begin = true , 
 				commands = true , notcommands = true ,
-				disableoutput = false , enableoutput = false , kill = true
+				
+				-- Admin Commands
+				disableoutput = false , enableoutput = false , kill = true , update = false ,
+				status = true , 
+				
+				-- Playback Commands
+				crossfade = false , 
+				next = true , pause = true , play = true , stop = true , previous = true ,
+				playid = false , 
+				random = false , ["repeat"] = true ,
+				seek = false , seekid = false ,
+				setvol = false ,
+				volume = false ,
+
+				
+				-- Misc
+				clearerror = false , close = true , password = false , ping = true ,
 }
 
 local function execute ( name , parameters )
@@ -33,6 +51,20 @@ local function execute ( name , parameters )
 	
 	local val , key = linda:receive ( timeout , "returnedcmd" )
 	return unpack ( val )
+end
+local function getvar ( name )
+	-- Executes the value of a variable
+	-- Example of string: vars.pl
+	if type ( name ) ~= "string" then return false end
+	
+	local timeout = nil
+	
+	linda:send ( timeout , "var" , name )
+	
+	local val , key = linda:receive ( timeout , "returnedvar" )
+	
+	if val [ 1 ] == false then return nil , val [ 2 ]
+	else return val [ 2 ] end
 end
 local function makeackmsg ( errorid , position ,  current_command ,  message_text )
 	--[[	ACK_ERROR_NOT_LIST = 1 
@@ -55,7 +87,7 @@ local function doline ( line , skt )
 		local i , j , cmd = string.find ( line , "([^ \t]+)" )
 		if i then
 			if commands [ cmd ] then
-				return true , commands [ cmd ] ( line , skt )
+				return commands [ cmd ] ( line , skt )
 			else
 				return false , { 5 , nil , 'unknown command "' .. cmd .. '"' }
 			end
@@ -71,14 +103,14 @@ local function mpdserver ( skt )
 		local line , err = copas.receive( skt )
 		if line then 
 			print( line )
-			local ok , r = doline ( line , skt )
+			local ok , ack = doline ( line , skt )
 			if ok then
 			elseif ok == false then
-				r = makeackmsg ( r [ 1 ] , 0 , r [ 2 ] , r [ 3 ] )
+				ok = makeackmsg ( ack [ 1 ] , 0 , ack [ 2 ] , ack [ 3 ] )
 			else
 			end
 			print ( ok , r )
-			local bytessent , err = copas.send ( skt , r )
+			local bytessent , err = copas.send ( skt , ok )
 			print ( bytessent , err )
 		else
 			if err == "closed" then
@@ -184,6 +216,103 @@ commands.kill = function ( line , skt )
 	return r	
 end
 
+commands.status = function ( line , skt )
+	local r = ""
+	--execute ( "core.quit" )
+	local softqueuepl , err = getvar ( "vars.softqueuepl" )
+	
+	local state , err = getvar ( "core.playback.state" )
+	if state == "stopped" then state = "stop"
+	elseif state == "playing" then state = "play"
+	elseif state == "paused" then state = "pause"
+	end
+	
+	local t = {	volume = 100 ,
+				["repeat"] = getvar ( "vars.rpt" ) ,
+				random = 0 ,
+				playlist = getvar ( "vars.pl [ " .. softqueuepl .. " ].revision" )*46341 + getvar ( "vars.hardqueue.revision" ) ,
+				playlistlength = getvar ( "#vars.pl [ " .. softqueuepl .. " ]" ) ,
+				xfade = 0 ,
+				state = state ,
+	}
+	t.song = getvar ( "vars.ploffset" )
+	--t.songid
+	t.time = "0:" .. getvar ( "vars.queue [ 0 ].details.length" )
+	--t.bitrate
+	--t.audio
+	--t.updating_db
+	--t.error--]]
+	
+	for k , v in pairs ( t ) do
+		r = r .. k .. ": " .. v .. "\n"
+	end
+	
+	r = r .. "OK\n"
+	return r	
+end
+
+commands.pause = function ( line , skt )
+	local pause = tonumber ( string.match ( line , "pause[ \t]+([01])" ) )
+	if pause == 1 then
+		execute ( "core.playback.pause" )
+		return "OK\n"
+	elseif pause == 0 then
+		execute ( "core.playback.unpause" )
+		return "OK\n"
+	else -- Its a toggle
+		execute ( "core.playback.togglepause" )
+	end
+	
+	return "OK\n"
+end
+
+commands.play = function ( line , skt )
+	local song = tonumber ( string.match ( line , "play[ \t]+(%d+)" ) )
+	if song then
+		execute ( "core.playback.goto" , { song } )
+		execute ( "core.playback.play" )
+	else 
+		execute ( "core.playback.play" )
+	end
+	return "OK\n"
+end
+
+commands.stop = function ( line , skt )
+	execute ( "core.playback.stop" )
+	return "OK\n"
+end
+
+commands.next = function ( line , skt )
+	execute ( "core.playback.forward" )
+	return "OK\n"
+end
+
+commands.previous = function ( line , skt )
+	execute ( "core.playback.backward" )
+	return "OK\n"
+end
+
+commands["repeat"] = function ( line , skt )
+	local rpt = tonumber ( string.match ( line , "repeat[ \t]+([01])" ) )
+	if rpt == 1 then
+		execute ( "core.enablelooping" )
+		return "OK\n"
+	elseif rpt == 0 then
+		execute ( "core.disablelooping" )
+		return "OK\n"
+	else
+		return false , { 2 , "repeat" , "Bad argument" }
+	end
+end
+
+commands.close = function ( line , skt )
+	skt:close ( )
+	return ""
+end
+
+commands.ping = function ( line , skt )
+	return "OK\n"
+end
 
 function initiate ( host , port )
 	local srv, err

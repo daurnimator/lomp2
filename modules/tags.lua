@@ -65,7 +65,7 @@ local function gettags ( path )
 			if s == "fLaC" then -- Flac file
 				require "modules.fileinfo.flac"
 				item = fileinfo.flac.info ( fd )
-				return
+				return item
 			end
 			
 			-- Check if vorbis (eg: ogg)
@@ -153,46 +153,11 @@ function edittag ( path , edits )
 		end
 	end
 end
-function serialisecache ( )
-	local s = ""
-	s = s .. "cache = {\n"
-	for k , v in pairs ( cache ) do
-		s = s .. '[' .. string.format ( '%q' , k ) ..'] = {'
-		for k , v in pairs ( v ) do -- items
-			if type ( v ) == "table" then
-				s = s .. '\t' .. k .. ' = {\n'
-				for k , v in pairs ( v ) do -- eg, tags
-					if type ( v ) == "table" then
-						s = s .. '\t\t[' .. string.format ( '%q' , k ) .. '] = {\n'
-						for k , v in pairs ( v ) do -- eg, artist
-							s = s .. '\t\t\t[' .. k .. '] = ' .. string.format ( '%q' , v ) .. ';\n'
-						end
-						s = s .. '\t\t};\n'
-					elseif type ( v ) == "string" then
-						s = s .. '\t\t[' .. string.format ( '%q' , k ) .. '] = ' .. string.format ( '%q' , v ) .. ';\n'
-					elseif type ( v ) == "number" then
-						s = s .. '\t\t[' .. string.format ( '%q' , k ) .. '] = ' .. v .. ';\n'
-					elseif type ( v ) == "boolean" then
-						s = s .. '\t\t[' .. string.format ( '%q' , k ) .. '] = ' .. tostring(v) .. ';\n'
-					end
-				end
-				s = s .. '\t};\n'
-			elseif type ( v ) == "string" then
-				s = s .. '\t' .. k .. ' = ' .. string.format ( '%q' , v ) .. ';\n'
-			elseif type ( v ) == "number" then
-				s = s .. '\t' .. k .. ' = ' .. v .. ';\n'
-			elseif type ( v ) == "boolean" then
-				s = s .. '\t' .. k .. ' = ' .. tostring(v) .. ';\n'
-			end
-		end
-		s = s .. '};\n'
-	end
-	s = s .. '};\n'
-	return s
-end
 function savecache ( )
 	local s = core._NAME .. "\t" .. core._VERSION .. " TagCache File.\tCreated: " .. os.date ( ) .. "\n"
-	s = s .. serialisecache ( )
+	s = s .. "cache = {\n"
+	s = s .. table.recurseserialise ( cache , "\t" )
+	s = s .. '};\n'
 	
 	local file, err = io.open( config.tagcachefile , "w+" )
 	if err then 
