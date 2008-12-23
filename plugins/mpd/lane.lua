@@ -56,7 +56,7 @@ local function getvar ( name )
 	-- Executes the value of a variable
 	-- Example of string: vars.pl
 	if type ( name ) ~= "string" then return false end
-	
+
 	local timeout = nil
 	
 	linda:send ( timeout , "var" , name )
@@ -102,16 +102,16 @@ local function mpdserver ( skt )
 	while true do
 		local line , err = copas.receive( skt )
 		if line then 
-			print( line )
+			print( "New MPD Command: " , line )
 			local ok , ack = doline ( line , skt )
 			if ok then
 			elseif ok == false then
 				ok = makeackmsg ( ack [ 1 ] , 0 , ack [ 2 ] , ack [ 3 ] )
-			else
+			--else -- nil.... bad commands array entry
 			end
-			print ( ok , r )
+			print ( "Reply: " , "\n" .. ( ok or "NO OK" ) )
 			local bytessent , err = copas.send ( skt , ok )
-			print ( bytessent , err )
+			print ( "Bytesent: " , bytessent , err )
 		else
 			if err == "closed" then
 				-- "MPD Client Disconnected"
@@ -220,16 +220,20 @@ commands.status = function ( line , skt )
 	local r = ""
 	--execute ( "core.quit" )
 	local softqueuepl , err = getvar ( "vars.softqueuepl" )
-	
 	local state , err = getvar ( "core.playback.state" )
 	if state == "stopped" then state = "stop"
 	elseif state == "playing" then state = "play"
 	elseif state == "paused" then state = "pause"
 	end
-	
+	function booleantonumber ( boolean )
+		if boolean == true then return 1
+		elseif boolean == false then return 0
+		else return nil end
+	end
 	local t = {	volume = 100 ,
-				["repeat"] = getvar ( "vars.rpt" ) ,
+				["repeat"] = booleantonumber ( getvar ( "vars.rpt" ) ) ,
 				random = 0 ,
+				--  MPD has maximum values of 2^31, 46341 is ceiling(2^(31/2))
 				playlist = getvar ( "vars.pl [ " .. softqueuepl .. " ].revision" )*46341 + getvar ( "vars.hardqueue.revision" ) ,
 				playlistlength = getvar ( "#vars.pl [ " .. softqueuepl .. " ]" ) ,
 				xfade = 0 ,
@@ -244,7 +248,7 @@ commands.status = function ( line , skt )
 	--t.error--]]
 	
 	for k , v in pairs ( t ) do
-		r = r .. k .. ": " .. v .. "\n"
+		r = r .. k .. ": " .. tostring ( v ) .. "\n"
 	end
 	
 	r = r .. "OK\n"

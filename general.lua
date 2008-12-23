@@ -121,7 +121,7 @@ end
 
 function table.recurseserialise ( t , prefix )
 	prefix = prefix or ""
-	s = ""
+	local s = ""
 	for k , v in pairs ( t ) do
 		if type ( k ) == "number" then 
 			k = '[' .. k .. ']'

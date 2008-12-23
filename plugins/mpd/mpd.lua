@@ -36,8 +36,8 @@ func = lanes.gen ( "base,package,math,table,string,io,os" , { globals = { linda 
 	end
 	lane ( ... ) 
 end )
-mpdserverlane = func ( address , port )
+lane = func ( address , port )
 
---print(mpdserverlane:join())
+--print(lane:join())
 
 return _NAME , _VERSION

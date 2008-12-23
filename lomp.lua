@@ -116,71 +116,80 @@ func = lanes.gen ( "base,package,math,table,string,io,os" , { globals = { linda 
 serverlane = func ( config.address , config.port )
 
 local i = 1
-local timeout = 0.01
+local timeout = 0.005
 while true do
 	do -- Check for cmds to run
 		local val , key = lindas [ i ]:receive ( timeout , "cmd" )		
 		if type ( val ) == "table" and type ( val.cmd ) == "string" and not ( val.params and type ( val.params ) ~= "table" ) then
-			local func , fail
-			do -- Find function from string.
-				func = getfenv ( 1 )
-				for k in string.gmatch ( val.cmd , "(%w+)%." ) do
-					func = func [ k ]
-					if type ( func ) ~= "table" then fail = "No function found" end
-				end
-				func = func [ select ( 3 , string.find ( val.cmd , "([^%.]+)$" ) ) ]
-				if type ( func ) ~= "function" then fail = "No function found" end
+			local function buildMetatable ( ref )
+				return { __index = function ( t , k )
+					if type ( ref [ k ] ) == "function" then
+						return ref [ k ]
+					elseif type ( ref [ k ] ) == "table" then
+						local val = newproxy ( true ) -- Undocumented lua function
+						for k , v in pairs ( buildMetatable ( ref [ k ] ) ) do
+						     getmetatable ( val ) [ k ] = v
+						end
+						return val
+					else
+						return nil
+					end
+				end , }
 			end
-			if fail then
+			
+			local fn , fail = loadstring ( "return " .. val.cmd )
+			
+			if fail then -- Check for compilation errors (eg, syntax)
 				lindas [ i ]:send ( timeout , "returnedcmd" , { false , fail } )
 			else
-				local function interpret ( ok , err , ... )
-					if not ok then return ok , err
-					else return ok , { err , ... } end
+				setfenv ( fn , setmetatable ( { } , buildMetatable ( _M ) ) )
+				local ok , func = pcall ( fn )
+				if not ok then -- Check for no errors while finding function
+					lindas [ i ]:send ( timeout , "returnedcmd" , { false , func } )
+				elseif not func then -- Make sure function was found, func already has to be a function or nil, so we only need to exclude the nil case
+					lindas [ i ]:send ( timeout , "returnedcmd" , { false , "Not a function" } )
+				else
+					local function interpret ( ok , err , ... )
+						if not ok then return ok , err
+						else return ok , { err , ... } end
+					end
+					lindas [ i ]:send ( timeout , "returnedcmd" , { interpret ( pcall ( func , unpack ( val.params or { } ) ) ) } )
 				end
-				lindas [ i ]:send ( timeout , "returnedcmd" , { interpret ( pcall ( func , unpack ( val.params or { } ) ) ) } )
 			end
 		end
 	end
 	do -- Check for var gets.
 		local val , key = lindas [ i ]:receive ( timeout , "var" )		
 		if type ( val ) == "string" then
-			local var , fail
-			--[[do -- Find variable from string.
-				var = getfenv ( 1 )
-				for k in string.gmatch ( val , "(%w+)%." ) do
-					var = var [ k ]
-					if type ( var ) ~= "table" then fail = "No variable found" end
-				end
-				var = var [ select ( 3 , string.find ( val , "([^%.]+)$" ) ) ]
-				if not var then fail = "No variable found" end
-			end--]]
-			
-			local fn = assert ( loadstring ( "return " .. val ) )
-			
 			local function buildMetatable ( ref )
 				return { __index = function ( t , k )
-					if type ( ref [ k ] ) == 'string' or type ( ref [ k ]) == 'number' then
-						return ref [ k ]
-					elseif type ( ref [ k ] ) == 'table' then
-						return setmetatable ( { } , buildMetatable ( ref [ k ] ) )
+					if type ( ref [ k ] ) == "table" then
+						local val = newproxy ( true ) -- Undocumented lua function
+						for k , v in pairs ( buildMetatable ( ref [ k ] ) ) do
+						     getmetatable ( val ) [ k ] = v
+						end
+						return val
 					else
-						return nil
+						return ref [ k ]
 					end
-				end }
+				end , 
+				__len = function ()
+					return #ref
+				end , }
 			end
-
-			setfenv ( fn , setmetatable ( { } , buildMetatable ( _M ) ) )
-			local var = fn ( )
-			
-			if fail then
+			local fn , fail = loadstring ( "return " .. val )
+			if fail then -- Check for compilation errors
 				lindas [ i ]:send ( timeout , "returnedvar" , { false , fail } )
 			else
-				local function interpret ( ok , err , ... )
-					if not ok then return ok , err
-					else return ok , { err , ... } end
+				setfenv ( fn , setmetatable ( { } , buildMetatable ( _M ) ) )
+				local ok , var = pcall ( fn )
+				if not ok then -- Check for no errors while finding function
+					lindas [ i ]:send ( timeout , "returnedvar" , { false , var } )
+				elseif type ( var ) ~= "string" and type ( var ) ~= "number" and type ( var ) ~= "boolean" and var ~= nil then -- Make sure function was found, var already has to be a string, number or nil
+					lindas [ i ]:send ( timeout , "returnedvar" , { false , "Not a variable, tried to return value of: " .. type ( var ) } )
+				else
+					lindas [ i ]:send ( timeout , "returnedvar" , { ok , var } )
 				end
-				lindas [ i ]:send ( timeout , "returnedvar" , { true , var } )
 			end
 		end
 	end
