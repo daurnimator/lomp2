@@ -56,7 +56,7 @@ end
 local function gettags ( path )
 	local item
 	do
-		local fd = io.open ( path , rb )
+		local fd = io.open ( path , "rb" )
 		
 		do 
 			-- Check if flac
@@ -68,44 +68,44 @@ local function gettags ( path )
 				return item
 			end
 			
-			-- Check if vorbis (eg: ogg)
+			--[[ Check if vorbis (eg: ogg)
 			fd:seek ( "set" , 1 )
 			local s = fd:read ( 6 ) -- six octet identifier
 			if s == "vorbis" then -- Flac file
 				
-				return
+				return 
 			end			
 			
 			-- Check for APE tag
 			fd:seek ( "set" )
 			local s = fd:read ( 8 ) -- At start of file
 			if s == "APETAGEX" then
-				return
+				return 
 			end
 			fd:seek ( "end" , -32 ) -- At end of file
 			local s = fd:read ( 8 ) 
 			if s == "APETAGEX" then
-				return
+				return 
 			end
 			
 			-- Check for ID3v2
 			fd:seek ( "set" )
 			local s = fd:read ( 3 ) -- At start of file
 			if s == "ID3" then
-				return
+				return 
 			end
 			fd:seek ( "end" , -10 ) -- At end of file
 			local s = fd:read ( 8 ) 
 			if s == "3DI" then
-				return
+				return 
 			end
 			
 			-- Check for ID3v1 or ID3v1.1 tag
 			fd:seek ( "end" , -128 ) -- At end of file
 			local s = fd:read ( 3 ) 
 			if s == "ID3" then
-				return
-			end
+				return 
+			end--]]
 
 			-- If you get to here, there is probably no tag....
 			item = { tags = tagfrompath ( path , config.tagpatterns.default ) }

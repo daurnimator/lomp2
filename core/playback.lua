@@ -141,7 +141,7 @@ function forward ( ) -- Moves forward one song in the queue
 	if state == "playing" then
 		if m then 
 			vars.queue [ 0 ].played = true
-			player.changesong ( vars.queue [ 0 ].source ) 
+			player.changesong ( vars.queue [ 0 ].typ , vars.queue [ 0 ].source ) 
 		end
 	else
 		stop ( ) -- Stop if in non-playing state (eg, paused)

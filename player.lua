@@ -9,7 +9,7 @@
 	You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ]]
 
-require "ex"
+local libvlc = require "vlc086h"
 
 require "core.triggers"
 
@@ -17,53 +17,41 @@ module ( "lomp.player" , package.see ( lomp ) )
 
 extensions = {	"ogg" ,
 				"flac" ,
+				"mp3" ,
+				"wav" ,
 }
 
 function play ( typ , source , offset )
-	--cmd = io.popen ( "ogg123 " .. source )
-	--rin, win = io.pipe( )
-	--rout, wout = io.pipe( )
-	--rerr, werr = io.pipe( )
-	local null = io.open ( "/dev/null" )
-	werr = null
-	local cmd = { 
-		"ogg123" , source , --Command then arguments. 
-		stdin = rin , stdout = wout , stderr = werr 
-	}
-	
-	if tonumber ( offset ) then table.insert ( cmd , 2 , "--skip " .. offset ) end
-	
-	proc = os.spawn ( cmd );
-	--rin:close( ) ; wout:close( ) ; werr:close( )
-	_ , _ , pid = string.find ( tostring ( proc ) , "^process %((%d+)," )
-	if not proc then return false end 
-	return true
+	if typ == "file" then
+		local a = instance:playlist_add ( source )
+		instance:playlist_play ( a )
+		return true
+	else 
+		print( "TYPE IS: " .. typ )
+		return false , typ
+	end
 end
 
-function changesong ( newsource )
+function changesong ( newtyp , newsource , newoffset )
 	stop ( )
-	play ( newsource )
+	play ( newtyp , newsource , newoffset )
 end	
 		
 function pause ( )
-	--os.execute "killall -STOP ogg123"
-	if proc then
-		os.execute ( "kill -STOP " .. pid )
+	if instance:playlist_isplaying ( ) then
+		instance:playlist_pause ( )
 	end
 end
 
 function unpause ( )
-	--os.execute "killall -CONT ogg123"
-	if proc then
-		os.execute ( "kill -CONT " .. pid )
+	if not instance:playlist_isplaying ( ) then
+		instance:playlist_pause ( )
 	end
 end
 
 function stop ( )
-	--os.execute "killall ogg123"
-	if proc then
-		os.execute ( "kill " .. pid )
-	end
+	instance:playlist_stop ( )
+	return true
 end
 
 function callonend ( )
@@ -86,3 +74,5 @@ function getstate ( )
 	return '"' .. r .. '"'
 	--]]
 end
+
+instance = libvlc.new ( )
