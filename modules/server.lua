@@ -18,6 +18,8 @@ require "copas"
 require "mime" -- For base64 decoding of authorisation
 require "lfs"
 
+server = { }
+
 local apachelog = ""
 
 local mimetypes = { }
@@ -196,18 +198,15 @@ local function httpsend ( skt , requestdetails , responsedetails )
 		
 	return status , reasonphrase , bytessent
 end
-local function execute ( name , parameters )
+local function execute ( thread , name , parameters )
 	-- Executes a function, given a string
 	-- Example of string: core.playback.play
 	if type ( name ) ~= "string" then return false end
 	if parameters and type ( parameters ) ~= "table" then return false end
 	
-	local timeout = nil
+	thread.send:insert ( { thread.identifier , "cmd" , { cmd = name , parameters = parameters } } )
 	
-	linda:send ( timeout , "cmd" , { cmd = name , params = parameters } )
-	
-	local val , key = linda:receive ( timeout , "returnedcmd" )
-	return unpack ( val )
+	return unpack ( thread.receive:remove ( ) )
 end
 local function auth ( headers )
 	if config.authorisation then
@@ -234,7 +233,7 @@ local function auth ( headers )
 	end
 end
 
-local function xmlrpcserver ( skt , requestdetails )
+local function xmlrpcserver ( thread , skt , requestdetails )
 	require "xmlrpc"
 	local authorised , typ = auth ( requestdetails.headers )
 	if not authorised then
@@ -246,7 +245,7 @@ local function xmlrpcserver ( skt , requestdetails )
 		end
 	else -- Authorised
 		local method_name , list_params = xmlrpc.srvDecode ( requestdetails.body )
-		list_params = list_params [ 1 ] -- KLUDGE: I don't know why it needs this, but it does -- ooo, maybe its so you can have multiple methodnames?? but then wtf is the previous cmd...
+		list_params = list_params [ 1 ] -- KLUDGE: I don't know why it needs this, but it does -- maybe its so you can have multiple methodnames?? but then wtf is the previous cmd...
 		
 		local function depack ( t , i , j )
 			i = i or 1
@@ -255,7 +254,7 @@ local function xmlrpcserver ( skt , requestdetails )
 		end
 		list_params = { depack ( list_params or { } ) }
 		
-		local ok , result = execute ( method_name , list_params )
+		local ok , result = execute ( thread , method_name , list_params )
 		--[[xmlrpc.srvMethods ( dispatch )
 		
 		local func = xmlrpc.dispatch ( method_name )
@@ -274,7 +273,7 @@ local function xmlrpcserver ( skt , requestdetails )
 		return true
 	end
 end
-local function basiccmdserver ( skt , requestdetails )
+local function basiccmdserver ( thread , skt , requestdetails )
 	-- Execute action based on GET string.
 	local authorised , typ = auth ( requestdetails.headers )
 	if not authorised then
@@ -337,13 +336,13 @@ local function basiccmdserver ( skt , requestdetails )
 					return 500 , doc
 				end
 			end
-			local status , doc = makeresponse ( execute ( cmd , params ) )
+			local status , doc = makeresponse ( execute ( thread , cmd , params ) )
 			local code , str , msg , bytessent = httpsend ( skt , requestdetails , { status = status , body = doc } )
 			return true
 		end
 	end
 end
-local function webserver ( skt , requestdetails )
+local function webserver ( thread , skt , requestdetails )
 		local code , doc , hdr = nil , nil , { }
 		local publicdir = "."
 		local allowdirectorylistings = true
@@ -441,7 +440,7 @@ local function webserver ( skt , requestdetails )
 		
 		return true
 end
-local function jsonserver ( skt , requestdetails ) -- Unknown if still working, json client was lost when I ran svn-clean, cbf coding another one
+local function jsonserver ( thread , skt , requestdetails ) -- Unknown if still working, json client was lost when I ran svn-clean, cbf coding another one
 	require "Json"
 	print ( "Json cmd received: " , requestdetails.body )
 	local o = Json.Decode ( requestdetails.body )
@@ -451,7 +450,7 @@ local function jsonserver ( skt , requestdetails ) -- Unknown if still working, 
 		local code = 200
 		for i , v in ipairs ( o ) do
 			if v.cmd then
-				t [ i ] = { execute ( v.cmd , v.params ) }
+				t [ i ] = { execute ( thread , v.cmd , v.params ) }
 			else -- Missing command
 				code = 206
 				t [ i ] = { false , "Provide a function" }
@@ -464,7 +463,7 @@ local function jsonserver ( skt , requestdetails ) -- Unknown if still working, 
 		httpsend ( skt , requestdetails , { status = 400 , headers = hdr , body = Json.Encode ( { false , "Could not decode Json" } ) } )
 	end
 end
-local function lompserver ( skt )
+local function lompserver ( thread , skt )
 	while true do -- Keep doing it until connection is closed.
 		-- Retrive HTTP header
 		local found , chunk , code , request , rsize = false , 0 , false , "" , 0
@@ -513,17 +512,17 @@ local function lompserver ( skt )
 		
 		if Method == "POST" then
 			if file == "/LOMP" and headers [ "content-type" ] == "text/xml" then -- This is an xmlrpc command for lomp
-				xmlrpcserver ( skt , requestdetails )
+				xmlrpcserver ( thread , skt , requestdetails )
 			elseif file == "/JSON" then
-				jsonserver ( skt , requestdetails )
+				jsonserver ( thread , skt , requestdetails )
 			else
-				webserver ( skt , requestdetails )
+				webserver ( thread , skt , requestdetails )
 			end
 		elseif Method == "GET" or Method == "HEAD" then
 			if file == "/BasicCMD" then
-				basiccmdserver ( skt , requestdetails )
+				basiccmdserver ( thread , skt , requestdetails )
 			else
-				webserver ( skt , requestdetails )
+				webserver ( thread , skt , requestdetails )
 			end
 		elseif Method == "TRACE" then -- Send back request as body
 			httpsend ( skt , requestdetails , 200 , { [ 'content-type'] = "message/http" } , request )
@@ -535,7 +534,7 @@ local function lompserver ( skt )
 		break
 	end
 end
-function initiate ( host , port )
+function server.initiate ( thread , host , port )
 	local srv, err
 	srv , err = socket.bind ( host , port , 100 )
 	if srv then 
@@ -551,20 +550,19 @@ function initiate ( host , port )
 				end
 			end
 		end ) --]] -- Echo Handler
-		copas.addserver ( srv , lompserver )
+		copas.addserver ( srv , function ( skt ) return lompserver ( thread , skt ) end )
 		updatelog ( "Server started; bound to '" .. host .. "', port #" .. port , 4 , _G ) 
 		return true
 	else
 		return ferror ( "Server could not be started: " .. err , 0 )
 	end
 end
-function step ( )
+function server.step ( )
 	copas.step ( )
 end
-
-function lane ( address , port )
-	initiate ( address , port )
+function server.run ( thread , address , port )
+	server.initiate ( thread , address , port )
 	while true do
-		step ( )
+		server.step ( )
 	end
 end

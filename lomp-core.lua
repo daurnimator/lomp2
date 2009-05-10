@@ -27,7 +27,7 @@ core._VERSION = core._MAJ .. "." .. core._MIN .. "." .. core._INC
 vars = { 
 	init= t ,
 	pl = {
-		[-1] = { } , -- Empty Playlist
+		[-1] = { name = "Empty Playlist" , revision = 0 } , -- Empty Playlist
 		revision = 0 ,
 	} ,
 	hardqueue = { 

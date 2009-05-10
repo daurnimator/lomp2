@@ -13,9 +13,11 @@ require "general"
 
 module ( "lomp.triggers" , package.see ( lomp ) )
 
-local callbacks = { songstarted = { } , songfinished = { } , songstopped = { } , }
--- songstarted ( typ , source )
--- songstopped ( typ , source , stopoffset )
+local callbacks = { 
+	songplaying = { } , -- songplaying ( typ , source ) -- Triggered when song is played
+	songfinished = { } , -- songfinished ( typ , source )
+	songstopped = { } , -- songstopped ( typ , source , stopoffset )
+}
 
 function registercallback ( callback , func , name )
 	local pos = #callbacks [ callback ] + 1
@@ -31,7 +33,7 @@ function triggercallback ( callback , ... )
 	for i , v in ipairs ( callbacks [ callback ] ) do v ( ... ) end
 end
 
-registercallback ( "songstarted" , function ( )
+--[[registercallback ( "songplaying" , function ( )
 		-- Print new song stats
 		local t = vars.queue [ 0 ].details
 		print( "--------------------Now playing file: ", t.filename )
@@ -47,4 +49,13 @@ registercallback ( "songstarted" , function ( )
 			end
 		end
 		print ( "----------------------------------------------------------------" )
-	end , "Print to screen" )
+	end , "Print song stats to screen" )--]]
+	
+registercallback ( "songplaying" , function ( )
+		vars.queue [ 0 ].played = true -- Better way to figure this out?
+	end , "Set Played" )
+		
+	
+--[[registercallback ( "songfinished" , function ( )
+		print ( "Song has finished!!!!" )
+	end , "Debug" )--]]

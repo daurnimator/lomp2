@@ -35,7 +35,6 @@ function play ( fromoffset )
 	player.play ( typ , source , offset )
 	state = "playing"
 	vars.queue [ 0 ].laststarted = os.time ( )
-	triggers.triggercallback ( "songstarted" , typ , source )
 	
 	return true
 end
@@ -140,7 +139,7 @@ function forward ( ) -- Moves forward one song in the queue
 	end
 	if state == "playing" then
 		if m then 
-			vars.queue [ 0 ].played = true
+			print("forward")
 			player.changesong ( vars.queue [ 0 ].typ , vars.queue [ 0 ].source ) 
 		end
 	else

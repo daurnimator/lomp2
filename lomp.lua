@@ -18,8 +18,6 @@ package.path = package.path .. ";./libs/?.lua;./libs/?/init.lua"
 
 module ( "lomp" , package.seeall )
 
-local verbosity = 4
-
 do 
 	log = ""
 
@@ -29,7 +27,7 @@ do
 
 	-- Load Configuration
 	require "core.config"
-
+	
 	-- Log File Stuff
 	local file , err = io.open ( config.logfile , "w+" )
 	if err then error ( "Could not open/create log file: '" .. err .. "'\n" ) end
@@ -42,7 +40,7 @@ end
 	
 function updatelog ( data , level , env )
 	env = env or _G
-	
+	data = tostring(data)
 	if not level then level = 2 end
 	
 	if level == 0 then data = "Fatal error: \t\t" .. data
@@ -50,10 +48,11 @@ function updatelog ( data , level , env )
 	elseif level == 2 then data = "Warning: \t\t" .. data
 	elseif level == 3 then data = "Message: \t\t" .. data
 	elseif level == 4 then data = "Confirmation: \t\t" .. data
+	elseif level == 5 then data = "Debug: \t\t" .. data
 	end
 	
 	data = env.os.time ( ) .. ": \t" .. data
-	if level <= verbosity then env.print ( data ) end
+	if level <= config.verbosity then env.print ( data ) end
 	
 	data = data .. "\n"
 	
@@ -63,7 +62,7 @@ function updatelog ( data , level , env )
 	file:write ( data )
 	file:flush ( )
 	file:close ( )
-	if level == 0 then error ( data ) end
+	if level == 0 then os.exit( 1 ) end
 	return true
 end
 function ferror ( data , level , env )
@@ -88,14 +87,23 @@ do -- Restore State
 end
 
 pcall ( require , "luarocks.require" ) -- Activates luarocks if available.
-require "lanes" -- Loads up lanes (multithreading)
-local lindas = { }
-function newlinda ( )
-	local pos = #lindas + 1
-	lindas [ pos ] = lanes.linda ( )
-	return lindas [ pos ] , pos
+
+-- Get ready for multi-threading
+thread = require "thread"
+queue = require "thread.queue"
+
+inqueue = queue.newqueue(128)
+outqueues = { }
+
+-- Server
+do
+	table.insert ( outqueues , queue.newqueue(128) )
+	local fifos = { identifier = #outqueues , send =  inqueue , receive = outqueues [ #outqueues ] }
+	loadfile ( "modules/server.lua" ) ( )
+	thread.newthread ( server.run , { fifos , config.address , config.port } )
 end
 
+-- Plugin Time!
 updatelog ( "Loading plugins." , 3 )
 for i , v in ipairs ( config.plugins ) do
 	dir = "plugins/" .. v .. "/"
@@ -107,92 +115,84 @@ for i , v in ipairs ( config.plugins ) do
 end
 updatelog ( "All Plugins Loaded" , 3 )
 
+-- Function/Variable finders.
+local function buildMetatableCall ( ref )
+	return { 
+	__index = function ( t , k )
+		if type ( ref [ k ] ) == "table" then
+			local val = newproxy ( true ) -- Undocumented lua function
+			for k , v in pairs ( buildMetatableCall ( ref [ k ] ) ) do
+				getmetatable ( val ) [ k ] = v
+			end
+			return val
+		elseif type ( ref [ k ] ) == "function" then
+			return ref [ k ]
+		else
+			return nil
+		end
+	end , }
+end
+local function buildMetatableGet ( ref )
+	return {
+	__index = function ( t , k )
+		if type ( ref [ k ] ) == "table" then
+			local val = newproxy ( true ) -- Undocumented lua function
+			for k , v in pairs ( buildMetatableGet ( ref [ k ] ) ) do
+				getmetatable ( val ) [ k ] = v
+			end
+			return val
+		elseif type ( ref [ k ] ) == "function" then
+			return string.dump ( ref [ k ] )
+		else
+			return ref [ k ]
+		end
+	end , 
+	__len = function ()
+		return #ref
+	end , }
+end
+
+-- Initialisation finished.
 updatelog ( "LOMP Loaded " .. os.date ( "%c" ) , 3 )
 
-require "lomp-debug"
-
--- Server
-func = lanes.gen ( "base,package,math,table,string,io,os" , { globals = { linda = newlinda ( ) , updatelog = updatelog , ferror = ferror , config = config } } , function ( ... ) package.path = package.path .. ";./libs/?.lua;./libs/?/init.lua" require "modules.server" lane ( ... ) end )
-serverlane = func ( config.address , config.port )
-
-local i = 1
-local timeout = 0.005
+require "lomp-debug" -- TODO: remove debug
+			
 while true do
-	do -- Check for cmds to run
-		local val , key = lindas [ i ]:receive ( timeout , "cmd" )		
-		if type ( val ) == "table" and type ( val.cmd ) == "string" and not ( val.params and type ( val.params ) ~= "table" ) then
-			local function buildMetatable ( ref )
-				return { __index = function ( t , k )
-					if type ( ref [ k ] ) == "function" then
-						return ref [ k ]
-					elseif type ( ref [ k ] ) == "table" then
-						local val = newproxy ( true ) -- Undocumented lua function
-						for k , v in pairs ( buildMetatable ( ref [ k ] ) ) do
-						     getmetatable ( val ) [ k ] = v
-						end
-						return val
-					else
-						return nil
-					end
-				end , }
-			end
-			
-			local fn , fail = loadstring ( "return " .. val.cmd )
-			
-			if fail then -- Check for compilation errors (eg, syntax)
-				lindas [ i ]:send ( timeout , "returnedcmd" , { false , fail } )
+	local item = inqueue:remove ( )
+	local identifier , requesttype , details = unpack ( item , 1 , 3 )
+	if requesttype == "cmd" then
+		local fn , fail = loadstring ( "return " .. details.cmd )
+		if fail then -- Check for compilation errors (eg, syntax)
+			outqueues [ identifier ]:insert ( { false , fail } )
+		else
+			setfenv ( fn , setmetatable ( { } , buildMetatableCall( _M ) ) )
+			local ok , func = pcall ( fn )
+			if not ok then -- Check for no errors while finding function
+				outqueues [ identifier ]:insert ( { false , func } )
+			elseif not func then -- Make sure function was found, func already has to be a function or nil, so we only need to exclude the nil case
+				outqueues [ identifier ]:insert ( { false , "Not a function" } )
 			else
-				setfenv ( fn , setmetatable ( { } , buildMetatable ( _M ) ) )
-				local ok , func = pcall ( fn )
-				if not ok then -- Check for no errors while finding function
-					lindas [ i ]:send ( timeout , "returnedcmd" , { false , func } )
-				elseif not func then -- Make sure function was found, func already has to be a function or nil, so we only need to exclude the nil case
-					lindas [ i ]:send ( timeout , "returnedcmd" , { false , "Not a function" } )
-				else
-					local function interpret ( ok , err , ... )
-						if not ok then return ok , err
-						else return ok , { err , ... } end
-					end
-					lindas [ i ]:send ( timeout , "returnedcmd" , { interpret ( pcall ( func , unpack ( val.params or { } ) ) ) } )
+				local function interpret ( ok , err , ... )
+					if not ok then return false , err
+					else return ok , { err , ... } end
 				end
+				outqueues [ identifier ]:insert ( { interpret ( pcall ( func , unpack ( details.parameters or { } ) ) ) } )
+			end			
+		end
+	elseif requesttype == "var" then
+		local fn , fail = loadstring ( "return " .. details )
+		if fail then -- Check for compilation errors
+			outqueues [ identifier ]:insert ( { false , fail } )
+		else
+			setfenv ( fn , setmetatable ( { } , buildMetatableGet ( _M ) ) )
+			local ok , var = pcall ( fn )
+			if not ok then -- Check for no errors while finding function
+				outqueues [ identifier ]:insert ( { false , var } )
+			elseif type ( var ) ~= "string" and type ( var ) ~= "number" and type ( var ) ~= "boolean" and var ~= nil then -- Make sure function was found, var already has to be a string, number or nil
+				outqueues [ identifier ]:insert ( { false , "Not a variable, tried to return value of: " .. type ( var ) } )
+			else
+				outqueues [ identifier ]:insert ( { ok , var } )
 			end
 		end
 	end
-	do -- Check for var gets.
-		local val , key = lindas [ i ]:receive ( timeout , "var" )		
-		if type ( val ) == "string" then
-			local function buildMetatable ( ref )
-				return { __index = function ( t , k )
-					if type ( ref [ k ] ) == "table" then
-						local val = newproxy ( true ) -- Undocumented lua function
-						for k , v in pairs ( buildMetatable ( ref [ k ] ) ) do
-						     getmetatable ( val ) [ k ] = v
-						end
-						return val
-					else
-						return ref [ k ]
-					end
-				end , 
-				__len = function ()
-					return #ref
-				end , }
-			end
-			local fn , fail = loadstring ( "return " .. val )
-			if fail then -- Check for compilation errors
-				lindas [ i ]:send ( timeout , "returnedvar" , { false , fail } )
-			else
-				setfenv ( fn , setmetatable ( { } , buildMetatable ( _M ) ) )
-				local ok , var = pcall ( fn )
-				if not ok then -- Check for no errors while finding function
-					lindas [ i ]:send ( timeout , "returnedvar" , { false , var } )
-				elseif type ( var ) ~= "string" and type ( var ) ~= "number" and type ( var ) ~= "boolean" and var ~= nil then -- Make sure function was found, var already has to be a string, number or nil
-					lindas [ i ]:send ( timeout , "returnedvar" , { false , "Not a variable, tried to return value of: " .. type ( var ) } )
-				else
-					lindas [ i ]:send ( timeout , "returnedvar" , { ok , var } )
-				end
-			end
-		end
-	end
-	i = i + 1 
-	if i > #lindas then i = 1 end
 end

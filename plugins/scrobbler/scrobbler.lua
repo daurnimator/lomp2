@@ -151,7 +151,7 @@ function addtosubmissions ( typ , source )
 	t.title = url.escape ( table.concat ( d.tags.title , ", " ) )
 	t.starttime = os.time ( )
 	if typ == "file" then t.source = "P" elseif typ == "stream" then t.source "R" else t.source = "P" end
-	t.rating = "" -- Should check track rating and maybe give "L" ....
+	t.rating = "" -- TODO: Should check track rating and maybe give "L" ....
 	t.length = url.escape ( d.length or "" )
 	t.album = url.escape ( table.concat ( d.tags.album , ", " ) )
 	t.tracknumber = url.escape ( table.concat ( d.tags.tracknumber , ", " ) )
@@ -160,16 +160,15 @@ function addtosubmissions ( typ , source )
 end
 
 function enablescrobbler ( )
-	lomp.triggers.registercallback ( "songstarted" , nowplaying , "Scrobbler Now-Playing" )
-
-	lomp.triggers.registercallback ( "songstarted" , addtosubmissions , "Scrobbler Add Song To Submit Queue" )
+	lomp.triggers.registercallback ( "songplaying" , nowplaying , "Scrobbler Now-Playing" )
+	lomp.triggers.registercallback ( "songplaying" , addtosubmissions , "Scrobbler Add Song To Submit Queue" )
 	lomp.triggers.registercallback ( "songstopped" , function ( typ , source , stopoffset ) if stopoffset > 240 or ( stopoffset / lomp.tags.getdetails ( source ).length ) > 0.5 then submissions ( ) else table.remove ( submissionsqueue ) end end , "Scrobbler Submissions" )
 	
 	enabled = true
 end
 function disablescrobbler ( )
-	deregistercallback ( "songstarted" , "Scrobbler Now-Playing" )
-	deregistercallback ( "songstarted" , "Scrobbler Add Song To Submit Queue" )
+	deregistercallback ( "songplaying" , "Scrobbler Now-Playing" )
+	deregistercallback ( "songplaying" , "Scrobbler Add Song To Submit Queue" )
 	deregistercallback ( "songstopped" , "Scrobbler Submissions" )
 	
 	enabled = false

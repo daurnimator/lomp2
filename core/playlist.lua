@@ -15,7 +15,7 @@ module ( "lomp.core.playlist" , package.see ( lomp ) )
 
 function new ( name , pl )
 	if type ( name ) ~= "string" or name == "hardqueue" or ( name == "Library" and pl ~= 0 ) then name = "New Playlist" end
-	if pl ~= nil and ( type ( pl ) ~= "number" or pl > #vars.pl + 1 or pl < 0 ) then 
+	if pl ~= nil and ( type ( pl ) ~= "number" or pl > #vars.pl + 1 or pl < -1 ) then 
 		return ferror ( "'New playlist' called with invalid playlist number" )
 	end
 	

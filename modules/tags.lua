@@ -64,8 +64,7 @@ local function gettags ( path )
 			local s = fd:read ( 4 ) -- 32 bit identifier
 			if s == "fLaC" then -- Flac file
 				require "modules.fileinfo.flac"
-				item = fileinfo.flac.info ( fd )
-				return item
+				return fileinfo.flac.info ( fd )
 			end
 			
 			--[[ Check if vorbis (eg: ogg)
@@ -86,9 +85,9 @@ local function gettags ( path )
 			local s = fd:read ( 8 ) 
 			if s == "APETAGEX" then
 				return 
-			end
+			end--]]
 			
-			-- Check for ID3v2
+			--[[ Check for ID3v2
 			fd:seek ( "set" )
 			local s = fd:read ( 3 ) -- At start of file
 			if s == "ID3" then
@@ -98,14 +97,15 @@ local function gettags ( path )
 			local s = fd:read ( 8 ) 
 			if s == "3DI" then
 				return 
-			end
+			end--]]
 			
 			-- Check for ID3v1 or ID3v1.1 tag
 			fd:seek ( "end" , -128 ) -- At end of file
 			local s = fd:read ( 3 ) 
 			if s == "ID3" then
-				return 
-			end--]]
+				require "modules.fileinfo.id3v1"
+				return  fileinfo.id3v1.info ( fd )
+			end
 
 			-- If you get to here, there is probably no tag....
 			item = { tags = tagfrompath ( path , config.tagpatterns.default ) }

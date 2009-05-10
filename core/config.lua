@@ -36,6 +36,10 @@ compiledchunk ( )
 -- Check all configuration values.
 
 -- Core Parameters
+if type ( verbosity ) ~= "number" or verbosity < 0 or verbosity > 5 then
+	warn ( 'Invalid or verbosity not defined, using log level 2' )
+	verbosity = 2
+end
 if type ( logfile ) ~= "string" then
 	warn ( 'Invalid or no logfile path defined, using "~/.lomp/lomp.log"' )
 	logfile = "~/.lomp/lomp.log"
