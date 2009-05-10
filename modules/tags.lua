@@ -57,7 +57,6 @@ local function gettags ( path )
 	local item
 	do
 		local fd = io.open ( path , "rb" )
-		
 		do 
 			-- Check if flac
 			fd:seek ( "set" )
@@ -102,9 +101,10 @@ local function gettags ( path )
 			-- Check for ID3v1 or ID3v1.1 tag
 			fd:seek ( "end" , -128 ) -- At end of file
 			local s = fd:read ( 3 ) 
-			if s == "ID3" then
+			if s == "TAG" then
 				require "modules.fileinfo.id3v1"
-				return  fileinfo.id3v1.info ( fd )
+				print("ID3v1!!!!")
+				return fileinfo.id3v1.info ( fd )
 			end
 
 			-- If you get to here, there is probably no tag....
