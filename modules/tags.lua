@@ -103,8 +103,8 @@ local function gettags ( path )
 			local s = fd:read ( 3 ) 
 			if s == "TAG" then
 				require "modules.fileinfo.id3v1"
-				print("ID3v1!!!!")
-				return fileinfo.id3v1.info ( fd )
+				item = { tagtype = "id3v1" , tags = fileinfo.id3v1.info ( fd ) }
+				return item
 			end
 
 			-- If you get to here, there is probably no tag....
