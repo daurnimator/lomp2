@@ -97,7 +97,7 @@ local function gettags ( path )
 				local offset = fileinfo.id3v2.find ( fd )
 				if offset then
 					item.tagtype = "id3v2" 
-					item.tags = fileinfo.id3v2.info ( fd , offset )
+					fileinfo.id3v2.info ( fd , offset , item )
 				end
 			end
 			
