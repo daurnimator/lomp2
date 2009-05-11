@@ -51,11 +51,8 @@ end
 		print ( "----------------------------------------------------------------" )
 	end , "Print song stats to screen" )--]]
 
-require"modules.tags"
 registercallback ( "songplaying" , function ( )
 		vars.queue [ 0 ].played = true -- Better way to figure this out?
-		for k,v in pairs(tags.getdetails( vars.queue [0 ])) do print (k,v) end
-		for k,v in pairs(tags.getdetails( vars.queue [0 ]).tags) do print (k,v) end
 	end , "Set Played" )
 		
 	

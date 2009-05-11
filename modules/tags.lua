@@ -54,16 +54,21 @@ function tagfrompath ( path , format , donotescapepattern )
 end
 
 local function gettags ( path )
-	local item
+	local item = { 
+		path = path ,
+		filename = string.match ( path , "([^/]+)$" )
+	}
+	item.extension = string.match ( item.filename , "%.([^%./]+)$" )
+
 	do
 		local fd = io.open ( path , "rb" )
 		do 
-			-- Check if flac
-			fd:seek ( "set" )
-			local s = fd:read ( 4 ) -- 32 bit identifier
-			if s == "fLaC" then -- Flac file
+			do -- Check if flac
 				require "modules.fileinfo.flac"
-				return fileinfo.flac.info ( fd )
+				local offset = fileinfo.flac.find ( fd )
+				if offset then -- Is flac file
+					fileinfo.flac.info ( fd , item )
+				end
 			end
 			
 			--[[ Check if vorbis (eg: ogg)
@@ -86,45 +91,43 @@ local function gettags ( path )
 				return 
 			end--]]
 			
-			--[[ Check for ID3v2
-			fd:seek ( "set" )
-			local s = fd:read ( 3 ) -- At start of file
-			if s == "ID3" then
-				return 
+			-- Check for ID3v2
+			if not item.tagtype then
+				require "modules.fileinfo.id3v2"
+				local offset = fileinfo.id3v2.find ( fd )
+				if offset then
+					item.tagtype = "id3v2" 
+					item.tags = fileinfo.id3v2.info ( fd , offset )
+				end
 			end
-			fd:seek ( "end" , -10 ) -- At end of file
-			local s = fd:read ( 8 ) 
-			if s == "3DI" then
-				return 
-			end--]]
 			
 			-- Check for ID3v1 or ID3v1.1 tag
-			fd:seek ( "end" , -128 ) -- At end of file
-			local s = fd:read ( 3 ) 
-			if s == "TAG" then
+			if not item.tagtype then
 				require "modules.fileinfo.id3v1"
-				item = { tagtype = "id3v1" , tags = fileinfo.id3v1.info ( fd ) }
-				return item
+				local offset = fileinfo.id3v1.find ( fd )
+				if offset then
+					print("ID3v2!!!!")
+					item.tagtype = "id3v1" 
+					item.tags = fileinfo.id3v1.info ( fd , offset )
+				end
 			end
-
-			-- If you get to here, there is probably no tag....
-			item = { tags = tagfrompath ( path , config.tagpatterns.default ) }
-			item.length = 30 -- TODO: Remove
+			
+			if not item.tagtype then -- If you get to here, there is probably no tag....
+				item.tagtype = "pathderived"
+				item.tags = tagfrompath ( path , config.tagpatterns.default )
+				item.length = 30 -- TODO: Remove
+			end
 		end
 		
 		fd:close ( )
 	end
-	item.path = path
-	local _ , _ , filename = string.find ( path , "([^/]+)$" )
-	item.filename = filename
-	local _ , _ , extension = string.find ( filename , "%.([^%./]+)$" )
-	item.extension = extension
-
+	
 	setmetatable ( item.tags , { 
 		__index = function ( t , k )
 			return { "Unknown " .. k }
 		end ,
 	} )
+	
 	return item
 end
 

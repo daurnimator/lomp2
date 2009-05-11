@@ -23,6 +23,7 @@ core = {
 }
 
 core._VERSION = core._MAJ .. "." .. core._MIN .. "." .. core._INC 
+core._PROGRAM = _NAME .. " " .. core._VERSION
 
 vars = { 
 	init= t ,

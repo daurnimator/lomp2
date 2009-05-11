@@ -239,7 +239,7 @@ local function xmlrpcserver ( thread , skt , requestdetails )
 	if not authorised then
 		if typ == "basic" then
 			-- Send a xml fault document
-			updatelog ( "Unauthorised login blocked." , 3 , _G )
+			thread.updatelog ( "Unauthorised login blocked." , 3 , _G )
 			httpsend ( skt , requestdetails , { status = 401 , headers = { [ 'WWW-Authenticate' ] = 'Basic realm="' .. versionstring .. '"' ; [ 'content-length' ] = "text/xml" } , body = xmlrpc.srvEncode ( { faultCode = 401 , faultString = httpcodes [ 401 ] } , true ) } )
 			return false
 		end
@@ -279,7 +279,7 @@ local function basiccmdserver ( thread , skt , requestdetails )
 	if not authorised then
 		if typ == "basic" then
 			-- Send an xml fault document
-			updatelog ( "Unauthorised login blocked." , 3 , _G )
+			thread.updatelog ( "Unauthorised login blocked." , 3 , _G )
 			httpsend ( skt , requestdetails , { status = 401 , headers = { ['WWW-Authenticate'] = 'Basic realm=" ' .. versionstring .. '"' } } )
 			return false
 		end		
@@ -551,10 +551,10 @@ function server.initiate ( thread , host , port )
 			end
 		end ) --]] -- Echo Handler
 		copas.addserver ( srv , function ( skt ) return lompserver ( thread , skt ) end )
-		updatelog ( "Server started; bound to '" .. host .. "', port #" .. port , 4 , _G ) 
+		thread.updatelog ( "Server started; bound to '" .. host .. "', port #" .. port , 4 , _G ) 
 		return true
 	else
-		return ferror ( "Server could not be started: " .. err , 0 )
+		return thread.ferror ( "Server could not be started: " .. err , 0 )
 	end
 end
 function server.step ( )

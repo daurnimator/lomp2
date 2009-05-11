@@ -131,6 +131,10 @@ function pv ( )
 	p ( "=========== END PRINT OUT" )
 	return true
 end
+require "modules.fileinfo.vorbiscomments"
+function t ( ... )
+	print(#(fileinfo.vorbiscomments.generatetag ( {artist = {"tay"}} )))
+end
 --[[function p (...)
 	if type ( select ( 1 , ... ) ) == "string" then 
 	print ( ... )

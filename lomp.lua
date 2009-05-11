@@ -76,7 +76,6 @@ require "general"
 require "lomp-core"
 
 require "modules.tags"
---require "modules.server" -- Now a lane
 require "modules.albumart"
 
 do -- Restore State
@@ -98,7 +97,7 @@ outqueues = { }
 -- Server
 do
 	table.insert ( outqueues , queue.newqueue(128) )
-	local fifos = { identifier = #outqueues , send =  inqueue , receive = outqueues [ #outqueues ] }
+	local fifos = { updatelog = updatelog , ferror = ferror , identifier = #outqueues , send =  inqueue , receive = outqueues [ #outqueues ] }
 	loadfile ( "modules/server.lua" ) ( )
 	thread.newthread ( server.run , { fifos , config.address , config.port } )
 end
