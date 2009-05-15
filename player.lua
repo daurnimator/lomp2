@@ -22,15 +22,23 @@ extensions = {	"ogg" ,
 				"wav" ,
 }
 
+function vlccall ( t , fname , ... )
+	local t = { pcall ( t[fname] , t , ... ) }
+	if not t[1] then 
+		updatelog ( "VLC error: " .. t[2] , 5 )
+	end
+	return unpack ( t , 2 )
+end
+
 function play ( typ , source , offset )
-	updatelog ( "play" .. "\t" .. typ .. "\t" .. source  .. "\t" .. (offset or "") , 5)
+	--updatelog ( "play" .. "\t" .. typ .. "\t" .. source  .. "\t" .. (offset or "") , 5)
 	if typ == "file" then
 		current.info = { typ = typ , source = source }
-		current.media = current.instance:media_new ( source )
-		updatelog ( "M\t" .. tostring(current.media) , 5 )
-		current.media:event_manager ( ) :attach ( "MediaStateChanged" , function ( ev ) 
+		current.media = vlccall ( current.instance , "media_new" , source )
+		current.eventmanager = vlccall ( current.media , "event_manager" )
+		vlccall ( current.eventmanager , "attach" , "MediaStateChanged" , function ( ev ) 
 				if ( ev.new_state == "Ended" ) then
-					local position = current.media_player:get_position ( )
+					local position = vlccall ( current.media_player , "get_position" )
 					updatelog ( "Ended " .. position , 5 )
 					if ( position > 0.995 ) then -- Doesn't seem to have perfect accuracy
 						triggers.triggercallback ( "songfinished" , current.info.typ , current.info.source )
@@ -43,19 +51,17 @@ function play ( typ , source , offset )
 				elseif ( ev.new_state == "Playing" ) then
 					updatelog ( "Song just started Playing" , 5 )
 					triggers.triggercallback ( "songplaying" , typ , source )
-				else
+				elseif ( ev.new_state ~= "NothingSpecial" ) then
 					updatelog ( tostring(ev.obj) .. "\t" .. tostring(ev.type) .. "\t" .. tostring(ev.new_state) , 5) 
 				end
 			end )
-		updatelog ( "N\t" .. tostring(current.media_player) , 5 )
-		updatelog ( pcall ( function () current.media_player:set_media ( current.media ) end ) , 5 )
-		updatelog ( "O\t" .. tostring(current.media_player) , 5 )
+		vlccall ( current.media_player , "set_media" , current.media )
 		
 		if offset then 
 			-- current.player.set_time ( offset ) -- Seconds/1000
 			-- current.player.set_position ( offset ) -- Percent*100
 		end
-		current.media_player:play ( )
+		vlccall ( current.media_player , "play" )
 		return true
 	else 
 		updatelog( "TYPE IS: " .. typ , 5)
@@ -68,20 +74,20 @@ function changesong ( newtyp , newsource , newoffset )
 end	
 		
 function pause ( )
-	if current.media_player:can_pause ( ) and current.media_player:is_playing ( ) then
-		current.media_player:pause ( )
+	if vlccall ( current.media_player , "can_pause" ) and vlccall ( current.media_player , "is_playing" ) then
+		vlccall ( current.media_player , "pause" )
 	end
 end
 
 function unpause ( )
-	if not current.media_player:is_playing ( ) then
-		current.media_player:pause ( )
+	if not vlccall ( current.media_player , "is_playing" ) then
+		vlccall ( current.media_player , "pause" )
 	end
 end
 
 function stop ( )
 	if current.media_player then
-		current.media_player:stop ( )
+		vlccall ( current.media_player , "stop" )
 	end
 	return true
 end
@@ -94,19 +100,19 @@ function setvolume ( vol )
 	if type ( vol ) ~= "number" or vol < 0 or vol > 100 then
 		return false
 	end
-	current.instance:audio_set_volume ( vol )
+	vlccall ( current.instance , "audio_set_volume" , vol )
 	return true
 end
 
 function getvolume ( )
-	return current.instance:audio_get_volume ( )
+	return vlccall ( current.instance , "audio_get_volume" )
 end
 
 current = { }
 current.instance = libvlc.new ( )
-current.media_player = current.instance:media_player_new ( )
+current.media_player = vlccall ( current.instance , "media_player_new" )
 
 -- Debug
 function skip ( )
-	current.media_player:set_position(.98)
+	vlccall ( current.media_player , "set_position" , .98)
 end

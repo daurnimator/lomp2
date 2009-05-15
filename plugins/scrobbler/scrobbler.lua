@@ -145,7 +145,7 @@ function submissions ( )
 end
 function addtosubmissions ( typ , source )
 	local d = lomp.tags.getdetails ( source )
-	if d.length <= 30 then return false end -- Has to be > 30 seconds in length to submit
+	if not d.length or d.length <= 30 then return false end -- Has to be > 30 seconds in length to submit
 	local t = { }
 	t.artist = url.escape ( table.concat ( d.tags.artist , ", " ) )
 	t.title = url.escape ( table.concat ( d.tags.title , ", " ) )
@@ -157,12 +157,13 @@ function addtosubmissions ( typ , source )
 	t.tracknumber = url.escape ( table.concat ( d.tags.tracknumber , ", " ) )
 	t.musicbrainz = ""
 	table.insert ( submissionsqueue , t )
+	return true
 end
 
 function enablescrobbler ( )
 	lomp.triggers.registercallback ( "songplaying" , nowplaying , "Scrobbler Now-Playing" )
 	lomp.triggers.registercallback ( "songplaying" , addtosubmissions , "Scrobbler Add Song To Submit Queue" )
-	lomp.triggers.registercallback ( "songstopped" , function ( typ , source , stopoffset ) if stopoffset > 240 or ( stopoffset / lomp.tags.getdetails ( source ).length ) > 0.5 then submissions ( ) else table.remove ( submissionsqueue ) end end , "Scrobbler Submissions" )
+	lomp.triggers.registercallback ( "songstopped" , function ( typ , source , stopoffset ) if stopoffset > 240 or ( lomp.tags.getdetails ( source ).length and ( stopoffset / lomp.tags.getdetails ( source ).length ) > 0.5 ) then submissions ( ) else table.remove ( submissionsqueue ) end end , "Scrobbler Submissions" )
 	
 	enabled = true
 end

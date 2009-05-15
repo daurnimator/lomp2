@@ -28,7 +28,7 @@ history =			200
  -- Location of your music
  -- Seperate entries with a comma
  -- eg: library = { "/media/music" , "/media/music2" }
-library = {		"/media/sdc1/Random Downloaded/" ,
+library = {		"/media/windows/Documents and Settings/Daurnimator/My Documents/My Music" ,
 }
 
 
@@ -77,7 +77,7 @@ savetagedits = true
    -- ? makes the preceding character optional
 tagpatterns = {
 	Basic = "//Artist// - //Title//" ,
-	Daurn = "//Album Artist//, //Album// ?{?//Release//}?/[//Track//] //Artist// - //Title//" ,
+	Daurn = "//Album Artist//, //Album// ?{?//Release//}? ?(?D?i?s?c? ?//Disc//)?/[//Track//] //Artist// - //Title//" ,
 	EAC = "//Artist// - //Album// (//Year//)//_/////Track// - //Title//" , 
 }
   -- Default - must be the name of a pattern from above.

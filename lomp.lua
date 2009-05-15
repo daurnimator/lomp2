@@ -48,7 +48,7 @@ function updatelog ( data , level , env )
 	elseif level == 2 then data = "Warning: \t\t" .. data
 	elseif level == 3 then data = "Message: \t\t" .. data
 	elseif level == 4 then data = "Confirmation: \t\t" .. data
-	elseif level == 5 then data = "Debug: \t\t" .. data
+	elseif level == 5 then data = "Debug: \t\t\t" .. data
 	end
 	
 	data = env.os.time ( ) .. ": \t" .. data
