@@ -96,6 +96,7 @@ local function gettags ( path )
 				require "modules.fileinfo.id3v2"
 				local offset = fileinfo.id3v2.find ( fd )
 				if offset then
+					print("ID3v2!!!!")
 					item.tagtype = "id3v2" 
 					fileinfo.id3v2.info ( fd , offset , item )
 				end
@@ -106,7 +107,6 @@ local function gettags ( path )
 				require "modules.fileinfo.id3v1"
 				local offset = fileinfo.id3v1.find ( fd )
 				if offset then
-					print("ID3v2!!!!")
 					item.tagtype = "id3v1" 
 					item.tags = fileinfo.id3v1.info ( fd , offset )
 				end
