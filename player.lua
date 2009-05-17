@@ -16,10 +16,11 @@ require "core.triggers"
 
 module ( "lomp.player" , package.see ( lomp ) )
 
-extensions = {	"ogg" ,
+extensions = {		"ogg" ,
 				"flac" ,
 				"mp3" ,
 				"wav" ,
+				"wv",
 }
 
 function vlccall ( t , fname , ... )

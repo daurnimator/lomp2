@@ -3,40 +3,40 @@ By Daurnimator
 
 Dependencies:
 	Lua 5.1						http://www.lua.org/
-		download:				http://www.lua.org/ftp/lua-5.1.2.tar.gz
+		download:				http://www.lua.org/ftp/lua-5.1.4.tar.gz
+		
+	VLC-lua						git clone http://www.discontinuity.info/~rowan/vlc-lua.git && cd vlc-lua && git checkout origin/libvlc-1.0.0
+		Depends on:
+			VLC >=1.0			http://www.videolan.org
 	
-	(temporarily): ex (Lua Extension proposal)		http://lua-users.org/wiki/ExtensionProposal
-		download: 				http://luaforge.net/projects/lua-ex/
-	
-	(temporarily): ogg123
-		ogg123 is part of the vorbis-tools package.
-		download:				http://www.xiph.org/downloads/
+	Lua-iconv						http://luaforge.net/projects/lua-iconv/
+		can be obtained via:			luarocks install lua-iconv
 	
 	LuaSocket					http://www.tecgraf.puc-rio.br/~diego/professional/luasocket/
 		download:				http://luaforge.net/projects/luasocket/
 	
 	Copas						http://www.keplerproject.org/copas/index.html
 		download:				http://luaforge.net/frs/?group_id=100
-		can be obtained via: luarocks install copas
+		can be obtained via: 		luarocks install copas
 		Depends on:
 			Coxpcall				http://coxpcall.luaforge.net/
-			can be obtained via: luarocks install coxpcall
+			can be obtained via: 	luarocks install coxpcall
 	
 	LuaXMLRPC					http://www.keplerproject.org/luaxmlrpc/
 		(included)
 		Depends on:
 			LuaExpat				http://www.keplerproject.org/luaexpat/
 				download:		http://luaforge.net/frs/?group_id=13
-				can be obtained via: luarocks install luaexpat
+				can be obtained via:	luarocks install luaexpat
 	
 	LuaFileSystem					http://www.keplerproject.org/luafilesystem/
-		can be obtained via: luarocks install luafilesystem
+		can be obtained via: 		luarocks install luafilesystem
 
 Optional Dependencies:
 	luarocks						http://luarocks.org/
 	
 	lzlib	(for http gzip compression)	http://luaforge.net/projects/lzlib/
-		can be obtained via: luarocks install lzlib
+		can be obtained via: 		luarocks install lzlib
 
 	md5							http://www.inf.puc-rio.br/~roberto/md5/md5-5/md5.html
-		can be obtained via: luarocks install md5
+		can be obtained via: 		luarocks install md5
