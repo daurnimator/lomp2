@@ -15,15 +15,18 @@ math.randomseed ( os.time ( ) )
 -- Explodes a string on seperator
 function string.explode ( str , seperator )
 	if seperator == "" then return false end
-	local pos ,  arr = 0 , {}
-	-- for each divider found
-	for st , sp in function() return string.find ( str , seperator , pos , true ) end do
-		table.insert ( arr , string.sub ( str , pos , st - 1 ) ) -- Attach chars left of current divider
+	local t = { }
+	local pos = 1
+	for st , sp in function ( ) return string.find ( str , seperator , pos , true ) end do
+		if pos ~= st then
+			t [ #t + 1 ] = string.sub ( str , pos , st - 1 ) -- Attach chars left of current divider
+		end
 		pos = sp + 1 -- Jump past current divider
 	end
-	table.insert ( arr , string.sub ( str , pos ) ) -- Attach chars right of last divider
-	return arr
+	t [ #t + 1 ] = string.sub ( str , pos ) -- Attach chars right of last divider
+	return t
 end
+
 
 -- Finds first value in tbl that matches pattern "key"
 function table.valuetoindex ( tbl , value , key )
