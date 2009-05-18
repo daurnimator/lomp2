@@ -4,6 +4,7 @@ By Daurnimator
 Dependencies:
 	Lua 5.1						http://www.lua.org/
 		download:				http://www.lua.org/ftp/lua-5.1.4.tar.gz
+		patched for threading:		http://www.discontinuity.info/~rowan/LuaThread-1.1-for-5.1.4.patch
 		
 	VLC-lua						git clone http://www.discontinuity.info/~rowan/vlc-lua.git && cd vlc-lua && git checkout origin/libvlc-1.0.0
 		Depends on:
@@ -17,10 +18,10 @@ Dependencies:
 	
 	Copas						http://www.keplerproject.org/copas/index.html
 		download:				http://luaforge.net/frs/?group_id=100
-		can be obtained via: 		luarocks install copas
+		can be obtained via: 			luarocks install copas
 		Depends on:
 			Coxpcall				http://coxpcall.luaforge.net/
-			can be obtained via: 	luarocks install coxpcall
+			can be obtained via: 		luarocks install coxpcall
 	
 	LuaXMLRPC					http://www.keplerproject.org/luaxmlrpc/
 		(included)
@@ -30,13 +31,13 @@ Dependencies:
 				can be obtained via:	luarocks install luaexpat
 	
 	LuaFileSystem					http://www.keplerproject.org/luafilesystem/
-		can be obtained via: 		luarocks install luafilesystem
+		can be obtained via: 			luarocks install luafilesystem
 
 Optional Dependencies:
-	luarocks						http://luarocks.org/
+	luarocks					http://luarocks.org/
 	
-	lzlib	(for http gzip compression)	http://luaforge.net/projects/lzlib/
-		can be obtained via: 		luarocks install lzlib
+	lzlib	(for http gzip compression)		http://luaforge.net/projects/lzlib/
+		can be obtained via: 			luarocks install lzlib
 
 	md5							http://www.inf.puc-rio.br/~roberto/md5/md5-5/md5.html
-		can be obtained via: 		luarocks install md5
+		can be obtained via: 			luarocks install md5
