@@ -12,6 +12,10 @@
 -- Set math randomseed
 math.randomseed ( os.time ( ) )
 
+function toboolean ( o )
+	return not not o
+end
+
 -- Explodes a string on seperator
 function string.explode ( str , seperator )
 	if seperator == "" then return false end
