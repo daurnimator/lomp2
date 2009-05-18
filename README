@@ -4,13 +4,13 @@ By Daurnimator
 Dependencies:
 	Lua 5.1						http://www.lua.org/
 		download:				http://www.lua.org/ftp/lua-5.1.4.tar.gz
-		patched for threading:		http://www.discontinuity.info/~rowan/LuaThread-1.1-for-5.1.4.patch
+		patched for threading:			http://www.discontinuity.info/~rowan/LuaThread-1.1-for-5.1.4.patch
 		
 	VLC-lua						git clone http://www.discontinuity.info/~rowan/vlc-lua.git && cd vlc-lua && git checkout origin/libvlc-1.0.0
 		Depends on:
 			VLC >=1.0			http://www.videolan.org
 	
-	Lua-iconv						http://luaforge.net/projects/lua-iconv/
+	Lua-iconv					http://luaforge.net/projects/lua-iconv/
 		can be obtained via:			luarocks install lua-iconv
 	
 	LuaSocket					http://www.tecgraf.puc-rio.br/~diego/professional/luasocket/
@@ -26,7 +26,7 @@ Dependencies:
 	LuaXMLRPC					http://www.keplerproject.org/luaxmlrpc/
 		(included)
 		Depends on:
-			LuaExpat				http://www.keplerproject.org/luaexpat/
+			LuaExpat			http://www.keplerproject.org/luaexpat/
 				download:		http://luaforge.net/frs/?group_id=13
 				can be obtained via:	luarocks install luaexpat
 	
@@ -39,5 +39,5 @@ Optional Dependencies:
 	lzlib	(for http gzip compression)		http://luaforge.net/projects/lzlib/
 		can be obtained via: 			luarocks install lzlib
 
-	md5							http://www.inf.puc-rio.br/~roberto/md5/md5-5/md5.html
+	md5						http://www.inf.puc-rio.br/~roberto/md5/md5-5/md5.html
 		can be obtained via: 			luarocks install md5
