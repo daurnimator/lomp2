@@ -17,11 +17,11 @@ function toboolean ( o )
 end
 
 -- Explodes a string on seperator
-function string.explode ( str , seperator )
+function string.explode ( str , seperator , plain )
 	if seperator == "" then return false end
 	local t = { }
 	local pos = 1
-	for st , sp in function ( ) return string.find ( str , seperator , pos , true ) end do
+	for st , sp in function ( ) return string.find ( str , seperator , pos , plain ) end do
 		if pos ~= st then
 			t [ #t + 1 ] = string.sub ( str , pos , st - 1 ) -- Attach chars left of current divider
 		end
