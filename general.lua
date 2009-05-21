@@ -112,14 +112,22 @@ function table.copy ( tbl )
 end
 
 -- Copy tbl2's values into tbl1 where the matching tbl1 key (or index) doesn't exist
+ -- If overwrite is a function, on a clash, it is called with the first table, the second table and the key corresponding to the clash
 function table.inherit ( tbl1 , tbl2 , overwrite )
 	if tbl1 == tbl2 then return tbl1 end
 	local t
-	if overwrite then t = tbl1 else t = table.copy ( tbl1 ) end
+	if type ( overwrite ) ~= "function" then
+		t = tbl1 
+	else
+		t = table.copy ( tbl1 ) 
+	end
 	for k , v in pairs ( tbl2 ) do
 		if type ( t [ k ] ) == "table" and type ( v ) == "table" then
-				t [ k ] = table.inherit ( t [ k ] , v , true )
-		else t [ k ] = v 
+			t [ k ] = table.inherit ( t [ k ] , v , overwrite or true )
+		elseif type ( overwrite ) == "function" and tbl1 [ k ] then
+			t [ k ] = overwrite ( tbl1 , tbl2 , k )
+		else 
+			t [ k ] = v 
 		end
 	end
 	return t
