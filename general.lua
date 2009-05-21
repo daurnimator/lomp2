@@ -9,6 +9,9 @@
 	You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ]]
 
+pcall ( require , "luarocks.require" ) -- Activates luarocks if available.
+require "iconv"
+
 -- Set math randomseed
 math.randomseed ( os.time ( ) )
 
@@ -19,18 +22,34 @@ end
 -- Explodes a string on seperator
 function string.explode ( str , seperator , plain )
 	if seperator == "" then return false end
-	local t = { }
+	local t , nexti = { } , 1
 	local pos = 1
 	for st , sp in function ( ) return string.find ( str , seperator , pos , plain ) end do
 		if pos ~= st then
-			t [ #t + 1 ] = string.sub ( str , pos , st - 1 ) -- Attach chars left of current divider
+			t [ nexti ] = string.sub ( str , pos , st - 1 ) -- Attach chars left of current divider
+			nexti = nexti + 1
 		end
 		pos = sp + 1 -- Jump past current divider
 	end
-	t [ #t + 1 ] = string.sub ( str , pos ) -- Attach chars right of last divider
+	t [ nexti ] = string.sub ( str , pos ) -- Attach chars right of last divider
 	return t
 end
 
+-- Converts string in specified encoding to utf16
+function utf8 ( str , encoding )
+	if not encoding then encoding = "ISO-8859-1" end
+	return iconv.new ( "UTF-8" ,  encoding ):iconv ( str )
+end
+-- Converts string in specified encoding to utf16
+function utf16 ( str , encoding )
+	if not encoding then encoding = "UTF-8" end
+	return iconv.new ( "UTF-16" ,  encoding ):iconv ( str )
+end
+-- Converts string in specified encoding to ascii (iso-8859-1)
+function ascii ( str , encoding )
+	if not encoding then encoding = "UTF-8" end
+	return iconv.new ( "ISO-8859-1" ,  encoding ):iconv ( str )
+end
 
 -- Finds first value in tbl that matches pattern "key"
 function table.valuetoindex ( tbl , value , key )

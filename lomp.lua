@@ -52,7 +52,7 @@ function updatelog ( data , level , env )
 	end
 	
 	data = env.os.time ( ) .. ": \t" .. data
-	if level <= config.verbosity then env.print ( data ) end
+	if level <= config.verbosity then io.stderr:write ( data .. "\n" ) end --env.print ( data ) end
 	
 	data = data .. "\n"
 	
