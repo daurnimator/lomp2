@@ -48,7 +48,7 @@ function cmd ( method_name , params , address , port , headers )
 		local d = client:receive ( ) .. "\r\n"
 		if d then r = r .. d end
 	end
-	print ( r )
+
 	local _ , _ , major , minor , code , str = string.find ( r , "HTTP/(%d).(%d)%s+(%d%d%d)%s+([A-Z]+)" )
 	code = tonumber ( code )
 	local rheaders = {} 
@@ -62,10 +62,12 @@ function cmd ( method_name , params , address , port , headers )
 		headers [ "Authorization" ] = auth ( "lompuser" , "changeme" ) -- Username/password
 		return cmd ( method_name , params , address , port , headers )
 	end	
-	
+
 	local ok , response , faultcode = xmlrpc.clDecode ( body )
 	if ok then
-		return response
+		response = response or lxp.lom.parse(b)[2][2][1][1]
+		--print ( ok , reponse , faultcode , "\n")
+		return loadstring ( "return {" .. response  .. "}") ( )
 	else
 		error ( "Code: " .. faultcode .. "\t Message: " .. response )
 		return false

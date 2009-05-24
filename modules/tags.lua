@@ -24,6 +24,10 @@ item.path
 ??: size, format, bitrate
 --]]
 
+require "modules.fileinfo.id3v2"
+require "modules.fileinfo.id3v1"
+require "modules.fileinfo.flac"
+
 function tagfrompath ( path , format , donotescapepattern )
 	local subs = {
 		["album artist"] = "([^/]+)" ,
@@ -63,8 +67,7 @@ local function gettags ( path )
 	do
 		local fd = io.open ( path , "rb" )
 		do 
-			do -- Check if flac
-				require "modules.fileinfo.flac"
+			do -- flac (vorbis comment)
 				local offset = fileinfo.flac.find ( fd )
 				if offset then -- Is flac file
 					fileinfo.flac.info ( fd , item )
@@ -91,23 +94,21 @@ local function gettags ( path )
 				return 
 			end--]]
 			
-			-- Check for ID3v2
+			-- ID3v2
 			if not item.tagtype then
-				require "modules.fileinfo.id3v2"
 				local offset = fileinfo.id3v2.find ( fd )
 				if offset then
 					item.tagtype = "id3v2" 
-					fileinfo.id3v2.info ( fd , offset , item )
+					item.tags , item.extra = fileinfo.id3v2.info ( fd , offset )
 				end
 			end
 			
-			-- Check for ID3v1 or ID3v1.1 tag
+			-- ID3v1 or ID3v1.1 tag
 			if not item.tagtype then
-				require "modules.fileinfo.id3v1"
 				local offset = fileinfo.id3v1.find ( fd )
 				if offset then
 					item.tagtype = "id3v1" 
-					item.tags = fileinfo.id3v1.info ( fd , offset )
+					item.tags , item.extra = fileinfo.id3v1.info ( fd , offset )
 				end
 			end
 			
@@ -123,7 +124,9 @@ local function gettags ( path )
 	
 	setmetatable ( item.tags , { 
 		__index = function ( t , k )
-			return { "Unknown " .. k }
+			if k:sub ( 1 , 1 ):match ( "%w" ) then
+				return { "Unknown " .. k }
+			end
 		end ,
 	} )
 	
@@ -142,16 +145,42 @@ cache = setmetatable ( cache, {
 
 -- Public functions
 function getdetails ( path )
+	if type ( path ) ~= "string" then return ferror ( "tags.getdetails called without valid path: " .. ( path or "" ) , 3 ) end
 	return cache [ path ]
 end
+
 function edittag ( path , edits )
 	-- "edits" is a table of tags & their respective changes
 	local t = cache [ path ].tags
 	
 	for k , v in pairs ( edits ) do
 		t [ k ] = v -- Change in cache
-		if config.savetagedits then
-			-- TODO: tag editing
+	end
+	if config.savetagedits then
+		local tagtype
+		
+		-- TODO: more tag editing
+		
+		-- ID3v2
+		if not tagtype then
+			local offset = fileinfo.id3v2.find ( fd )
+			if offset then
+				tagtype = "id3v2" 
+				local lostdata = fileinfo.id3v2.edit ( path , edits , true )
+			end
+		end
+		
+		-- ID3v1 or ID3v1.1 tag
+		if not tagtype then
+			local offset = fileinfo.id3v1.find ( fd )
+			if offset then
+				tagtype = "id3v1" 
+				local lostdata = fileinfo.id3v1.edit ( path , edits , true )
+			end
+		end
+		
+		if not tagtype then -- File has no tag
+			-- Figure out what sort of tag to add to file
 		end
 	end
 end

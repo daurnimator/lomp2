@@ -255,20 +255,11 @@ local function xmlrpcserver ( thread , skt , requestdetails )
 		list_params = { depack ( list_params or { } ) }
 		
 		local ok , result = execute ( thread , method_name , list_params )
-		--[[xmlrpc.srvMethods ( dispatch )
-		
-		local func = xmlrpc.dispatch ( method_name )
-		local function interpret ( ok , err , ... )
-			if not ok then
-				return ok , err
-			else
-				return ok , { err , ... }
-			end
-		end
-	
-		local ok , result = interpret ( pcall ( func , depack ( list_params or { } ) ) )--]]
 
-		httpsend ( skt , requestdetails , { status = 200 , headers = { [ 'content-length' ] = "text/xml" } , body = xmlrpc.srvEncode ( result , not ok) } )
+		result = table.serialise ( result )
+		local body = xmlrpc.srvEncode ( result , not ok )
+		
+		httpsend ( skt , requestdetails , { status = 200 , headers = { [ 'content-length' ] = "text/xml" } , body = body } )
 			
 		return true
 	end
