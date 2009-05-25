@@ -24,6 +24,7 @@ item.path
 ??: size, format, bitrate
 --]]
 
+require "modules.fileinfo.APE"
 require "modules.fileinfo.id3v2"
 require "modules.fileinfo.id3v1"
 require "modules.fileinfo.flac"
@@ -80,26 +81,25 @@ local function gettags ( path )
 			if s == "vorbis" then -- Flac file
 				
 				return 
-			end			
-			
-			-- Check for APE tag
-			fd:seek ( "set" )
-			local s = fd:read ( 8 ) -- At start of file
-			if s == "APETAGEX" then
-				return 
-			end
-			fd:seek ( "end" , -32 ) -- At end of file
-			local s = fd:read ( 8 ) 
-			if s == "APETAGEX" then
-				return 
 			end--]]
 			
+			-- APE
+			if not item.tagtype then
+				local offset , header = fileinfo.APE.find ( fd )
+				if offset then
+					item.header = header
+					item.tagtype = "APE" 
+					item.tags , item.extra = fileinfo.APE.info ( fd , offset , header )
+				end
+			end
+
 			-- ID3v2
 			if not item.tagtype then
-				local offset = fileinfo.id3v2.find ( fd )
+				local offset , header = fileinfo.id3v2.find ( fd )
 				if offset then
+					item.header = header
 					item.tagtype = "id3v2" 
-					item.tags , item.extra = fileinfo.id3v2.info ( fd , offset )
+					item.tags , item.extra = fileinfo.id3v2.info ( fd , offset , header )
 				end
 			end
 			

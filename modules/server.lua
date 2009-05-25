@@ -256,7 +256,9 @@ local function xmlrpcserver ( thread , skt , requestdetails )
 		
 		local ok , result = execute ( thread , method_name , list_params )
 
-		result = table.serialise ( result )
+		if ok then
+			result = table.serialise ( result ) -- MASSIVE HACK, makes it hard for non-lua xmlrpc clients - not really xmlrpc any more.
+		end
 		local body = xmlrpc.srvEncode ( result , not ok )
 		
 		httpsend ( skt , requestdetails , { status = 200 , headers = { [ 'content-length' ] = "text/xml" } , body = body } )

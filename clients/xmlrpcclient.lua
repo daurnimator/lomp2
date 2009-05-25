@@ -9,10 +9,11 @@
 	You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ]]
 
-package.path = package.path .. ";../libs/?.lua"
+package.path = package.path .. ";libs/?.lua"
 
 local xmlrpc = require ( "xmlrpc" )
 local socket = require ( "socket" )
+require"general"
 
 function auth ( username , password )
 	require"mime" -- For base64 encoding of authorisation
@@ -26,7 +27,6 @@ function cmd ( method_name , params , address , port , headers )
 	headers = headers or { }
 	
 	local method_call = xmlrpc.clEncode ( method_name, params )
-	--print(method_call)
 	
 	local client , err = socket.connect ( address , port )
 	if not client then print ( "Could not connect: " .. err ) return false end
@@ -65,8 +65,7 @@ function cmd ( method_name , params , address , port , headers )
 
 	local ok , response , faultcode = xmlrpc.clDecode ( body )
 	if ok then
-		response = response or lxp.lom.parse(b)[2][2][1][1]
-		--print ( ok , reponse , faultcode , "\n")
+		response = response or lxp.lom.parse(b)[2][2][1][1] -- MASSIVE HACK
 		return loadstring ( "return {" .. response  .. "}") ( )
 	else
 		error ( "Code: " .. faultcode .. "\t Message: " .. response )
@@ -84,4 +83,8 @@ function b ( f )
 	cmd("core.setsoftqueueplaylist",{0})
 	cmd("core.localfileio.addfolder" , { ( f or "/media/temp/Done Torrents/ACDC - Highway To Hell (1979) [FLAC]" ) ,0,1,"true"})
 	--cmd("core.playback.play")
+end
+
+function q ( num )
+	return table.serialise ( cmd("getvar",{"queue[" .. ( num or 0 )  .. "].details"})[1])
 end

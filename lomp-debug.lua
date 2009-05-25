@@ -75,15 +75,16 @@ end
 
 function getvar ( varstring )
 	if type ( varstring ) ~= "string" then return false end
-	local var = vars
+	--[[local var = vars
 	for k in string.gmatch ( varstring , "(%w+)%." ) do
 		var = var [ k ]
 	end
 	var = var [ select ( 3 , string.find ( varstring , "([^%.]+)$" ) ) ]
-	
 	if type ( var ) == "function" then return false
-	else return var
-	end
+	--]]
+	local f = loadstring ( "return " .. varstring )
+	setfenv ( f , vars )
+	return f ( )
 end
 
 function playsongfrompl ( pl , pos )

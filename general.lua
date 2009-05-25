@@ -35,6 +35,11 @@ function string.explode ( str , seperator , plain )
 	return t
 end
 
+-- Trims whitespace
+function string.trim ( str )
+	return str:gsub( "^%s*(.-)%s*$", "%1" )
+end
+
 -- Converts string in specified encoding to utf16
 function utf8 ( str , encoding )
 	if not encoding then encoding = "ISO-8859-1" end
@@ -135,7 +140,7 @@ end
 function table.inherit ( tbl1 , tbl2 , overwrite )
 	if tbl1 == tbl2 then return tbl1 end
 	local t
-	if type ( overwrite ) ~= "function" then
+	if overwrite or type ( overwrite ) ~= "function" then
 		t = tbl1 
 	else
 		t = table.copy ( tbl1 ) 
