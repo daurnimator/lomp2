@@ -438,13 +438,14 @@ local function jsonserver ( thread , skt , requestdetails ) -- Unknown if still 
 	print ( "Json cmd received: " , requestdetails.body )
 	local o = Json.Decode ( requestdetails.body )
 	local hdr = { ["content-type"] = "application/json" }
-	if type ( o ) == "table" and o [ 1 ] then
+	if type ( o ) == "table" then
 		local t = { }
 		local code = 200
-		for i , v in ipairs ( o ) do
+		for i , v in ipairs ( o.cmd ) do
 			if v.cmd then
 				t [ i ] = { execute ( thread , v.cmd , v.params ) }
-			else -- Missing command
+			--elseif v.var
+			else -- Not a command?
 				code = 206
 				t [ i ] = { false , "Provide a function" }
 			end

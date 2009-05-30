@@ -11,6 +11,8 @@
 
 package.path = package.path .. ";libs/?.lua"
 
+pcall ( require , "luarocks.require" ) -- Activates luarocks if available.
+
 local xmlrpc = require ( "xmlrpc" )
 local socket = require ( "socket" )
 require"general"

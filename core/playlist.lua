@@ -13,10 +13,17 @@ require "general"
 
 module ( "lomp.core.playlist" , package.see ( lomp ) )
 
+function okpl ( pl )
+	if type ( pl ) == "string" then pl = table.valuetoindex ( vars.pl , "name" , pl ) end
+	if type ( pl ) ~= "number" or pl < 0 or pl > #vars.pl then
+		return false
+	end	
+end
+
 function new ( name , pl )
 	if type ( name ) ~= "string" or name == "hardqueue" or ( name == "Library" and pl ~= 0 ) then name = "New Playlist" end
 	if pl ~= nil and ( type ( pl ) ~= "number" or pl > #vars.pl + 1 or pl < -1 ) then 
-		return ferror ( "'New playlist' called with invalid playlist number" )
+		return ferror ( "'New playlist' called with invalid playlist number" , 2 )
 	end
 	
 	pl = pl or #vars.pl + 1
@@ -27,9 +34,9 @@ function new ( name , pl )
 	return pl , name
 end
 function delete ( pl )
-	if type ( pl ) == "string" then pl = table.valuetoindex ( vars.pl , "name" , pl ) end
-	if type ( pl ) ~= "number" or pl <= 0 or pl > #vars.pl then -- Uses <= to prevent deletion of library 
-		return ferror ( "'Delete playlist' called with invalid playlist" , 1 ) 
+	pl = okpl ( pl )
+	if not pl then
+		return ferror ( "'Delete playlist' called with invalid playlist" , 2 ) 
 	end
 	
 	local name = vars.pl [ pl ].name
@@ -41,9 +48,9 @@ function delete ( pl )
 	return pl
 end
 function clear ( pl )
-	if type ( pl ) == "string" then pl = table.valuetoindex ( vars.pl , "name" , pl ) end
-	if type ( pl ) ~= "number" or pl < 0 or pl > #vars.pl then 
-		return ferror ( "'Clear playlist' called with invalid playlist" , 1 ) 
+	pl = okpl ( pl )
+	if not pl then
+		return ferror ( "'Clear playlist' called with invalid playlist" , 2 ) 
 	end
 	
 	--vars.pl [ pl ] = { name = name ; revision = revision + 1 }
@@ -58,9 +65,9 @@ function clear ( pl )
 	return pl
 end
 function randomise ( pl )
-	if type ( pl ) == "string" then pl = table.valuetoindex ( vars.pl , "name" , pl ) end
-	if type ( pl ) ~= "number" or pl < 0 or pl > #vars.pl then 
-		return ferror ( "'Randomise playlist' called with invalid playlist" , 1 ) 
+	pl = okpl ( pl )
+	if not pl then
+		return ferror ( "'Randomise playlist' called with invalid playlist" , 2 ) 
 	end
 	
 	table.randomize ( vars.pl [ pl ] )
@@ -70,13 +77,13 @@ function randomise ( pl )
 	return pl
 end
 function sort ( pl , reverse , field , subfield )
-	if type ( pl ) == "string" then pl = table.valuetoindex ( vars.pl , "name" , pl ) end
-	if type ( pl ) ~= "number" or pl < 0 or pl > #vars.pl then 
-		return ferror ( "'Sort playlist' called with invalid playlist" , 1 ) 
+	pl = okpl ( pl )
+	if not pl then
+		return ferror ( "'Sort playlist' called with invalid playlist" , 2 ) 
 	end
 
-	if type ( field ) ~= "string" then return ferror ( "'Sort playlist' called with invalid field" , 1 ) end
-	if subfield and type ( subfield ) ~= "string" then return ferror ( "'Sort playlist' called with invalid subfield" , 1 ) end
+	if type ( field ) ~= "string" then return ferror ( "'Sort playlist' called with invalid field" , 2 ) end
+	if subfield and type ( subfield ) ~= "string" then return ferror ( "'Sort playlist' called with invalid subfield" , 2 ) end
 	
 	local function eq ( e1 , e2 )
 		e1 = e1.details [ field ]

@@ -29,7 +29,7 @@ history =			200
  -- Seperate entries with a comma
  -- eg: library = { "/media/music" , "/media/music2" }
 library = {		"/media/windows/Documents and Settings/Daurnimator/My Documents/My Music" ,
-				"/media/sdc1/Random Downloaded"
+				--"/media/sdc1/Random Downloaded"
 }
 
 

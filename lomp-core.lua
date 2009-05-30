@@ -62,6 +62,7 @@ require "core.playback"
 require "core.savestate"
 require "core.playlist"
 require "core.item"
+require "core.info"
 
 function core.checkfileaccepted ( filename )
 	local _ , _ , extension = string.find ( filename , "%.?([^%./]+)$" )
