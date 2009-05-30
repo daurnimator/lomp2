@@ -2,152 +2,17 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 <head>
 	<title>LOMP Interface</title>
-	<script type="text/javascript" src="json2.js"></script>
 	
-	<script type="text/javascript" src="http://jqueryjs.googlecode.com/files/jquery-1.2.6.min.js"></script>
-	<script type="text/javascript" src="jquery.ui-1.5/ui/minified/jquery.ui.all.min.js"></script>
-	<link rel="stylesheet" type="text/css" href="jquery.ui-1.5/themes/flora/flora.all.css" media="screen" title="Flora (Default)" />
-
+	<script src="http://www.google.com/jsapi"></script>
+	<script>
+		google.load("jquery", "1.3.2");
+		google.load("jqueryui", "1.7.1");
+	</script>
+	
 	<link rel="stylesheet" type="text/css" href="layout.css" media="screen" />
-	<!--<link rel="stylesheet" type="text/css" href="lomp.css" media="screen" />-->
-	<script type="text/javascript" src="lomp.js"></script>
-
-	<style type="text/css">
-		/* Make img buttons jump up when mouse-overed */
-		.imgbutton > img {
-			padding-top: 1px;
-		}
-		.imgbutton:hover > img {
-			padding-top: 0;
-			border-bottom: 1px solid #CCC;
-		}
-		.currentplaylist {
-			overflow-x: auto;
-			width: 900px;
-		}
-		.queue {
-			overflow-x: auto;
-			width: 700px;		
-		}
-		
-		.toolbar {
-			margin: 3px 8px;
-			border: 1px dashed #555;
-		}
-		.playlistlist > ul {
-			list-style: none;
-			margin: 0;
-			padding: 0;
-			border: 1px solid #000
-		}
-		.playlistlist > ul > li > a {
-			font-family: Georgia;
-			font-size: 10pt;
-			text-decoration: none;
-			display: block;
-		}
-		.li0 a {
-			background-color: #FFF;
-			color: #111;
-		}
-		.li1 a {
-			background-color: #EEE;
-			color: #000;
-		}
-		.li0:hover a, .li1:hover a {
-			background-color: #CCE0FF;
-		}
-		.liselected a {
-			background-color: #6090FF;
-			color: #FFF;
-		}
-		.liselected:hover a {
-			background-color: #5080EE;
-			color: #FFF;
-		}
-		.liarrowed > a:before {
-			content: "--> ";
-		}
-	</style>
+	<script src="lomp.js"></script>
 </head>
-<body>
-	<div id="window" class="horizontalsplitter">
-		<div id="top" class="verticalsplitter">
-			<div class="left">weeeeeeeeeeeeeeeeeeeeeeeeeeeee</div>
-			<div class="right">weeeeeeeeeeeeeeeeeeeeeeeeeeeee</div>
-			<div class="centre">
-				<div class="toolbar large">
-					<a class="imgbutton previous" href="/BasicCMD?cmd=playback.prv"><img src="images/media-skip-backward-64.png" alt="&lt;&lt;|" title="Previous" /></a><a class="imgbutton stop" href="/BasicCMD?cmd=playback.stop"><img src="images/media-playback-stop-64.png" alt="[]" title="Stop" /></a><a class="imgbutton play" href="/BasicCMD?cmd=playback.play"><img src="images/media-playback-start-64.png" alt="|&gt;" title="Play" /></a><a class="imgbutton pause" href="/BasicCMD?cmd=playback.pause"><img src="images/media-playback-pause-64.png" alt="||" title="Pause" /></a><a class="imgbutton next" href="/BasicCMD?cmd=playback.nxt"><img src="images/media-skip-forward-64.png" alt="|&gt;&gt;" title="Next" /></a>					
-				</div>
-				<div class="toolbar medium">
-					<span class="timeelapsed">Time Elapsed</span><div class='seekbar'></div><span class="timeleft">Time Left</span>
-				</div>
-			</div>
-			
-		</div>
-		<div id="mid" class="verticalsplitter">
-			<div id="left" class="horizontalsplitter">
-				<div class="search"><input type="text" name="quicksearch" /><button class="submitquicksearch">Search!</button></div>
-				<hr />
-				<div class="playlistlist"></div>
-				<hr />
-				<div class="treebrowser"><pre>Root
-|- Leaf
-|- Leaf2
- |-Node</pre></div>
-			</div>
-			<div id="central" class="horizontalsplitter">
-				<div class="toolbar medium">
-					<a class='imgbutton' href="#"><img src="images/folder-open-32.png" alt="+Fo" title="Add Folder" /></a><a class='imgbutton' href="#"><img src="images/list-add-32.png" alt="+Fi" title="Add File" /></a><span class="seperator"></span><a class='imgbutton randomise' href="#"><img src="images/view-refresh-32.png" alt="Randomise" title="Randomise (Shuffles active playlist)" /></a>
-				</div>
-				<div class="currentplaylist xscrollable"></div>
-				<div id="bottom" class="verticalsplitter">
-					<div class="albumart"></div>
-					<div class="queue xscrollable"><div class="currentplaylist"></div></div>
-					<div class="eq">I BE THE EQ</div>
-				</div>
-			</div>
-		</div>
-	</div>
-
-
-	<!--<div class='left utils'>
-		<a href="/BasicCMD?cmd=demo">This adds shit</a>
-	</div>
-	<div class='center'>
-		<div class='top center horizontaldivision border'>
-			<div class='toolbar large'>
-				<a class='imgbutton previous' href="/BasicCMD?cmd=playback.prv"><img src="images/media-skip-backward-64.png" alt="&lt;&lt;|" title="Previous" /></a>
-				<a class='imgbutton stop' href="/BasicCMD?cmd=playback.stop"><img src="images/media-playback-stop-64.png" alt="[]" title="Stop" /></a>
-				<a class='imgbutton play' href="/BasicCMD?cmd=playback.play"><img src="images/media-playback-start-64.png" alt="|&gt;" title="Play" /></a>
-				<a class='imgbutton pause' href="/BasicCMD?cmd=playback.pause"><img src="images/media-playback-pause-64.png" alt="||" title="Pause" /></a>
-				<a class='imgbutton next' href="/BasicCMD?cmd=playback.nxt"><img src="images/media-skip-forward-64.png" alt="|&gt;&gt;" title="Next" /></a>
-			</div>
-			<div class="toolbar"><span>Time Played</span><div class='seekbar'></div><span>Total Time</span></div>
-		</div>
-	</div>
-	<div class="verticaldivision">
-		<div class='left horizontaldivision border'>
-			<div class='searchbar'>Searchbar</div>
-			<hr>
-			<div class='playlistlist'>Select a playlist:</div>
-		</div>
-		<div class="horizontaldivision">
-			<div class="horizontaldivision border">
-				<div class="toolbar medium">
-					<a class='imgbutton' href="#"><img src="images/folder-open-32.png" alt="+Fo" title="Add Folder" /></a>
-					<a class='imgbutton' href="#"><img src="images/list-add-32.png" alt="+Fi" title="Add File" /></a>
-					<span class="seperator"></span>
-					<a class='imgbutton randomise' href="#"><img src="images/view-refresh-32.png" alt="Randomise" title="Randomise (Shuffles active playlist)" /></a>
-				</div>
-				<div class="currentplaylist"></div>
-			</div>
-			<div class="verticaldivision bottom border">
-				<div class="albumart"></div>
-				<div class="queue"></div>
-				<div class="eq"></div>
-			</div>
-		</div>
-	</div>-->
-</body>
+	<body>
+		
+	</body>
 </html>
