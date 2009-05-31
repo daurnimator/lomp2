@@ -65,7 +65,7 @@ require "core.item"
 require "core.info"
 
 function core.checkfileaccepted ( filename )
-	local _ , _ , extension = string.find ( filename , "%.?([^%./]+)$" )
+	local extension = string.match ( filename , "%.?([^%./]+)$" )
 	extension = string.lower ( extension )
 	
 	local accepted = false

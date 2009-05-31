@@ -20,7 +20,7 @@ function addfile ( path , pl , pos )
 	-- Check path exists
 	if type ( path ) ~= "string" then return ferror ( "'Add file' called with invalid path" , 1 ) end
 	
-	local filename = string.find ( path , "([^/]+)$" )
+	local filename = string.match ( path , "([^/]+)$" )
 	local a , err = core.checkfileaccepted ( filename )
 	if a then
 		local o = core.item.create ( "file" , path )

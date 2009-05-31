@@ -435,7 +435,7 @@ local function webserver ( thread , skt , requestdetails )
 end
 local function jsonserver ( thread , skt , requestdetails ) -- Unknown if still working, json client was lost when I ran svn-clean, cbf coding another one
 	require "Json"
-	print ( "Json cmd received: " , requestdetails.body )
+	--print ( "Json cmd received: " , requestdetails.body )
 	local o = Json.Decode ( requestdetails.body )
 	local hdr = { ["content-type"] = "application/json" }
 	if type ( o ) == "table" then
@@ -450,7 +450,7 @@ local function jsonserver ( thread , skt , requestdetails ) -- Unknown if still 
 				t [ i ] = { false , "Provide a function" }
 			end
 		end
-		print ( Json.Encode ( t ) )
+		--print ( "Json reply: " , Json.Encode ( t ) )
 		httpsend ( skt , requestdetails , { status = code , headers = hdr , body = Json.Encode ( t ) } )
 
 	else -- Json decoding failed

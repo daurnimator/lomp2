@@ -13,16 +13,18 @@ require "general"
 
 module ( "lomp.core.info" , package.see ( lomp ) )
 
+function getplaylistinfo ( pl )
+	return { revision = vars.pl [ pl ].revision , items = #vars.pl [ pl ] , index = pl , name = vars.pl [ pl ].name }
+end
+
 function getlistofplaylists ( )
 	local t = { }
-	print(vars.pl)
 	for i = 1 , #vars.pl do
-		t [ i ] = { name = vars.pl [ i ].name , revision = vars.pl [ i ].revision , index = i }
+		t [ i ] = getplaylistinfo ( i )
 	end
 	return t
 end
 
 function getplaylist ( pl )
-	pl = core.playlist.okpl ( pl )
 	return vars.pl [ pl ]
 end
