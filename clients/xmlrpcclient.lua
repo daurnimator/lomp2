@@ -83,7 +83,7 @@ end
 
 function b ( f )
 	cmd("core.setsoftqueueplaylist",{0})
-	cmd("core.localfileio.addfolder" , { ( f or "/media/temp/Done Torrents/ACDC - Highway To Hell (1979) [FLAC]" ) ,0,1,"true"})
+	--cmd("core.localfileio.addfolder" , { ( f or "/media/temp/Done Torrents/ACDC - Highway To Hell (1979) [FLAC]" ) ,0,1,"true"})
 	--cmd("core.playback.play")
 end
 

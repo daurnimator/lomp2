@@ -131,7 +131,7 @@ function pv ( )
 	return true
 end
 function showtag ( pl , pos )
-	p ( table.recurseserialise ( vars.pl[pl][pos] ) )
+	p ( table.serialise ( vars.pl[pl][pos] ) )
 end
 --[[function p (...)
 	if type ( select ( 1 , ... ) ) == "string" then 

@@ -26,5 +26,5 @@ function getlistofplaylists ( )
 end
 
 function getplaylist ( pl )
-	return vars.pl [ pl ]
+	return table.indexedcopy ( vars.pl [ pl ] ) --vars.pl [ pl ]
 end

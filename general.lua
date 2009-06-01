@@ -126,11 +126,20 @@ function table.stablesort ( a , equalitycheck , func )
 	end
 end
 
--- Returns a copy of tbl
+-- Returns a non-deep copy of tbl
 function table.copy ( tbl )
 	local t = { }
 	for k , v in pairs ( tbl ) do
 		t [ k ] = v
+	end
+	return t
+end
+
+-- Returns a non-deep copy of numerical indexed values of tbl 
+function table.indexedcopy ( tbl )
+	local t = { }
+	for i , v in ipairs ( tbl ) do
+		t [ i ] = v
 	end
 	return t
 end
