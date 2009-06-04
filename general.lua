@@ -15,6 +15,28 @@ require "iconv"
 -- Set math randomseed
 math.randomseed ( os.time ( ) )
 
+do
+	local rawpairs = pairs
+	function pairs ( t )
+		local mt = rawget ( getmetatable ( t ) or { } , "__pairs" )
+		if mt then
+			return mt ( t )
+		else
+			return rawpairs ( t )
+		end
+	end
+	
+	local rawtype = type
+	function type ( t )
+		local mt = rawget ( getmetatable ( t ) or { } , "__type" )
+		if mt then
+			return mt ( t )
+		else
+			return rawtype ( t )
+		end
+	end
+end
+
 function toboolean ( o )
 	return not not o
 end

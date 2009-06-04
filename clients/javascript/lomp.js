@@ -54,93 +54,105 @@ function LOMP ( server ) {
 		processcallbacks ( onfield , data ); 
 	};
 	
-	this.sendqueue = { };
+	this.sendqueue = { get : [ ] , post : [ ] };
 
-	var send = function ( object , callback ) {
-		for ( var k in object ) {
-			if ( that.sendqueue [ k ] ) {
-				for ( var i = 0 ; i < object [ k ].length ; i++ ) {
-					that.sendqueue [ k ].push ( object [ k ] [ i ] );
-				};
-			} else {
-				that.sendqueue [ k ] = object [ k ];
-			};
+	var sendpost = function ( name , params , successcallback , failcallback ) {
+		that.sendqueue.post.push ( { cmd : name , params : params , successcallback : successcallback , failcallback : failcallback } );
+	};
+	var sendget = function ( name , successcallback , failcallback ) {
+		that.sendqueue.get.push ( { "var" : name , successcallback : successcallback , failcallback : failcallback } );
+	};
+	var processpost = function ( postqueue , aftercallback ) {
+		var postbody = [ ];
+		for ( var i in postqueue ) {
+			var a = { };
+			a.cmd = postqueue [ i ].cmd;
+			a.params = postqueue [ i ] .params;
+			postbody.push ( a );
 		};
+
+		$.post (  that.jsonurl , JSON.stringify ( postbody ) , function ( postdata ) {
+			for ( var i = 0 ; i < postdata.length ; i++ ) {
+				if ( postdata [ i ] [ 0 ] ) {
+					postqueue [ i ].successcallback ( postdata [ i ] [ 1 ] );
+				} else {
+					postqueue [ i ].failcallback ( postdata [ i ] [ 1 ] );
+				};
+			};
+			aftercallback ( );
+		} , "json" );
+	};
+	var processget = function ( getqueue , aftercallback ) {
+		var url = that.jsonurl+"?";
+		for ( var i = 0 ; i < getqueue.length ; i++ ) {
+			url += url + ( i + 1 ) + "=" + escape ( getqueue [ i ] ["var"] ) + "&";
+		};
+		
+		$.get ( url , function ( getdata ) {
+			for ( var i = 0 ; i < getdata.length ; i++ ) {
+				if ( getdata [ i ] [ 0 ] ) {
+					getqueue [ i ].successcallback ( getdata [ i ] [ 1 ] );
+				} else {
+					getqueue [ i ].failcallback ( getdata [ i ] [ 1 ] );
+				};
+			};
+			aftercallback ( );
+		} , "json" );
 	};
 	var processqueue = function ( ) {
-		var sendqueue = that.sendqueue;
-		that.sendqueue = { };
-		
-		var tobesent = { };
-		for ( var k in sendqueue ) {
-			if ( !tobesent [ k ] ) tobesent [ k ] = [ ];
-			for ( var i in sendqueue [ k ] ) {
-				var a = { };
-				a [ k ] = sendqueue [ k ] [ i ] [ k ];
-				a.params = sendqueue [ k ] [ i ] .params;
-				tobesent [ k ].push ( a );
-			};
-		};
-		
-		tobesent = JSON.stringify ( tobesent );
-		
-		$.post (  that.jsonurl , tobesent , function ( data ) {
-			for ( var i = 0 ; i < data.length ; i++ ) {
-				if ( data [ i ] [ 0 ] ) {
-					sendqueue.cmd [ i ].successcallback ( data [ i ] [ 1 ] ); // Only cmd is supported for now
-				} else {
-					console.log ( "FAILED" , data [ i ] [ 1 ] )
-					sendqueue.cmd [ i ].failcallback ( data [ i ] [ 1 ] );
-				};
-			};
-			//that.refresh();
-		} , "json" );
+		// First post
+		if ( that.sendqueue.post [ 0 ] ) {
+			var aftercallback = function () {};//that.refresh
+			// Then GET
+			if ( that.sendqueue.get [ 0 ] ) {
+				aftercallback = function ( ) {
+					processget ( that.sendqueue.get , aftercallback );
+					that.sendqueue.get = [ ];
+				}
+			}
+			processpost ( that.sendqueue.post , aftercallback );
+			that.sendqueue.post = [ ];
+		};		
 	};
 	
 	this.getPlaylistInfo = function ( ) {
-		send ( { cmd : [ 
-			{ cmd : "core.info.getplaylistinfo" , params : [ 0 ] , successcallback : function ( data ) {
-				that.editstate ( [ "libraryinfo" ] , data [ 0 ] );
-			} }, //Library
-			{ cmd : "core.info.getlistofplaylists" , params : [ ] , successcallback : function ( data ) {
-				that.editstate ( [ "playlistinfo" ] , data [ 0 ] );
-			} }, //All the other playlists
-		] } );
+		sendpost ( "core.info.getplaylistinfo" , [ 0 ] , function ( data ) {
+			that.editstate ( [ "libraryinfo" ] , data [ 0 ] );
+		} ); //Library
+		sendpost ( "core.info.getlistofplaylists" , [ ] , function ( data ) {
+			that.editstate ( [ "playlistinfo" ] , data [ 0 ] );
+		} ); //All the other playlists
 	};
 	this.updatePlaylist = function ( playlist ) {
-		send ( { cmd : [ 
-			{ cmd : "core.info.getplaylist" , params : [ playlist + 1 ] , successcallback : function ( data ) {
-				that.editstate ( [ "playlists" , playlist ] , data [ 0 ] );
-			} }
-		] } );
+		sendpost ( "core.info.getplaylist" , [ playlist + 1 ] , function ( data ) {
+			that.editstate ( [ "playlists" , playlist ] , data [ 0 ] );
+		} );
 	};
 	this.updateLibrary = function ( ) {
-		send ( { cmd : [ 
-			{ cmd : "core.info.getplaylist" , params : [ 0 ] , successcallback : function ( data ) {
+		sendpost ( "core.info.getplaylist" , [ 0 ] , function ( data ) {
 				that.editstate ( [ "library" ] , data [ 0 ] );
-			} }
-		] } );
+		} );
 	};
 	
 	this.refresh = function ( ) {
 		// Check to see if anything has changed on the server
 	
 		// Update playlistinfo
-		this.getPlaylistInfo ( this.state.currentplaylist );
+		that.getPlaylistInfo ( that.state.currentplaylist );
 		
 		// Update library if changed
-		if ( this.state.libraryinfo && this.state.libraryinfo.revision > ( ( this.state.library || { } ).revision || -1 ) ) {
-			this.updateLibrary ( );
+		if ( that.state.libraryinfo && that.state.libraryinfo.revision > ( ( that.state.library || { } ).revision || -1 ) ) {
+			that.updateLibrary ( );
 		}
 		// Update changed playlists
-		for (var i = 0 ; i < this.state.playlistinfo.length ; i++ ) {
-			if ( this.state.playlistinfo [ i ].revision > ( ( this.state.playlists [ i ] || {} ).revision || -1 ) ) {
-				this.updatePlaylist ( i );
+		for (var i = 0 ; i < that.state.playlistinfo.length ; i++ ) {
+			if ( that.state.playlistinfo [ i ].revision > ( ( that.state.playlists [ i ] || {} ).revision || -1 ) ) {
+				that.updatePlaylist ( i );
 			}
 		}
 		processqueue ( );
 		
-		console.log ( this.state );
+		console.log ( that.state );
 	};
 	
 	// Setup refreshing

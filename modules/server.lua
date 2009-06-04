@@ -208,6 +208,15 @@ local function execute ( thread , name , parameters )
 	
 	return unpack ( thread.receive:remove ( ) )
 end
+local function getvar ( thread , name )
+	-- Executes a function, given a string
+	-- Example of string: core.playback.play
+	if type ( name ) ~= "string" then return false end
+	
+	thread.send:insert ( { thread.identifier , "var" , name } )
+	
+	return thread.receive:remove ( )
+end
 local function auth ( headers )
 	if config.authorisation then
 		local preferred = "basic" -- Preferred method is basic auth (Only thing currently supported)
@@ -433,28 +442,42 @@ local function webserver ( thread , skt , requestdetails )
 		
 		return true
 end
-local function jsonserver ( thread , skt , requestdetails ) -- Unknown if still working, json client was lost when I ran svn-clean, cbf coding another one
+local function jsonserver ( thread , skt , requestdetails )
 	require "Json"
 	--print ( "Json cmd received: " , requestdetails.body )
-	local o = Json.Decode ( requestdetails.body )
 	local hdr = { ["content-type"] = "application/json" }
-	if type ( o ) == "table" then
-		local t = { }
-		local code = 200
-		for i , v in ipairs ( o.cmd ) do
-			if v.cmd then
-				t [ i ] = { execute ( thread , v.cmd , v.params ) }
-			--elseif v.var
-			else -- Not a command?
-				code = 206
-				t [ i ] = { false , "Provide a function" }
+	if requestdetails.Method == "POST" then 
+		local o = Json.Decode ( requestdetails.body )
+		if type ( o ) == "table" then
+			local t = { }
+			local code = 200
+			for i , v in ipairs ( o ) do
+				if v.cmd then
+					t [ i ] = { execute ( thread , v.cmd , v.params ) }
+				else -- Not a command?
+					code = 206
+					t [ i ] = { false , "Provide a function" }
+				end
 			end
-		end
-		--print ( "Json reply: " , Json.Encode ( t ) )
-		httpsend ( skt , requestdetails , { status = code , headers = hdr , body = Json.Encode ( t ) } )
+			--print ( "Json reply: " , Json.Encode ( t ) )
+			httpsend ( skt , requestdetails , { status = code , headers = hdr , body = Json.Encode ( t ) } )
 
-	else -- Json decoding failed
-		httpsend ( skt , requestdetails , { status = 400 , headers = hdr , body = Json.Encode ( { false , "Could not decode Json" } ) } )
+		else -- Json decoding failed
+			httpsend ( skt , requestdetails , { status = 400 , headers = hdr , body = Json.Encode ( { false , "Could not decode Json" } ) } )
+		end
+	elseif requestdetails.Method == "GET" then 
+		local t = { }
+		local i = 1
+		while true do
+			local v = requestdetails.queryvars [ tostring ( i ) ]
+			if not v then break end
+			t [ i ] = getvar ( thread , v )
+			i = i + 1
+		end
+		httpsend ( skt , requestdetails , { status = 200 , headers = hdr , body = Json.Encode ( t ) } )
+	else
+		-- Unsupported json method
+		httpsend ( skt , requestdetails , { status = 400 , headers = hdr } )
 	end
 end
 local function lompserver ( thread , skt )
@@ -493,7 +516,7 @@ local function lompserver ( thread , skt )
 		file = socket.url.unescape ( file )
 		local queryvars = { }
 		if querystring then
-			for k, v in string.gmatch( querystring , "([%w%-%_%.%~]+)=([%w%-%_%.%~]+)&?") do
+			for k, v in string.gmatch( querystring , "([^=]+)=([^&]+)" ) do --"([%w%-%%%_%.%~]+)=([%w%%%-%_%.%~]+)&?") do
 				queryvars [ socket.url.unescape ( k ) ] = socket.url.unescape ( v )
 			end
 		end
@@ -515,6 +538,8 @@ local function lompserver ( thread , skt )
 		elseif Method == "GET" or Method == "HEAD" then
 			if file == "/BasicCMD" then
 				basiccmdserver ( thread , skt , requestdetails )
+			elseif file == "/JSON" then
+				jsonserver ( thread , skt , requestdetails )
 			else
 				webserver ( thread , skt , requestdetails )
 			end

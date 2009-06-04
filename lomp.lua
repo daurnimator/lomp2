@@ -133,22 +133,29 @@ local function buildMetatableCall ( ref )
 end
 local function buildMetatableGet ( ref )
 	return {
-	__index = function ( t , k )
-		if type ( ref [ k ] ) == "table" then
-			local val = newproxy ( true ) -- Undocumented lua function
-			for k , v in pairs ( buildMetatableGet ( ref [ k ] ) ) do
-				getmetatable ( val ) [ k ] = v
+		__index = function ( t , k )
+			if type ( ref [ k ] ) == "table" then
+				local val = newproxy ( true ) -- Undocumented lua function
+				for k , v in pairs ( buildMetatableGet ( ref [ k ] ) ) do
+					getmetatable ( val ) [ k ] = v
+				end
+				return val
+			elseif type ( ref [ k ] ) == "function" then
+				return string.dump ( ref [ k ] )
+			else
+				return ref [ k ]
 			end
-			return val
-		elseif type ( ref [ k ] ) == "function" then
-			return string.dump ( ref [ k ] )
-		else
-			return ref [ k ]
-		end
-	end , 
-	__len = function ()
-		return #ref
-	end , }
+		end , 
+		__len = function ( )
+			return #ref
+		end ,
+		__pairs = function ( t )
+			return pairs ( ref )
+		end ,
+		__type = function ( t )
+			return "table"
+		end ,
+	}
 end
 
 -- Initialisation finished.
@@ -187,7 +194,7 @@ while true do
 			local ok , var = pcall ( fn )
 			if not ok then -- Check for no errors while finding function
 				outqueues [ identifier ]:insert ( { false , var } )
-			elseif type ( var ) ~= "string" and type ( var ) ~= "number" and type ( var ) ~= "boolean" and var ~= nil then -- Make sure function was found, var already has to be a string, number or nil
+			elseif type ( var ) ~= "string" and type ( var ) ~= "table" and type ( var ) ~= "number" and type ( var ) ~= "boolean" and var ~= nil then -- Make sure function was found, var already has to be a string, number or nil
 				outqueues [ identifier ]:insert ( { false , "Not a variable, tried to return value of: " .. type ( var ) } )
 			else
 				outqueues [ identifier ]:insert ( { ok , var } )
