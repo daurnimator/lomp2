@@ -12,16 +12,17 @@
 	
 	<link rel="stylesheet" type="text/css" href="layout.css" media="screen" />
 	<script src="lomp.js"></script>
-	<script>
-		lomp = new LOMP ( "127.0.0.1:5667" );
-	</script>
 	
 	<link rel="stylesheet" type="text/css" media="screen" href="css/ui.jqgrid.css" />
 	<script src="js/jquery.jqGrid.min.js" type="text/javascript"></script>
 	<script src="js/i18n/grid.locale-en.js" type="text/javascript"></script>
 	
+	<script>
+		lomp = new LOMP ( "127.0.0.1:5667" );
+	</script>
+	
 	<script type="text/javascript">
-		grid = function(){ 
+		$(document).ready(function() {
 			jQuery("#list").jqGrid({
 				datatype: 'clientSide',
 				colNames:['Id','Artist','Title','Album','Date','Source'],
@@ -30,15 +31,18 @@
 					{name:'artist',index:'artist', width:200, sorttype:'text'}, 
 					{name:'title',index:'title', width:200, sorttype:'text'}, 
 					{name:'album',index:'album', width:200, sorttype:'text'}, 
-					{name:'comment',index:'comment', width:400, sorttype:'text'},
-					{name:'date',index:'date', width:200, sorttype:'date'}
+					{name:'date',index:'date', width:200, sorttype:'date'},
+					{name:'source',index:'source', width:400, sorttype:'text'},
 				],
 				pager: jQuery('#pager'),
 				rowNum:10,
 				viewrecords: true,
 				imgpath: 'themes/basic/images',
 				caption: 'Playlist'
-			}); 
+			});
+		} );
+		grid = function(){ 
+			jQuery("#list").clearGridData();
 			var currentplaylist = 0;
 			var playlist = lomp.state.playlists [ currentplaylist ]
 			for ( var id = 0 ; id < playlist.length ; id++ ) {
@@ -46,13 +50,17 @@
 				jQuery("#list").addRowData ( id + 1 , {
 					id: id + 1 ,
 					source: item.source ,
-					artist: item.details.tags.artist [ 0 ],
-					title: item.details.tags.title [ 0 ],
-					album: item.details.tags.album [ 0 ],
-					date: item.details.tags.date [ 0 ],
+					artist: ( item.details.tags.artist || [ ] ) [ 0 ],
+					title: ( item.details.tags.title || [ ] ) [ 0 ],
+					album: ( item.details.tags.album || [ ] ) [ 0 ],
+					date: ( item.details.tags.date || [ ] ) [ 0 ],
 				} ); 
 			};
+			//console.log("grid")
 		};
+		
+		lomp.addcallback ( [ "playlists" , 0 ] , grid );
+		lomp.refresh();
 	</script>
 </head>
 	<body>
