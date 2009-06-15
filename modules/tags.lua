@@ -13,6 +13,8 @@ require "general"
 
 module ( "lomp.tags" , package.see ( lomp ) )
 
+require "SaveToTable"
+
 --[[
 Format:
 cache [ path ] = item
@@ -133,15 +135,15 @@ local function gettags ( path )
 	return item
 end
 
-cache = { }
-cache = setmetatable ( cache, {
-	__index = function ( t , k )
-		local item = gettags ( k )
-		t [ k ] = item
-		return item
-	end ,
-})
-
+local function maketagcache ( tbl )
+	return setmetatable ( tbl, {
+		__index = function ( t , k )
+			local item = gettags ( k )
+			t [ k ] = item
+			return item
+		end ,
+	})
+end
 
 -- Public functions
 function getdetails ( path )
@@ -185,50 +187,24 @@ function edittag ( path , edits )
 	end
 end
 function savecache ( )
-	local s = core._NAME .. "\t" .. core._VERSION .. " TagCache File.\tCreated: " .. os.date ( ) .. "\n"
-	s = s .. "cache = {\n"
-	s = s .. table.recurseserialise ( cache , "\t" )
-	s = s .. '};\n'
-	
-	local file, err = io.open( config.tagcachefile , "w+" )
-	if err then 
-		return ferror ( "Could not open tag cache file: '" .. err , 2 ) 
+	local ok , err = table.save ( {  lomp = core._VERSION , major = core._MAJ , minor = core._MIN , inc = core._INC , timesaved = os.date ( ) , cache = cache } , config.tagcachefile , "" , "" )
+	if not ok then
+		return ferror ( err , 2 )
+	else
+		updatelog ( "Tag cache sucessfully saved" , 4 )
+		return true
 	end
-	file:write ( s )
-	file:flush ( )
-	file:close ( )
-	
-	updatelog ( "Tag cache sucessfully saved" , 4 )
-	
-	return s , err
 end
 function restorecache ( )
-	local file, err = io.open ( config.tagcachefile )
-	if file then -- Restoring State.
-		local v = file:read ( )
-		if not v then
-			return ferror ( "Invalid tagcache file" , 1 )
-		end 
-		local _ , _ , program , major , minor , inc = string.find ( v , "^([^%s]+)%s+(%d+)%.(%d+)%.(%d+)" )
-		if type ( program ) == "string" and program == "LOMP" and tonumber ( major ) <= core._MAJ and tonumber ( minor ) <= core._MIN and tonumber ( inc ) <= core._INC then
-			local s = file:read ( "*a" )
-			file:close ( )
-			local f , err = loadstring ( s , "Saved Tag Cache" )
-			if not f then
-				return ferror ( "Could not load tagcache file: " .. err , 1 )
-			end
-			local t = { }
-			setfenv ( f , t )
-			f ( )
-			table.inherit ( _M , t , true )
-		else
-			file:close ( )
-			return ferror ( "Invalid tagcache file" , 1 )
-		end
+	local tbl , err = table.load ( config.tagcachefile )
+	if not tbl then
+		return ferror ( err , 2 )
+	-- elseif -- TODO: Version Checks
 	else
-		return ferror ( "Could not find tagcache file: '" .. err .. "'" , 2 )
+		cache = maketagcache ( tbl.cache )
+		return true
 	end
-	return true
 end
--- TODO: Add SQL in future?
+
 restorecache ( )
+cache = cache or maketagcache ( { } )
