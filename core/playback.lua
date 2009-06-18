@@ -107,7 +107,7 @@ function next ( )
 	return goto ( 1 )
 end
 
-function forward ( ) -- Moves forward one song in the queue
+function forward ( queueonly ) -- Moves forward one song in the queue
 	local m -- More songs left?
 	if vars.queue [ 0 ] then
 		if vars.queue [ 0 ].played then
@@ -138,9 +138,12 @@ function forward ( ) -- Moves forward one song in the queue
 		end
 	end
 	if state == "playing" then
-		if m then 
-			print("forward")
-			player.changesong ( vars.queue [ 0 ].typ , vars.queue [ 0 ].source ) 
+		if m then
+			if queueonly then
+				player.queuesong ( vars.queue [ 0 ].typ , vars.queue [ 0 ].source )
+			else
+				player.changesong ( vars.queue [ 0 ].typ , vars.queue [ 0 ].source ) 
+			end
 		end
 	else
 		stop ( ) -- Stop if in non-playing state (eg, paused)
@@ -159,3 +162,5 @@ function backward ( ) -- Moves back one song from the history
 		return false
 	end
 end
+
+triggers.registercallback ( "songabouttofinsh" , function ( ) forward ( true ) end , "queuenextsong" )

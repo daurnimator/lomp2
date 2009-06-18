@@ -15,6 +15,7 @@ module ( "lomp.triggers" , package.see ( lomp ) )
 
 local callbacks = { 
 	songplaying = { } , -- songplaying ( typ , source ) -- Triggered when song is played
+	songabouttofinsh = { } , -- songabouttofinish ( )
 	songfinished = { } , -- songfinished ( typ , source )
 	songstopped = { } , -- songstopped ( typ , source , stopoffset )
 }
@@ -33,29 +34,6 @@ function triggercallback ( callback , ... )
 	for i , v in ipairs ( callbacks [ callback ] ) do v ( ... ) end
 end
 
---[[registercallback ( "songplaying" , function ( )
-		-- Print new song stats
-		local t = vars.queue [ 0 ].details
-		print( "--------------------Now playing file: ", t.filename )
-		for k , v in pairs ( t ) do
-			print ( k , v )
-			if k == "tags" then
-				print ( "==== Tags:" )
-				for tag , val in pairs ( v ) do
-					for i , v in ipairs ( val ) do
-						print ( "Tag:" , tag , " = " , v ) 
-					end
-				end
-			end
-		end
-		print ( "----------------------------------------------------------------" )
-	end , "Print song stats to screen" )--]]
-
 registercallback ( "songplaying" , function ( )
 		vars.queue [ 0 ].played = true -- Better way to figure this out?
 	end , "Set Played" )
-		
-	
---[[registercallback ( "songfinished" , function ( )
-		print ( "Song has finished!!!!" )
-	end , "Debug" )--]]

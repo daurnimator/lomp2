@@ -9,7 +9,7 @@
   Functions are saved via string.dump, so make sure it has no upvalues
   References are saved
   ----------------------------------------------------
-  table.save ( table [, filename] )
+  table.save ( table [, filename] , indentation , seperator )
   
   Saves a table so it can be called via the table.load function again
   table must a object of type 'table'

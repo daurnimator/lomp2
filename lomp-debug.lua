@@ -139,3 +139,25 @@ end
 	elseif type ( select ( 1 , ... ) ) == "table" then for k,v in pairs((...)) do p(...) end
 	end
 end--]] p = print
+
+triggers.registercallback ( "songplaying" , function ( )
+		-- Print new song stats
+		local t = vars.queue [ 0 ].details
+		print( "--------------------Now playing file: ", t.filename )
+		for k , v in pairs ( t ) do
+			print ( k , v )
+			if k == "tags" then
+				print ( "==== Tags:" )
+				for tag , val in pairs ( v ) do
+					for i , v in ipairs ( val ) do
+						print ( "Tag:" , tag , " = " , v ) 
+					end
+				end
+			end
+		end
+		print ( "----------------------------------------------------------------" )
+	end , "Print song stats to screen" )
+
+triggers.registercallback ( "songfinished" , function ( )
+		print ( "Song has finished!!!!" )
+	end , "Debug" )

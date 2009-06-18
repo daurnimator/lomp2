@@ -4,11 +4,8 @@ By Daurnimator
 Dependencies:
 	Lua 5.1						http://www.lua.org/
 		download:				http://www.lua.org/ftp/lua-5.1.4.tar.gz
-		patched for threading:			http://www.discontinuity.info/~rowan/LuaThread-1.1-for-5.1.4.patch
-		
-	VLC-lua						git clone http://www.discontinuity.info/~rowan/vlc-lua.git && cd vlc-lua && git checkout origin/libvlc-1.0.0
-		Depends on:
-			VLC >=1.0			http://www.videolan.org
+
+	Lgob (with gstreamer)				http://oproj.tuxfamily.org/wiki/doku.php?id=lgob
 	
 	Lua-iconv					http://luaforge.net/projects/lua-iconv/
 		can be obtained via:			luarocks install lua-iconv
@@ -20,7 +17,7 @@ Dependencies:
 		download:				http://luaforge.net/frs/?group_id=100
 		can be obtained via: 			luarocks install copas
 		Depends on:
-			Coxpcall				http://coxpcall.luaforge.net/
+			Coxpcall			http://coxpcall.luaforge.net/
 			can be obtained via: 		luarocks install coxpcall
 	
 	LuaXMLRPC					http://www.keplerproject.org/luaxmlrpc/

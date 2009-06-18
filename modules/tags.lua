@@ -90,7 +90,7 @@ local function gettags ( path )
 				local offset , header = fileinfo.APE.find ( fd )
 				if offset then
 					item.header = header
-					item.tagtype = "APE" 
+					item.tagtype = "APE"
 					item.tags , item.extra = fileinfo.APE.info ( fd , offset , header )
 				end
 			end
@@ -100,7 +100,7 @@ local function gettags ( path )
 				local offset , header = fileinfo.id3v2.find ( fd )
 				if offset then
 					item.header = header
-					item.tagtype = "id3v2" 
+					item.tagtype = "id3v2"
 					item.tags , item.extra = fileinfo.id3v2.info ( fd , offset , header )
 				end
 			end
@@ -109,7 +109,7 @@ local function gettags ( path )
 			if not item.tagtype then
 				local offset = fileinfo.id3v1.find ( fd )
 				if offset then
-					item.tagtype = "id3v1" 
+					item.tagtype = "id3v1"
 					item.tags , item.extra = fileinfo.id3v1.info ( fd , offset )
 				end
 			end
@@ -167,7 +167,7 @@ function edittag ( path , edits )
 		if not tagtype then
 			local offset = fileinfo.id3v2.find ( fd )
 			if offset then
-				tagtype = "id3v2" 
+				tagtype = "id3v2"
 				local lostdata = fileinfo.id3v2.edit ( path , edits , true )
 			end
 		end
@@ -176,7 +176,7 @@ function edittag ( path , edits )
 		if not tagtype then
 			local offset = fileinfo.id3v1.find ( fd )
 			if offset then
-				tagtype = "id3v1" 
+				tagtype = "id3v1"
 				local lostdata = fileinfo.id3v1.edit ( path , edits , true )
 			end
 		end
