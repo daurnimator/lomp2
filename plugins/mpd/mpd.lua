@@ -259,6 +259,7 @@ commands.status = function ( line , skt )
 		t.song = getvar ( "vars.ploffset" )
 		--t.songid
 		local time = getvar ( "vars.queue [ 0 ].details.length" )
+		updatelog ( time , 4)
 		t.time =  math.floor ( time/60 ) .. ":" .. time % 60
 		--t.bitrate
 		--t.audio

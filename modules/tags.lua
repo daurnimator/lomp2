@@ -22,61 +22,57 @@ item.tags [ "title" ] (etc)
 item.filename
 item.extension
 item.path
-??item.length
-??: size, format, bitrate
+
+item.format
+item.tagtype
+
+item.length
+item.channels
+item.samplerate
+item.bitrate
+item.filesize
+item.extra = {...}
 --]]
+
+modules = {
+	"modules.fileinfo.wavpack" ,
+	"modules.fileinfo.mpeg" ,
+	"modules.fileinfo.flac"
+}
+
+local mpeg = require 
+local flac = require 
 
 require "modules.fileinfo.APE"
 require "modules.fileinfo.id3v2"
 require "modules.fileinfo.id3v1"
-require "modules.fileinfo.flac"
 
-function tagfrompath ( path , format , donotescapepattern )
-	local subs = {
-		["album artist"] = "([^/]+)" ,
-		["artist"] = "([^/]+)" ,
-		["album"] = "([^/]+)" ,
-		["year"] = "(%d%d%d%d)" ,
-		["track"] = "(%d+)" ,
-		["title"] = "([^/]+)" ,
-		["release"] = "([^/]+)" ,
-	}
-	local a = { }	
-	local pattern = format 
-	if not donotescapepattern then pattern = string.gsub ( pattern , "[%%%.%^%$%+%*%[%]%-%(%)]" , function ( str ) return "%" .. str end ) end-- Escape any characters that may need it except "?"
-	pattern = string.gsub ( pattern , "//_//" , "[^/]-" ) -- Junk operator
-	pattern = string.gsub ( pattern , "//([^/]-)//" , function ( tag ) 
-											tag = string.lower ( tag ) 
-											a [ #a + 1 ] = tag 
-											return subs [ tag ] 
-										end )
-	pattern = pattern .. "%.[^/]-$" -- extension
-	local r = { string.match ( path , pattern ) }
-	
-	local t = { }
-	for i , v in ipairs ( a ) do
-		t [ v ] = r [ i ]
+exttodec = { }
+exttoenc = { }
+for i , v in ipairs ( modules ) do
+	local extensions , decoder , encoder = unpack ( require ( v ) )
+	print(extensions , decoder , encoder )
+	for i , v in ipairs ( extensions ) do
+		exttodec [ v ] = decoder
+		exttoenc [ v ] = encoder
 	end
-	return t
 end
 
-local function gettags ( path )
+local function getitem ( path )
 	local item = { 
 		path = path ,
 		filename = string.match ( path , "([^/]+)$" )
 	}
-	item.extension = string.match ( item.filename , "%.([^%./]+)$" )
+	item.extension = string.lower ( string.match ( item.filename , "%.([^%./]+)$" ) )
 
 	do
-		local fd = io.open ( path , "rb" )
-		do 
-			do -- flac (vorbis comment)
-				local offset = fileinfo.flac.find ( fd )
-				if offset then -- Is flac file
-					fileinfo.flac.info ( fd , item )
-				end
-			end
-			
+		local f = exttodec [ item.extension ]
+		if f then
+			local ok , err = f ( item )
+		else
+			return ferror ( "Unknown format: " .. item.extension , 3 )
+		end
+		--[=[	
 			--[[ Check if vorbis (eg: ogg)
 			fd:seek ( "set" , 1 )
 			local s = fd:read ( 6 ) -- six octet identifier
@@ -119,9 +115,7 @@ local function gettags ( path )
 				item.tags = tagfrompath ( path , config.tagpatterns.default )
 				item.length = 30 -- TODO: Remove
 			end
-		end
-		
-		fd:close ( )
+		end--]=]
 	end
 	
 	setmetatable ( item.tags , { 
@@ -138,7 +132,7 @@ end
 local function maketagcache ( tbl )
 	return setmetatable ( tbl, {
 		__index = function ( t , k )
-			local item = gettags ( k )
+			local item = getitem ( k )
 			t [ k ] = item
 			return item
 		end ,
@@ -151,38 +145,26 @@ function getdetails ( path )
 	return cache [ path ]
 end
 
-function edittag ( path , edits )
+function edittag ( path , edits , inherit )
 	-- "edits" is a table of tags & their respective changes
-	local t = cache [ path ].tags
+
+	local item = getitem ( path )
 	
+	local t = cache [ path ].tags	
 	for k , v in pairs ( edits ) do
 		t [ k ] = v -- Change in cache
 	end
+	
 	if config.savetagedits then
-		local tagtype
-		
-		-- TODO: more tag editing
-		
-		-- ID3v2
-		if not tagtype then
-			local offset = fileinfo.id3v2.find ( fd )
-			if offset then
-				tagtype = "id3v2"
-				local lostdata = fileinfo.id3v2.edit ( path , edits , true )
+		local lostdata , err = exttoenc [ item.extension ] ( item , edits , inherit )
+		if not err then
+			if lostdata then
+				
+			else
+				return true
 			end
-		end
-		
-		-- ID3v1 or ID3v1.1 tag
-		if not tagtype then
-			local offset = fileinfo.id3v1.find ( fd )
-			if offset then
-				tagtype = "id3v1"
-				local lostdata = fileinfo.id3v1.edit ( path , edits , true )
-			end
-		end
-		
-		if not tagtype then -- File has no tag
-			-- Figure out what sort of tag to add to file
+		else
+			
 		end
 	end
 end

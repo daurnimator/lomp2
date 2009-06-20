@@ -50,7 +50,7 @@ function additem ( object , pl , pos )
 	place.revision = place.revision + 1
 	
 	updatelog ( "Added item to playlist " .. pl .. " (" .. place.name .. ") position #" .. pos .. " Source: " .. object.source  , 4 )
-	return pl , pos , object
+	return pl , pos --, object
 end
 function removeitem ( pl , pos )
 	local place
@@ -72,7 +72,7 @@ function removeitem ( pl , pos )
 	place.revision = place.revision + 1
 	
 	updatelog ( "Removed item from playlist " .. pl .. " (" .. place.name .. ") position #" .. pos .. " Source: " .. object.source  , 4 )
-	return pl , pos , removeditem
+	return pl , pos --, removeditem
 end
 function copytoplaylist ( newpl , newpos , oldpl , oldpos )
 	local oldplace
