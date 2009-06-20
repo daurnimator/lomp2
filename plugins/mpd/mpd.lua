@@ -101,17 +101,29 @@ local function makeackmsg ( errorid , position ,  current_command ,  message_tex
 end
 
 local function doline ( line , skt )
-		local i , j , cmd = string.find ( line , "([^ \t]+)" )
-		if i then
-			if commands [ cmd ] then
-				return commands [ cmd ] ( line , skt )
+	local i , j , cmd = string.find ( line , "([^ \t]+)" )
+	if i then
+		if commands [ cmd ] then
+			local t = commands [ cmd ] ( line , skt )
+			if type ( t ) == "table" then
+				local r = ""
+				for k , v in pairs ( t ) do
+					r = r .. k .. ": " .. tostring ( v ) .. "\n"
+				end
+				r = r .. "OK\n"
+				return r
+			elseif type ( t ) == "string" then
+				return t .. "OK\n"
 			else
-				return false , { 5 , nil , 'unknown command "' .. cmd .. '"' }
+				error ( "Bad type" )
 			end
 		else
-			updatelog ( "FAILED CMD FIND" .. line .. i .. j .. cmd , 5 )
-			return 
+			return false , { 5 , nil , 'unknown command "' .. cmd .. '"' }
 		end
+	else
+		updatelog ( "FAILED CMD FIND" .. line .. i .. j .. cmd , 5 )
+		return 
+	end
 end
 
 local function mpdserver ( skt )
@@ -119,14 +131,14 @@ local function mpdserver ( skt )
 	while true do
 		local line , err = copas.receive( skt )
 		if line then 
-			updatelog ( "New MPD Command: " .. line , 5 )
+			if line ~= "status" then updatelog ( "New MPD Command: " .. line , 5 ) end
 			local ok , ack = doline ( line , skt )
 			if ok then
 			elseif ok == false then
 				ok = makeackmsg ( ack [ 1 ] , 0 , ack [ 2 ] , ack [ 3 ] )
 			--else -- nil.... bad commands array entry
 			end
-			updatelog ( "MPD Replying: \n" .. ( ok or "NO OK" ) , 5 )
+			if line ~= "status" then updatelog ( "MPD Replying: \n" .. ( ok or "NO OK" ) , 5 ) end
 			local bytessent , err = copas.send ( skt , ok )
 		else
 			if err == "closed" then
@@ -233,8 +245,6 @@ commands.kill = function ( line , skt )
 end
 
 commands.status = function ( line , skt )
-	local r = ""
-	--execute ( "core.quit" )
 	local softqueuepl , err = getvar ( "vars.softqueuepl" )
 	local state , err = getvar ( "core.playback.state" )
 	if state == "stopped" then state = "stop"
@@ -259,20 +269,13 @@ commands.status = function ( line , skt )
 		t.song = getvar ( "vars.ploffset" )
 		--t.songid
 		local time = getvar ( "vars.queue [ 0 ].details.length" )
-		updatelog ( time , 4)
 		t.time =  math.floor ( time/60 ) .. ":" .. time % 60
 		--t.bitrate
 		--t.audio
 		--t.updating_db
 		--t.error--]]
 	end
-	
-	for k , v in pairs ( t ) do
-		r = r .. k .. ": " .. tostring ( v ) .. "\n"
-	end
-	
-	r = r .. "OK\n"
-	return r	
+	return t
 end
 
 commands.pause = function ( line , skt )
@@ -286,10 +289,8 @@ commands.pause = function ( line , skt )
 	else -- Its a toggle
 		execute ( "core.playback.togglepause" )
 	end
-	
-	return "OK\n"
+	return ""
 end
-
 commands.play = function ( line , skt )
 	local song = tonumber ( string.match ( line , "play[ \t]+(%d+)" ) )
 	if song then
@@ -298,44 +299,41 @@ commands.play = function ( line , skt )
 	else 
 		execute ( "core.playback.play" )
 	end
-	return "OK\n"
+	return ""
 end
-
 commands.stop = function ( line , skt )
 	execute ( "core.playback.stop" )
-	return "OK\n"
+	return ""
 end
-
 commands.next = function ( line , skt )
 	execute ( "core.playback.forward" )
-	return "OK\n"
+	return ""
 end
-
 commands.previous = function ( line , skt )
 	execute ( "core.playback.backward" )
-	return "OK\n"
+	return ""
 end
-
 commands["repeat"] = function ( line , skt ) -- repeat is a reserverd word, must put in quotations
 	local rpt = tonumber ( string.match ( line , "repeat[ \t]+([01])" ) )
 	if rpt == 1 then
 		execute ( "core.enablelooping" )
-		return "OK\n"
+		return ""
 	elseif rpt == 0 then
 		execute ( "core.disablelooping" )
-		return "OK\n"
+		return ""
 	else
 		return false , { 2 , "repeat" , "Bad argument" }
 	end
 end
-
 commands.close = function ( line , skt )
 	skt:close ( )
 	return ""
 end
-
 commands.ping = function ( line , skt )
-	return "OK\n"
+	return ""
+end
+commands.outputs = function ( line , skt )
+	
 end
 
 function initiate ( host , port )
