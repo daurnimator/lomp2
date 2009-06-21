@@ -106,11 +106,15 @@ end
 updatelog ( "Loading plugins." , 3 )
 for i , v in ipairs ( config.plugins ) do
 	dir = "plugins/" .. v .. "/"
-	local plugin = loadfile ( dir .. v .. ".lua" )
-	setfenv ( plugin , getfenv ( 1 ) )
-	local name , version = v , ""
-	name , version = plugin ( )
-	updatelog ( "Loaded plugin: '" .. name .. "' Version " .. version , 3 )
+	local plugin , err = loadfile ( dir .. v .. ".lua" )
+	if not plugin then
+		ferror ( err , 2 )
+	else
+		setfenv ( plugin , getfenv ( 1 ) )
+		local name , version = v , ""
+		name , version = plugin ( )
+		updatelog ( "Loaded plugin: '" .. name .. "' Version " .. version , 3 )
+	end
 end
 updatelog ( "All Plugins Loaded" , 3 )
 

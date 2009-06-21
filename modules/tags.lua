@@ -51,7 +51,6 @@ exttodec = { }
 exttoenc = { }
 for i , v in ipairs ( modules ) do
 	local extensions , decoder , encoder = unpack ( require ( v ) )
-	print(extensions , decoder , encoder )
 	for i , v in ipairs ( extensions ) do
 		exttodec [ v ] = decoder
 		exttoenc [ v ] = encoder
@@ -130,7 +129,7 @@ local function getitem ( path )
 end
 
 local function maketagcache ( tbl )
-	return setmetatable ( tbl, {
+	return setmetatable ( tbl , {
 		__index = function ( t , k )
 			local item = getitem ( k )
 			t [ k ] = item
@@ -143,6 +142,48 @@ end
 function getdetails ( path )
 	if type ( path ) ~= "string" then return ferror ( "tags.getdetails called without valid path: " .. ( path or "" ) , 3 ) end
 	return cache [ path ]
+end
+
+function search ( filter , pattern , tbl )
+	--[[search = {
+		tags = {
+		}
+	}--]]
+	local results = { }
+	for k , v in pairs ( filter ) do
+		if type ( v ) == "table" then
+			print("deeper" , k , v , tbl )
+			if search ( v , pattern , tbl [ k ] ) then return true end
+		else
+			print( "MATCHING" , k , v , tbl[v])
+			local val = tbl [ v ]
+			if type ( val ) == "table" then
+				for i , v in ipairs ( val ) do
+					local m = v:find ( pattern )
+					if m then return true end
+				end
+			elseif val then
+				local m = val:find ( pattern )
+				if m then return true end
+			end
+		end
+	end
+	return results
+end
+
+function searchtbl ( filter , pattern , tbl )
+	tbl = tbl or cache
+	local results = { }
+	for k , v in pairs ( cache ) do
+		if search ( filter , pattern , v ) then results [ #results + 1 ] = k end
+		print(k,v)
+	end
+	table.sort ( results )
+	return results
+end
+
+function basicsearch ( key )
+	return searchtbl ( { tags = { "artist" , "title" , "album" } } , key )
 end
 
 function edittag ( path , edits , inherit )

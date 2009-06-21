@@ -38,6 +38,8 @@ if type ( port ) ~= "number" or port > 65535 or port <= 0 then port = 6600 end
 
 local mpdversion = "0.13.0"
 
+local plrev = { }
+
 local commands = { }
 local allcommands = { 	
 	-- Protocol things
@@ -46,7 +48,15 @@ local allcommands = {
 	
 	-- Admin Commands
 	disableoutput = false , enableoutput = false , kill = true , update = false ,
-	status = true , 
+	
+	-- Informational Commands
+	status = true , stats = false , outputs = true , tagtypes = false , urlhandlers = false ,
+	
+	-- Playlist Commands
+	add = false , addid = false , clear = false , currentsong = false , delete = false , deleteid = false , load = false , rename = false , move = false , moveid = false ,
+	playlist = false , playlistinfo = false , playlistid = false , plchanges = false , plchangesposid = false ,
+	rm = false , save = false , shuffle = false , swap = false , swapid = false ,
+	listplaylist = false , listplaylistinfo = false , playlistadd = false , playlistclear = false , playlistdelete = false , playlistmove = false , playlistfind = false , playlistsearch = false ,
 	
 	-- Playback Commands
 	crossfade = false , 
@@ -104,7 +114,7 @@ local function doline ( line , skt )
 	local i , j , cmd = string.find ( line , "([^ \t]+)" )
 	if i then
 		if commands [ cmd ] then
-			local t = commands [ cmd ] ( line , skt )
+			local t , err = commands [ cmd ] ( line , skt )
 			if type ( t ) == "table" then
 				local r = ""
 				for k , v in pairs ( t ) do
@@ -113,7 +123,11 @@ local function doline ( line , skt )
 				r = r .. "OK\n"
 				return r
 			elseif type ( t ) == "string" then
-				return t .. "OK\n"
+				return t
+			elseif t == nil then
+				return "OK\n"
+			elseif t == false then
+				return false , err
 			else
 				error ( "Bad type" )
 			end
@@ -138,7 +152,7 @@ local function mpdserver ( skt )
 				ok = makeackmsg ( ack [ 1 ] , 0 , ack [ 2 ] , ack [ 3 ] )
 			--else -- nil.... bad commands array entry
 			end
-			if line ~= "status" then updatelog ( "MPD Replying: \n" .. ( ok or "NO OK" ) , 5 ) end
+			updatelog ( "MPD Replying: \n" .. ( ok or "NO OK" ) , 5 )
 			local bytessent , err = copas.send ( skt , ok )
 		else
 			if err == "closed" then
@@ -238,15 +252,12 @@ commands.notcommands = function ( line , skt )
 end
 
 commands.kill = function ( line , skt )
-	local r = ""
 	execute ( "core.quit" )
-	r = r .. "OK\n"
-	return r	
+	return
 end
 
 commands.status = function ( line , skt )
-	local softqueuepl , err = getvar ( "vars.softqueuepl" )
-	local state , err = getvar ( "core.playback.state" )
+	local state = getvar ( "core.playback.state" )
 	if state == "stopped" then state = "stop"
 	elseif state == "playing" then state = "play"
 	elseif state == "paused" then state = "pause"
@@ -256,14 +267,15 @@ commands.status = function ( line , skt )
 		elseif boolean == false then return 0
 		else return nil end
 	end
-	local t = {	volume = 100 ,
-				["repeat"] = booleantonumber ( getvar ( "vars.rpt" ) ) ,
-				random = 0 ,
-				--  MPD has maximum values of 2^31, 46341 is ceiling(2^(31/2))
-				playlist = getvar ( "vars.pl [ " .. softqueuepl .. " ].revision" )*46341 + getvar ( "vars.hardqueue.revision" ) ,
-				playlistlength = getvar ( "#vars.pl [ " .. softqueuepl .. " ]" ) ,
-				xfade = 0 ,
-				state = state ,
+	plrev [ #plrev + 1 ] = { getvar ( "{ vars.pl [ vars.softqueuepl ].revision , vars.hardqueue.revision }" ) }
+	local t = {	
+		volume = select ( 2 , execute ( "player.getvolume" ) ) [ 1 ] ;
+		["repeat"] = booleantonumber ( getvar ( "vars.rpt" ) ) ;
+		random = 0 ;
+		playlist = #plrev ;
+		playlistlength = getvar ( "#vars.pl [ vars.softqueuepl ]" ) ;
+		xfade = 0 ;
+		state = state ;
 	}
 	if state ~= "stop" then
 		t.song = getvar ( "vars.ploffset" )
@@ -271,25 +283,70 @@ commands.status = function ( line , skt )
 		local time = getvar ( "vars.queue [ 0 ].details.length" )
 		t.time =  math.floor ( time/60 ) .. ":" .. time % 60
 		--t.bitrate
-		--t.audio
+		print(getvar ( "vars.queue [ 0 ].details.samplerate" ) , ":" , getvar ( "vars.queue [ 0 ].details.bitrate" ) , ":" , getvar ( "vars.queue [ 0 ].details.channels" ))
+		t.audio = getvar ( "vars.queue [ 0 ].details.samplerate" ) .. ":" .. getvar ( "vars.queue [ 0 ].details.bitrate" ) .. ":" .. getvar ( "vars.queue [ 0 ].details.channels" )
 		--t.updating_db
-		--t.error--]]
+		--t.error
 	end
 	return t
 end
-
+commands.outputs = function ( line , skt )
+	return {
+		outputid = 0 ;
+		outputname = "default detected output" ;
+		outputenabled = 1 ;
+	}
+end
+commands.urlhandlers = function ( line , skt )
+	return {
+		handler = "http://" ;
+	}
+end
+commands.clear = function ( line , skt )
+	execute ( "core.playlist.clear" , { getvar ( "vars.softqueuepl" ) } )
+	return
+end
+commands.playlistinfo = function ( line , skt )
+	r = ""
+	local pl = getvar ( "vars.pl [ vars.softqueuepl ]" )
+	local queue = getvar ( "vars.hardqueue" )
+	
+	function tag ( item , tag )
+		local tag = item.details.tags [ tag ]
+		if not tag or not tag [ 1 ] then return "" 
+		else
+			local r = tag [ 1 ]
+			for i = 2, #tag do
+				r = r .. "; " .. tag [ i ]
+			end
+			return r
+		end
+	end
+	
+	i = 1
+	while true do
+		local t = pl [ i ]
+		if not t then break end
+		print("W" , t.source , t.details , t.details.length )
+		r = r .. "file: " .. t.source .. "\nTime: " .. t.details.length .. "\nArtist: " .. tag ( t , "artist" )  .. "\nAlbum: " .. tag ( t , "album" ) .. "\nTitle: " .. tag ( t , "title" ) .. "\nTrack: " .. tag ( t , "tracknumber" ) .. "\nGenre: " .. tag ( t , "genre" ) .. "\nDisc: " .. tag ( t , "discnumber" ) .. "\nPos: " .. i - 1 .. "\nId: " .. i - 1 .. "\n"
+		i = i + 1
+	end
+	print(r)
+	print(getvar ( "vars.queue" )[1].source )
+	print(getvar ( "vars.pl [ vars.softqueuepl ]" ) )
+	print(getvar ( "vars.hardqueue" ) )
+	return r .. "\n"
+end
 commands.pause = function ( line , skt )
 	local pause = tonumber ( string.match ( line , "pause[ \t]+([01])" ) )
 	if pause == 1 then
 		execute ( "core.playback.pause" )
-		return "OK\n"
 	elseif pause == 0 then
 		execute ( "core.playback.unpause" )
-		return "OK\n"
 	else -- Its a toggle
 		execute ( "core.playback.togglepause" )
 	end
-	return ""
+	return
 end
 commands.play = function ( line , skt )
 	local song = tonumber ( string.match ( line , "play[ \t]+(%d+)" ) )
@@ -299,42 +356,40 @@ commands.play = function ( line , skt )
 	else 
 		execute ( "core.playback.play" )
 	end
-	return ""
+	return
 end
 commands.stop = function ( line , skt )
 	execute ( "core.playback.stop" )
-	return ""
+	return
 end
 commands.next = function ( line , skt )
 	execute ( "core.playback.forward" )
-	return ""
+	return
 end
 commands.previous = function ( line , skt )
 	execute ( "core.playback.backward" )
-	return ""
+	return
 end
-commands["repeat"] = function ( line , skt ) -- repeat is a reserverd word, must put in quotations
+commands["repeat"] = function ( line , skt ) -- repeat is a lua reserverd word, must put in quotes
 	local rpt = tonumber ( string.match ( line , "repeat[ \t]+([01])" ) )
 	if rpt == 1 then
 		execute ( "core.enablelooping" )
-		return ""
+		return
 	elseif rpt == 0 then
 		execute ( "core.disablelooping" )
-		return ""
+		return
 	else
 		return false , { 2 , "repeat" , "Bad argument" }
 	end
 end
 commands.close = function ( line , skt )
 	skt:close ( )
-	return ""
+	return
 end
 commands.ping = function ( line , skt )
-	return ""
+	return
 end
-commands.outputs = function ( line , skt )
-	
-end
+
 
 function initiate ( host , port )
 	local srv, err
