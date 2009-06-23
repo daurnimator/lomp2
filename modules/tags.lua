@@ -68,53 +68,10 @@ local function getitem ( path )
 		local f = exttodec [ item.extension ]
 		if f then
 			local ok , err = f ( item )
+			if not ok then return ferror ( "Corrupt/Bad File: " .. item.path , 3 ) end
 		else
 			return ferror ( "Unknown format: " .. item.extension , 3 )
 		end
-		--[=[	
-			--[[ Check if vorbis (eg: ogg)
-			fd:seek ( "set" , 1 )
-			local s = fd:read ( 6 ) -- six octet identifier
-			if s == "vorbis" then -- Flac file
-				
-				return 
-			end--]]
-			
-			-- APE
-			if not item.tagtype then
-				local offset , header = fileinfo.APE.find ( fd )
-				if offset then
-					item.header = header
-					item.tagtype = "APE"
-					item.tags , item.extra = fileinfo.APE.info ( fd , offset , header )
-				end
-			end
-
-			-- ID3v2
-			if not item.tagtype then
-				local offset , header = fileinfo.id3v2.find ( fd )
-				if offset then
-					item.header = header
-					item.tagtype = "id3v2"
-					item.tags , item.extra = fileinfo.id3v2.info ( fd , offset , header )
-				end
-			end
-			
-			-- ID3v1 or ID3v1.1 tag
-			if not item.tagtype then
-				local offset = fileinfo.id3v1.find ( fd )
-				if offset then
-					item.tagtype = "id3v1"
-					item.tags , item.extra = fileinfo.id3v1.info ( fd , offset )
-				end
-			end
-			
-			if not item.tagtype then -- If you get to here, there is probably no tag....
-				item.tagtype = "pathderived"
-				item.tags = tagfrompath ( path , config.tagpatterns.default )
-				item.length = 30 -- TODO: Remove
-			end
-		end--]=]
 	end
 	
 	setmetatable ( item.tags , { 
@@ -132,8 +89,10 @@ local function maketagcache ( tbl )
 	return setmetatable ( tbl , {
 		__index = function ( t , k )
 			local item = getitem ( k )
-			t [ k ] = item
-			return item
+			if item then
+				t [ k ] = item
+				return item
+			end
 		end ,
 	})
 end
