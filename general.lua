@@ -169,6 +169,7 @@ end
 -- Copy tbl2's values into tbl1 where the matching tbl1 key (or index) doesn't exist
  -- If overwrite is a function, on a clash, it is called with the first table, the second table and the key corresponding to the clash
 function table.inherit ( tbl1 , tbl2 , overwrite )
+	if type ( tbl1 ) ~= "table" or type ( tbl2 ) ~= "table" then error ( "Bad arguments to table.inherit" ) end
 	if tbl1 == tbl2 then return tbl1 end
 	local t
 	if overwrite or type ( overwrite ) ~= "function" then
