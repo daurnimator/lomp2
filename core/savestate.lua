@@ -20,26 +20,17 @@ end
 
 function core.savestate ( )
 	local s = core._NAME .. "\t" .. core._VERSION .. " State File.\tCreated: " .. os.date ( ) .. "\n"
-	
-	s = s .. "vars = { \n"
-		.. "\trpt = " .. tostring ( vars.rpt ) .. ";\n"
-		.. "\tloop = " .. tostring ( vars.loop ) .. ";\n"
-		.. "\tsoftqueuepl = " .. vars.softqueuepl .. ";\n"
-		.. "\tploffset = " .. vars.ploffset .. ";\n"
-		.. "};\n"
-	--[[s = s .. "\thardqueue = {\n"
-	if vars.hardqueue [ 0 ] then s = s .. '\t\t[0] = core.item.create(' .. string.format ( '%q' , vars.hardqueue [ 0 ].typ ) .. ',' .. string.format ( '%q' , vars.hardqueue [ 0 ].source ) .. ') ;\n' end
-	for i = 1 , ( #vars.hardqueue ) do
-		s = s .. '\t\tcore.item.create(' .. string.format ( '%q' , vars.hardqueue [ i ].typ ) .. ',' .. string.format ( '%q' , vars.hardqueue [ i ].source ) .. ') ;\n'
-	end
-	s = s .. "\t};\n"--]]
+		.. "vars.rpt = " .. tostring ( vars.rpt ) .. ";\n"
+		.. "vars.loop = " .. tostring ( vars.loop ) .. ";\n"
+		.. "vars.softqueuepl = " .. vars.softqueuepl .. ";\n"
+		.. "vars.ploffset = " .. vars.ploffset .. ";\n"
 	
 	-- Playlists
 	local i = -2
 	while true do
 		local pl = vars.playlist [ i ]
 		if not pl then break end
-		s = s .. "core.playlist.create(" .. ss ( pl.name ) .. "," .. i .. ")\n" -- Name in this line does nothing
+		s = s .. "core.playlist.new(" .. ss ( pl.name ) .. "," .. i .. ")\n" -- Name in this line does nothing
 			.. "vars.playlist[" .. i .. "].revisions[0]={name=" .. ss ( pl.name ) .. ";length=" .. pl.length .. ";\n"
 		local j = 1
 		while true do
@@ -53,13 +44,13 @@ function core.savestate ( )
 	end
 	
 	-- History (played)
-	s = s .. "\tplayed = {\n"
+	s = s .. "vars.played = {\n"
 	local n
 	if #vars.played > config.history then n = config.history else n = #vars.played end
 	for i = 1 , n do
-		s = s .. '\t\tcore.item.create(' .. string.format ( '%q' , vars.played [ i ].typ ) .. ',' .. string.format ( '%q' , vars.played [ i ].source ) .. ') ;\n'
+		s = s .. '\tcore.item.create(' .. string.format ( '%q' , vars.played [ i ].typ ) .. ',' .. string.format ( '%q' , vars.played [ i ].source ) .. ') ;\n'
 	end
-	s = s .. "\t};\n"
+	s = s .. "};\n"
 	
 	
 	-- Plugin specified things??
@@ -92,10 +83,9 @@ function core.restorestate ( )
 			if not f then
 				return ferror ( "Could not load state file: " .. err , 1 )
 			end
-			local t = { core = core } -- To make functions available - security issues?
+			local t = { core = core , vars = vars } -- To make functions available - security issues?
 			setfenv ( f , t )
 			f ( )
-			table.inherit ( _M , t , true )
 		else
 			file:close ( )
 			return ferror ( "Invalid state file" , 1 )

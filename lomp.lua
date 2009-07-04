@@ -77,22 +77,15 @@ require "lomp-core"
 require "modules.metadata"
 require "modules.albumart"
 
-do -- Restore State
-	local ok , err = core.restorestate ( )
-	if not ok then
-		core.playlist.new ( "Library" , 0 ) -- Create Library (Just playlist 0)
-	end
-end
-
 pcall ( require , "luarocks.require" ) -- Activates luarocks if available.
 
 -- Get ready for multi-threading
 require "lanes"
-local timeout = 0.01
+local timeout = 0.001
 lindas = { }
 
 do 
-	local func = lanes.gen ( "base table string package os math io" , { ["globals"] = { config = config , updatelog = updatelog } } , loadfile ( "modules/server.lua" ) )
+	local func = lanes.gen ( "base table string package os math io" , { ["globals"] = { config = config , updatelog = updatelog , ferror = ferror } } , loadfile ( "modules/server.lua" ) )
 	local linda = lanes.linda ( )
 	lindas [ #lindas + 1 ] = linda
 	

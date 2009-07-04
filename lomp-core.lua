@@ -22,9 +22,6 @@ core = {
 	_INC = 1 ,
 }
 
-core._VERSION = core._MAJ .. "." .. core._MIN .. "." .. core._INC 
-core._PROGRAM = _NAME .. " " .. core._VERSION
-
 vars = { 
 	init= t ,
 	playlist = setmetatable ( {
@@ -52,17 +49,30 @@ function core.quit ( )
 	os.exit ( )
 end
 
+core._VERSION = core._MAJ .. "." .. core._MIN .. "." .. core._INC 
+core._PROGRAM = _NAME .. " " .. core._VERSION
+
 require "core.triggers"
 require "core.playback"
 require "core.playlist"
 require "core.item"
 require "core.info"
 
-vars.emptyplaylist = vars.playlist [ core.playlist.new ( "Empty Playlist" , -1 ) ]
-vars.softqueuepl = -1
-vars.hardqueue = vars.playlist [ core.playlist.new ( "Hard Queue" , -2 ) ]
-
 require "core.savestate"
+
+do -- Restore State
+	local ok , err = core.restorestate ( )
+	if not ok then
+		core.playlist.new ( "Library" , 0 ) -- Create Library (Just playlist 0)
+		core.playlist.new ( "Empty Playlist" , -1 ) 
+		core.playlist.new ( "Hard Queue" , -2 ) 
+		vars.softqueuepl = -1
+	end
+end
+
+vars.emptyplaylist = vars.playlist [ -1 ]
+vars.hardqueue = vars.playlist [ -2 ]
+
 
 function core.checkfileaccepted ( filename )
 	local extension = string.match ( filename , "%.?([^%./]+)$" )
