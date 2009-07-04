@@ -14,7 +14,6 @@
 if _VERSION ~= "Lua 5.1" then --TODO: Override?
 	error ( "This program needs lua 5.1 to work." )
 end
-package.path = package.path .. ";./libs/?.lua;./libs/?/init.lua"
 
 module ( "lomp" , package.seeall )
 
@@ -39,8 +38,8 @@ do
 end
 	
 function updatelog ( data , level , env )
-	env = env or _G
-	data = tostring(data)
+	env = env or ( getfenv and getfenv ( ) ) or _G
+	data = env.tostring ( data )
 	if not level then level = 2 end
 	
 	if level == 0 then data = "Fatal error: \t\t" .. data
@@ -52,7 +51,7 @@ function updatelog ( data , level , env )
 	end
 	
 	data = env.os.time ( ) .. ": \t" .. data
-	if level <= config.verbosity then io.stderr:write ( data .. "\n" ) end --env.print ( data ) end
+	if level <= env.config.verbosity then env.io.stderr:write ( data .. "\n" ) end --env.print ( data ) end
 	
 	data = data .. "\n"
 	
@@ -88,18 +87,16 @@ end
 pcall ( require , "luarocks.require" ) -- Activates luarocks if available.
 
 -- Get ready for multi-threading
-thread = require "thread"
-queue = require "thread.queue"
+require "lanes"
+local timeout = 0.01
+lindas = { }
 
-inqueue = queue.newqueue(128)
-outqueues = { }
-
--- Server
-do
-	table.insert ( outqueues , queue.newqueue(128) )
-	local fifos = { updatelog = updatelog , ferror = ferror , identifier = #outqueues , send =  inqueue , receive = outqueues [ #outqueues ] }
-	loadfile ( "modules/server.lua" ) ( )
-	thread.newthread ( server.run , { fifos , config.address , config.port } )
+do 
+	local func = lanes.gen ( "base table string package os math io" , { ["globals"] = { config = config , updatelog = updatelog } } , loadfile ( "modules/server.lua" ) )
+	local linda = lanes.linda ( )
+	lindas [ #lindas + 1 ] = linda
+	
+	lane = func ( linda , config.address , config.port )
 end
 
 -- Plugin Time!
@@ -166,43 +163,50 @@ end
 updatelog ( "LOMP Loaded " .. os.date ( "%c" ) , 3 )
 
 require "lomp-debug" -- TODO: remove debug
-			
+
+local i = 1
 while true do
-	local item = inqueue:remove ( )
-	local identifier , requesttype , details = unpack ( item , 1 , 3 )
-	if requesttype == "cmd" then
-		local fn , fail = loadstring ( "return " .. details.cmd )
+	-- Cmds
+	local val , key = lindas [ i ]:receive ( timeout , "cmd" )
+	if type ( val ) == "table" and type ( val.cmd ) == "string" and not ( val.parameters and type ( val.parameters ) ~= "table" ) then
+		local fn , fail = loadstring ( "return " .. val.cmd )
 		if fail then -- Check for compilation errors (eg, syntax)
-			outqueues [ identifier ]:insert ( { false , fail } )
+			lindas [ i ]:send ( timeout , "returncmd" , { false , fail } )
 		else
 			setfenv ( fn , setmetatable ( { } , buildMetatableCall( _M ) ) )
 			local ok , func = pcall ( fn )
 			if not ok then -- Check for no errors while finding function
-				outqueues [ identifier ]:insert ( { false , func } )
+				lindas [ i ]:send ( timeout , "returncmd" , { false , func } )
 			elseif not func then -- Make sure function was found, func already has to be a function or nil, so we only need to exclude the nil case
-				outqueues [ identifier ]:insert ( { false , "Not a function" } )
+				lindas [ i ]:send ( timeout , "returncmd" , { false , "Not a function" } )
 			else
 				local function interpret ( ok , err , ... )
 					if not ok then return false , err
 					else return ok , { err , ... } end
 				end
-				outqueues [ identifier ]:insert ( { interpret ( pcall ( func , unpack ( details.parameters or { } ) ) ) } )
+				lindas [ i ]:send ( timeout , "returncmd" , { interpret ( pcall ( func , unpack ( val.parameters or { } ) ) ) } )
 			end			
 		end
-	elseif requesttype == "var" then
-		local fn , fail = loadstring ( "return " .. details )
+	end
+	
+	-- Vars
+	local val , key = lindas [ i ]:receive ( timeout , "var" )
+	if type ( val ) == "string" then
+		local fn , fail = loadstring ( "return " .. val )
 		if fail then -- Check for compilation errors
-			outqueues [ identifier ]:insert ( { false , fail } )
+			lindas [ i ]:send ( timeout , "returnvar" , { false , fail } )
 		else
 			setfenv ( fn , setmetatable ( { } , buildMetatableGet ( _M ) ) )
 			local ok , var = pcall ( fn )
 			if not ok then -- Check for no errors while finding function
-				outqueues [ identifier ]:insert ( { false , var } )
+				lindas [ i ]:send ( timeout , "returnvar" , { false , var } )
 			elseif type ( var ) ~= "string" and type ( var ) ~= "table" and type ( var ) ~= "number" and type ( var ) ~= "boolean" and var ~= nil then -- Make sure function was found, var already has to be a string, number or nil
-				outqueues [ identifier ]:insert ( { false , "Not a variable, tried to return value of: " .. type ( var ) } )
+				lindas [ i ]:send ( timeout , "returnvar" , { false , "Not a variable, tried to return value of: " .. type ( var ) } )
 			else
-				outqueues [ identifier ]:insert ( { ok , var } )
+				lindas [ i ]:send ( timeout , "returnvar" , { ok , var } )
 			end
 		end
 	end
+	
+	if i == #lindas then i = 1 else i = i + 1 end
 end

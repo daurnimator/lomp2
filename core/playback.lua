@@ -125,7 +125,7 @@ function forward ( queueonly ) -- Moves forward one song in the queue
 			vars.queue [ 0 ] = vars.queue [ 1 ]
 			
 			vars.ploffset = vars.ploffset + 1
-			if vars.ploffset > #vars.pl [ vars.softqueuepl ] then -- No songs left
+			if vars.ploffset > vars.playlist [ vars.softqueuepl ].length then -- No songs left
 				if vars.loop then -- Restart soft queue
 					vars.ploffset = 0
 				else -- Stop?

@@ -163,7 +163,7 @@ end
 function enablescrobbler ( )
 	lomp.triggers.registercallback ( "songplaying" , nowplaying , "Scrobbler Now-Playing" )
 	lomp.triggers.registercallback ( "songplaying" , addtosubmissions , "Scrobbler Add Song To Submit Queue" )
-	lomp.triggers.registercallback ( "songstopped" , function ( typ , source , stopoffset ) if stopoffset > 240 or ( lomp.tags.getdetails ( source ).length and ( stopoffset / lomp.tags.getdetails ( source ).length ) > 0.5 ) then submissions ( ) else table.remove ( submissionsqueue ) end end , "Scrobbler Submissions" )
+	lomp.triggers.registercallback ( "songstopped" , function ( typ , source , stopoffset ) if stopoffset > 240 or ( lomp.metadata.getdetails ( source ).length and ( stopoffset / lomp.metadata.getdetails ( source ).length ) > 0.5 ) then submissions ( ) else table.remove ( submissionsqueue ) end end , "Scrobbler Submissions" )
 	
 	enabled = true
 end

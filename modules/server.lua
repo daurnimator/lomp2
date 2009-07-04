@@ -9,7 +9,12 @@
 	You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ]]
 
+require "general"
+
 local versionstring = "Lomp Server 0.0.1" --core._NAME .. ' ' .. core._VERSION
+
+local tsort = table.sort
+local strlen , strlower , strupper , strfind , strgmatch , strformat , strgsub , strsub , strmatch = string.len , string.lower , string.upper , string.find , string.gmatch , string.format ,  string.gsub , string.sub , string.match
 
 pcall ( require , "luarocks.require" ) -- Activates luarocks if available.
 require "socket"
@@ -29,9 +34,9 @@ do -- Load mime types
 		while true do
 			local line = f:read ( )
 			if not line then break end
-			local _ , _ , typ , name = string.find ( line , "^(.*)\t+([^\t]+)$" )
+			local _ , _ , typ , name = strfind ( line , "^(.*)\t+([^\t]+)$" )
 			if typ then
-				for e in string.gmatch ( name , "([^%s]+)" ) do
+				for e in strgmatch ( name , "([^%s]+)" ) do
 					mimetypes [ e ] = typ
 				end
 			end
@@ -50,7 +55,7 @@ do -- Load mime types
 end
 local function pathtomime ( path )
 	local mimetyp
-	local _ , _ , extension = string.find ( path , "%.([^%./]+)$" ) 
+	local _ , _ , extension = strfind ( path , "%.([^%./]+)$" ) 
 	if extension then
 		mimetyp = mimetypes [ extension ] or "application/octet-stream" 
 	else
@@ -116,20 +121,20 @@ local function httpsend ( skt , requestdetails , responsedetails )
 	if type ( body ) ~= "string" then body = httperrorpage ( status ) end
 	local sheaders = { }
 	for k , v in pairs ( ( responsedetails.headers or { } ) ) do
-		sheaders [ string.lower ( k ) ] = v
+		sheaders [ strlower ( k ) ] = v
 	end
 
 	if requestdetails.Method == "HEAD" then body = "" end
 	do -- Zlib
 		local ok , zlib = pcall ( require , 'zlib' )
 		if ok and type ( zlib ) == "table" then 
-			if string.len ( body ) > 32 then
+			if strlen ( body ) > 32 then
 				local acceptencoding = ( requestdetails.headers [ "accept-encoding" ] or "" ):lower ( )
-				if ( string.find ( acceptencoding , "gzip" ) or string.find ( acceptencoding , "[^%w]*[^%w]" ) ) then
+				if ( strfind ( acceptencoding , "gzip" ) or strfind ( acceptencoding , "[^%w]*[^%w]" ) ) then
 					local zbody = zlib.compress( body , 9, nil, 15 + 16 )
 					if zbody:len ( ) < body:len() then
 						local vary = ( requestdetails.headers [ 'vary' ] or 'accept-encoding' ):lower ( )
-						if string.find ( vary , '[^%w]accept-encoding[^%w]' ) then
+						if strfind ( vary , '[^%w]accept-encoding[^%w]' ) then
 							vary = vary .. ',' .. 'accept-encoding'
 						end
 						sheaders [ "vary" ] = vary
@@ -147,7 +152,7 @@ local function httpsend ( skt , requestdetails , responsedetails )
 		if type ( md5 ) == "table" and md5.sumhexa then
 			local bodymd5 = md5.sumhexa ( body )
 			sheaders [ "content-md5" ] = bodymd5
-			if string.len ( body ) > 0 then -- ETag (md5 of body)
+			if strlen ( body ) > 0 then -- ETag (md5 of body)
 				local etag = requestdetails.headers [ "etag" ]
 				if not etag then 
 					sheaders [ "etag" ] = bodymd5
@@ -175,7 +180,7 @@ local function httpsend ( skt , requestdetails , responsedetails )
 	sheaders [ "date" ] = httpdate ( )
 	sheaders [ "server" ] = versionstring
 	sheaders [ "content-type" ] = sheaders [ "content-type" ] or "text/html"
-	sheaders [ "content-length" ] = string.len ( body )
+	sheaders [ "content-length" ] = strlen ( body )
 	
 	for k,v in pairs ( sheaders ) do
 		message = message .. k .. ": " .. v .. "\r\n"
@@ -192,7 +197,7 @@ local function httpsend ( skt , requestdetails , responsedetails )
 		print ( err , requestdetails.body , message )
 	else
 		-- Apache Log Format
-		apachelog = apachelog .. string.format ( '%s - - [%s] "GET %s HTTP/%s.%s" %s %s "%s" "%s"' , requestdetails.peer , os.date ( "!%m/%b/%Y:%H:%M:%S GMT" ) , requestdetails.Path , requestdetails.Major , requestdetails.Minor , status , bytessent , ( requestdetails.headers [ "referer" ] or "-" ) , ( requestdetails.headers[ "agent" ] or "-" ) ) .. "\n"
+		apachelog = apachelog .. strformat ( '%s - - [%s] "GET %s HTTP/%s.%s" %s %s "%s" "%s"' , requestdetails.peer , os.date ( "!%m/%b/%Y:%H:%M:%S GMT" ) , requestdetails.Path , requestdetails.Major , requestdetails.Minor , status , bytessent , ( requestdetails.headers [ "referer" ] or "-" ) , ( requestdetails.headers[ "agent" ] or "-" ) ) .. "\n"
 		--print ( "Apache Style Log: " .. apachelog )
 	end
 		
@@ -204,26 +209,33 @@ local function execute ( thread , name , parameters )
 	if type ( name ) ~= "string" then return false end
 	if parameters and type ( parameters ) ~= "table" then return false end
 	
-	thread.send:insert ( { thread.identifier , "cmd" , { cmd = name , parameters = parameters } } )
+	local timeout = nil
+	thread:send ( timeout , "cmd" , { cmd = name , parameters = parameters } )
 	
-	return unpack ( thread.receive:remove ( ) )
+	local val , key = thread:receive ( timeout , "returncmd" )
+	return unpack ( val )
 end
 local function getvar ( thread , name )
 	-- Executes a function, given a string
 	-- Example of string: core.playback.play
 	if type ( name ) ~= "string" then return false end
 	
-	thread.send:insert ( { thread.identifier , "var" , name } )
+	local timeout = nil
+	thread:send ( timeout , "var" , name )
 	
-	return thread.receive:remove ( )
+	local val , key = thread:receive ( timeout , "returnval" )
+	local ok , err = unpack ( val )
+	if ok then
+		return err
+	end
 end
 local function auth ( headers )
 	if config.authorisation then
 		local preferred = "basic" -- Preferred method is basic auth (Only thing currently supported)
 		if headers [ "authorization" ] then -- If using http authorization
-			local _ , _ , AuthType , AuthString = string.find ( headers [ "authorization" ] , "([^ ]+)% +(.+)" )
-			if string.lower ( AuthType )  == "basic" then -- If they are trying Basic Authentication:
-				local _ , _ , user , pass = string.find ( mime.unb64 ( AuthString ) , "([^:]+):(.+)" ) -- Decrypt username:password ( Sent in base64 )
+			local _ , _ , AuthType , AuthString = strfind ( headers [ "authorization" ] , "([^ ]+)% +(.+)" )
+			if strlower ( AuthType )  == "basic" then -- If they are trying Basic Authentication:
+				local _ , _ , user , pass = strfind ( mime.unb64 ( AuthString ) , "([^:]+):(.+)" ) -- Decrypt username:password ( Sent in base64 )
 				--print(AuthType,AuthString,user,password,config.username,config.password)
 				-- Check credentials:
 				if user == config.username and pass == config.password then
@@ -231,7 +243,7 @@ local function auth ( headers )
 				else -- Credentials incorrect
 					return false , preferred 
 				end
-			--elseif string.lower ( AuthType ) == "digest" then 
+			--elseif strlower ( AuthType ) == "digest" then 
 				-- TODO: Implement digest authentication
 			end
 		else -- No "Authorization" header present: Other authorisation being used?
@@ -248,7 +260,7 @@ local function xmlrpcserver ( thread , skt , requestdetails )
 	if not authorised then
 		if typ == "basic" then
 			-- Send a xml fault document
-			thread.updatelog ( "Unauthorised login blocked." , 3 , _G )
+			updatelog ( "Unauthorised login blocked." , 3 , _G )
 			httpsend ( skt , requestdetails , { status = 401 , headers = { [ 'WWW-Authenticate' ] = 'Basic realm="' .. versionstring .. '"' ; [ 'content-length' ] = "text/xml" } , body = xmlrpc.srvEncode ( { faultCode = 401 , faultString = httpcodes [ 401 ] } , true ) } )
 			return false
 		end
@@ -281,7 +293,7 @@ local function basiccmdserver ( thread , skt , requestdetails )
 	if not authorised then
 		if typ == "basic" then
 			-- Send an xml fault document
-			thread.updatelog ( "Unauthorised login blocked." , 3 , _G )
+			updatelog ( "Unauthorised login blocked." , 3 , _G )
 			httpsend ( skt , requestdetails , { status = 401 , headers = { ['WWW-Authenticate'] = 'Basic realm=" ' .. versionstring .. '"' } } )
 			return false
 		end		
@@ -351,13 +363,13 @@ local function webserver ( thread , skt , requestdetails )
 		
 		local defaultfiles = { "index.html" , "index.htm" }
 			
-		--local sfile = string.gsub ( requestdetails.file , "/%.[^/]*" , "" ) -- Strip out ".." and "." of file request
+		--local sfile = strgsub ( requestdetails.file , "/%.[^/]*" , "" ) -- Strip out ".." and "." of file request
 		local sfile = requestdetails.file 
 		
 		local path = publicdir .. sfile -- Prefix with public dir path
 		
 		local attributes = lfs.attributes ( path )
-		if string.sub ( path , -1 ) ~= "/" then -- Requesting a specific path
+		if strsub ( path , -1 ) ~= "/" then -- Requesting a specific path
 			if not attributes then -- Path doesn't exist
 				code = 404
 			elseif attributes.mode == "directory" then -- Its a directory: forward client to there
@@ -372,7 +384,7 @@ local function webserver ( thread , skt , requestdetails )
 					
 					--print ( "Range: ", requestdetails.headers [ "range" ] )
 					--[[do
-						local s , e , r_A , r_B = string.find ( requestdetails.headers [ "range" ] , "(%d*)%s*-%s*(%d*)" )	
+						local s , e , r_A , r_B = strfind ( requestdetails.headers [ "range" ] , "(%d*)%s*-%s*(%d*)" )	
 						if s and e then
 							r_A = tonumber (r_A)
 							r_B = tonumber (r_B)
@@ -399,7 +411,7 @@ local function webserver ( thread , skt , requestdetails )
 					
 					hdr [ "content-type" ] = pathtomime ( path )
 					hdr [ "last-modified" ] = httpdate ( attributes.modification )
-					local mimemajor , mimeminor = string.match ( hdr [ "content-type" ] , "([^/]+)/(.+)") 
+					local mimemajor , mimeminor = strmatch ( hdr [ "content-type" ] , "([^/]+)/(.+)") 
 					if mimemajor == "image" then
 						hdr [ "expires" ] = httpdate ( os.time ( ) + 86400 ) -- 1 day in the future
 					elseif mimeminor == "css" then
@@ -421,11 +433,11 @@ local function webserver ( thread , skt , requestdetails )
 				doc = "<html><head><title>" .. versionstring .. " Directory Listing</title></head><body><h1>Listing of " .. sfile .. "</h1><ul>"
 				local t = { }
 				for entry in lfs.dir ( path ) do
-					if string.sub ( entry , 1 , 1 ) ~= "." then
+					if strsub ( entry , 1 , 1 ) ~= "." then
 						t [ #t + 1 ] = entry
 					end
 				end
-				table.sort ( t )
+				tsort ( t )
 				if sfile ~= "/" then doc = doc .. "<li><a href='" .. ".." .. "'>" .. ".." .. "</a></li>" end
 				for i , v in ipairs ( t ) do
 					doc = doc .. "<li><a href='" .. sfile .. v .. "'>" .. v .. "</a></li>"
@@ -492,7 +504,7 @@ local function lompserver ( thread , skt )
 				elseif data then
 					request = request .. data .. "\r\n"
 					
-					local length = string.len ( data )
+					local length = strlen ( data )
 					if length < 1 then found = true end
 					rsize = rsize + length
 				else
@@ -505,10 +517,10 @@ local function lompserver ( thread , skt )
 		end
 		--print( request )
 		
-		local _ , _ , Method , Path , Major , Minor = string.find ( request , "([A-Z]+) ([^ ]+) HTTP/(%d).(%d)" )
-		Method = string.upper ( Method )
+		local _ , _ , Method , Path , Major , Minor = strfind ( request , "([A-Z]+) ([^ ]+) HTTP/(%d).(%d)" )
+		Method = strupper ( Method )
 		if not Major then return false end -- Not HTTP
-		local file , querystring = string.match ( Path , "([^%?]+)%??(.*)$" ) 	-- HTTP Reserved characters: !*'();:@&=+$,/?%#[]
+		local file , querystring = strmatch ( Path , "([^%?]+)%??(.*)$" ) 	-- HTTP Reserved characters: !*'();:@&=+$,/?%#[]
 																-- HTTP Unreserved characters: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~
 																-- Lua reserved pattern characters: ^$()%.[]*+-?
 																-- Intersection of http and lua reserved: *+$?%[]
@@ -516,11 +528,11 @@ local function lompserver ( thread , skt )
 		file = socket.url.unescape ( file )
 		local queryvars = { }
 		if querystring then
-			for k, v in string.gmatch( querystring , "([^=]+)=([^&]+)" ) do --"([%w%-%%%_%.%~]+)=([%w%%%-%_%.%~]+)&?") do
+			for k, v in strgmatch( querystring , "([^=]+)=([^&]+)" ) do --"([%w%-%%%_%.%~]+)=([%w%%%-%_%.%~]+)&?") do
 				queryvars [ socket.url.unescape ( k ) ] = socket.url.unescape ( v )
 			end
 		end
-		local headers = { } for k , v in string.gmatch ( request , "\r\n([^:]+): ([^\r\n]+)" ) do headers [ string.lower ( k ) ] = v end
+		local headers = { } for k , v in strgmatch ( request , "\r\n([^:]+): ([^\r\n]+)" ) do headers [ strlower ( k ) ] = v end
 		if not headers [ "host" ] then headers [ "host" ] = "default" end
 		
 		local requestdetails = { Method = Method , Path = Path , Major = Major , Minor = Minor , file = file , querystring = querystring , queryvars = queryvars , headers = headers , peer = skt:getpeername ( ) }
@@ -570,18 +582,17 @@ function server.initiate ( thread , host , port )
 			end
 		end ) --]] -- Echo Handler
 		copas.addserver ( srv , function ( skt ) return lompserver ( thread , skt ) end )
-		thread.updatelog ( "Server started; bound to '" .. host .. "', port #" .. port , 4 , _G ) 
+		updatelog ( "Server started; bound to '" .. host .. "', port #" .. port , 4 , _G ) 
 		return true
 	else
-		return thread.ferror ( "Server could not be started: " .. err , 0 )
+		return ferror ( "Server could not be started: " .. err , 0 )
 	end
 end
 function server.step ( )
 	copas.step ( )
 end
-function server.run ( thread , address , port )
-	server.initiate ( thread , address , port )
-	while true do
-		server.step ( )
-	end
+
+server.initiate ( ... )
+while true do
+	server.step ( )
 end

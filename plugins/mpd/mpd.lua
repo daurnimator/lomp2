@@ -12,13 +12,6 @@
 local dir = dir -- Grab vars needed
 local updatelog , ferror = updatelog , ferror
 
-local send = inqueue
-table.insert ( outqueues , queue.newqueue(128) )
-local cmdidentifier = #outqueues 
-local cmdreceive = outqueues [ #outqueues ]
-table.insert ( outqueues , queue.newqueue(128) )
-local varidentifier = #outqueues 
-local varreceive = outqueues [ #outqueues ]
 -- MPD Plugin
  -- Lets you use any mpd client to control lomp!
 
@@ -76,10 +69,12 @@ local function execute ( name , parameters )
 	-- Example of string: core.playback.play
 	if type ( name ) ~= "string" then return false end
 	if parameters and type ( parameters ) ~= "table" then return false end
+
+	local timeout = nil
+	thread:send ( timeout , "cmd" , { cmd = name , parameters = parameters } )
 	
-	send:insert ( { cmdidentifier , "cmd" , { cmd = name , params = parameters } } )
-	
-	return unpack ( cmdreceive:remove ( ) )
+	local val , key = linda:receive ( timeout , "returncmd" )
+	return unpack ( val )
 end
 local function getvar ( name )
 	-- Executes the value of a variable
@@ -87,11 +82,15 @@ local function getvar ( name )
 	if type ( name ) ~= "string" then return false end
 
 	local timeout = nil
+	thread:send ( timeout , "var" , name )
 	
-	send:insert ( { varidentifier , "var" , name } )
-	local val = varreceive:remove ( )
-	if val [ 1 ] == false then return nil , val [ 2 ]
-	else return val [ 2 ] end
+	local val , key = linda:receive ( timeout , "returnval" )
+	local ok , err = unpack ( val )
+	if ok then
+		return err
+	else
+		return nil , err
+	end
 end
 local function makeackmsg ( errorid , position ,  current_command ,  message_text )
 	--[[	ACK_ERROR_NOT_LIST = 1 
@@ -407,6 +406,9 @@ function run ( address , port )
 	copas.loop ( )
 end
 
-thread.newthread ( run , { address , port} )
+require "lanes"
+local lane = lanes.gen ( run )
+lane ( address , port )
+--thread.newthread ( run , { address , port} )
 
 return _NAME , _VERSION

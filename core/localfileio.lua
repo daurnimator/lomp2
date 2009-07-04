@@ -71,10 +71,10 @@ function addfolder ( path , pl , pos , recurse )
 		local a , b = core.item.additem ( o , pl , pos )
 		
 		if a then --If not failed
-			pl , pos = a , ( b + 1 ) -- Increment playlist position
-			firstpos = firstpos or b
+			pos = a + 1 -- Increment playlist position
+			firstpos = firstpos or a
 		end -- keep going (even after a failure)
 	end
 	
-	return pl , firstpos , dircontents
+	return firstpos , dircontents
 end
