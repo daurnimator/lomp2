@@ -73,7 +73,6 @@ end
 vars.emptyplaylist = vars.playlist [ -1 ]
 vars.hardqueue = vars.playlist [ -2 ]
 
-
 function core.checkfileaccepted ( filename )
 	local extension = string.match ( filename , "%.?([^%./]+)$" )
 	extension = string.lower ( extension )

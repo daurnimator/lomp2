@@ -44,7 +44,7 @@ function core.savestate ( )
 	end
 	
 	-- History (played)
-	s = s .. "vars.played = {\n"
+	s = s .. "vars.played = {revision=0;\n"
 	local n
 	if #vars.played > config.history then n = config.history else n = #vars.played end
 	for i = 1 , n do

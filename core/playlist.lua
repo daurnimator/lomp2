@@ -65,12 +65,15 @@ local function collapserev ( revisions , latest , earliest )
 	return t
 end
 
-function fetch ( num , rev )
+function fetch ( num , latest , earliest )
 	local pl = getnum ( num )
-	if not pl then return false end
-	rev = rev or pl.revision
-	local t = collapserev ( pl.revisions , rev )
-	t.revision = rev
+	if not pl then return false , "Invalid playlist" end
+	latest = latest or pl.revision
+	earliest = earliest or 0
+	if type ( latest ) ~= "number" or type ( earliest ) ~= "number" then return false , "Bad Revision" end
+	if latest < 0 or latest > pl.revision or earliest < 0 or earliest > latest then return false , "Invalid Revision" end
+	local t = collapserev ( pl.revisions , latest , earliest )
+	t.revision = latest
 	return t
 end
 

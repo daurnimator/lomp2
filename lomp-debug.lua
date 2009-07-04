@@ -60,7 +60,7 @@ end
 
 function core.listplayed ( )
 	local s = "Listing Played Songs (most recent first) \t(Last Revision: " .. vars.played.revision .. ")\n"
-	for i , v in ipairs( vars.played ) do
+	for i , v in ipairs ( vars.played ) do
 		s = s .. "Entry #" .. i .. " \t(" .. v.typ .. ") \tSource: '" .. v.source .. "'\n"
 	end
 	return vars.played , s

@@ -18,7 +18,7 @@ if type ( port ) ~= "number" or port > 65535 or port <= 0 then port = 6600 end
 
 local mpdversion = "0.13.0"
 
-local plrev = { }
+local plrev = { { 0 , 0 } }
 
 local commands = { }
 local allcommands = { 	
@@ -60,23 +60,27 @@ local function execute ( name , parameters )
 	local timeout = nil
 	thread:send ( timeout , "cmd" , { cmd = name , parameters = parameters } )
 	
-	local val , key = linda:receive ( timeout , "returncmd" )
-	return unpack ( val )
+	local val , key = thread:receive ( timeout , "returncmd" )
+	local ok , err = unpack ( val )
+	if ok then
+		return unpack ( err )
+	else
+		return false , err
+	end
 end
 local function getvar ( name )
 	-- Executes the value of a variable
-	-- Example of string: vars.pl
+	-- Example of string: vars.playlist
 	if type ( name ) ~= "string" then return false end
 
 	local timeout = nil
 	thread:send ( timeout , "var" , name )
-	
-	local val , key = linda:receive ( timeout , "returnval" )
+	local val , key = thread:receive ( timeout , "returnvar" )
 	local ok , err = unpack ( val )
 	if ok then
 		return err
 	else
-		return nil , err
+		return false , err
 	end
 end
 local function makeackmsg ( errorid , position ,  current_command ,  message_text )
@@ -106,12 +110,12 @@ local function doline ( line , skt )
 				for k , v in pairs ( t ) do
 					r = r .. k .. ": " .. tostring ( v ) .. "\n"
 				end
-				r = r .. "OK\n"
+				r = r
 				return r
 			elseif type ( t ) == "string" then
 				return t
 			elseif t == nil then
-				return "OK\n"
+				return ""
 			elseif t == false then
 				return false , err
 			else
@@ -121,7 +125,7 @@ local function doline ( line , skt )
 			return false , { 5 , nil , 'unknown command "' .. cmd .. '"' }
 		end
 	else
-		updatelog ( "FAILED CMD FIND" .. line .. i .. j .. cmd , 5 )
+		updatelog ( "FAILED CMD FIND" .. line .. i .. j .. cmd , 5 , _G )
 		return 
 	end
 end
@@ -130,15 +134,16 @@ local function mpdserver ( skt )
 	copas.send ( skt , "OK MPD " .. mpdversion .. "\n")
 	while true do
 		local line , err = copas.receive( skt )
-		if line then 
-			if line ~= "status" then updatelog ( "New MPD Command: " .. line , 5 ) end
+		if line then
+			if line ~= "status" then updatelog ( "New MPD Command: " .. line , 5 , _G ) end
 			local ok , ack = doline ( line , skt )
 			if ok then
+				ok = ok .. "OK\n"
 			elseif ok == false then
 				ok = makeackmsg ( ack [ 1 ] , 0 , ack [ 2 ] , ack [ 3 ] )
 			--else -- nil.... bad commands array entry
 			end
-			updatelog ( "MPD Replying: \n" .. ( ok or "NO OK" ) , 5 )
+			updatelog ( "MPD Replying: \n" .. ( ok or "NOT OK" ) , 5 , _G )
 			local bytessent , err = copas.send ( skt , ok )
 		else
 			if err == "closed" then
@@ -155,7 +160,6 @@ commands.command_list_begin = function ( line , skt )
 	local r = ""
 	--Read all functions
 	local thingstodo = { }
-	--local i , max = 0 , 100
 	while true do
 		local line = copas.receive ( skt )
 		if line == "command_list_end" then
@@ -163,24 +167,19 @@ commands.command_list_begin = function ( line , skt )
 		else
 			table.insert ( thingstodo , function ( ) return doline ( line , skt ) end )
 		end
-		--[[i = i + 1
-		if i >= max then 
-			table.insert ( thingstodo , function return false , { 1 , max , nil , "command list too long" } )
-			break 
-		end--]]
 	end
 	--Do all functions and concatenate
 	for i , v in ipairs ( thingstodo ) do
 		local ok , a = v ( )
 		if ok then
-			r = r .. a
+			r = r .. ok
 		elseif ok == false then
-			r = r .. a
+			-- RAISE ERROR?
+			--r = r .. a
 			return r
 		else
 		end
 	end
-	r = r .. "OK\n"
 	return r
 end
 
@@ -188,7 +187,6 @@ commands.command_list_ok_begin = function ( line , skt )
 	local r = ""
 	--Read all functions
 	local thingstodo = { }
-	--local i , max = 0 , 100
 	while true do
 		local line = copas.receive ( skt )
 		if line == "command_list_end" then
@@ -196,23 +194,22 @@ commands.command_list_ok_begin = function ( line , skt )
 		else
 			table.insert ( thingstodo , function ( ) return doline ( line , skt ) end )
 		end
-		--[[i = i + 1
-		if i >= max then 
-			table.insert ( thingstodo , function return false , { 1 , max , nil , "command list too long" } )
-			break 
-		end--]]
 	end
 	--Do all functions and concatenate
+	local j = 0
 	for i , v in ipairs ( thingstodo ) do
 		local ok , a = v ( )
 		if ok then
-			r = r .. a .. "OK\n"
+			j = j + 1
+			r = r .. ok .. "list_OK\n"
 		elseif ok == false then
-			r = r .. a
+			-- RAISE ERROR?
+			--r = r .. a
 			return r
 		else
 		end
 	end
+	--r = r .. string.rep ( "\n" , j )
 	return r
 end
 
@@ -248,18 +245,24 @@ commands.status = function ( line , skt )
 	elseif state == "playing" then state = "play"
 	elseif state == "paused" then state = "pause"
 	end
+	
 	function booleantonumber ( boolean )
 		if boolean == true then return 1
 		elseif boolean == false then return 0
 		else return nil end
 	end
-	plrev [ #plrev + 1 ] = { getvar ( "{ vars.pl [ vars.softqueuepl ].revision , vars.hardqueue.revision }" ) }
+	
+	local currentrev = getvar ( "{ vars.playlist [ vars.softqueuepl ].revision , vars.hardqueue.revision }" )
+	if currentrev [ 1 ] ~= plrev [ #plrev ] [ 1 ] or currentrev [ 2 ] ~= plrev [ #plrev ] [ 2 ] then
+		plrev [ #plrev + 1 ] = currentrev
+	end
+	
 	local t = {	
-		volume = select ( 2 , execute ( "player.getvolume" ) ) [ 1 ] ;
+		volume = execute ( "player.getvolume" ) ;
 		["repeat"] = booleantonumber ( getvar ( "vars.rpt" ) ) ;
 		random = 0 ;
 		playlist = #plrev ;
-		playlistlength = getvar ( "vars.pl [ vars.softqueuepl ].length" ) ;
+		playlistlength = getvar ( "vars.hardqueue.length + vars.playlist [ vars.softqueuepl ].length" ) ;
 		xfade = 0 ;
 		state = state ;
 	}
@@ -269,7 +272,6 @@ commands.status = function ( line , skt )
 		local time = getvar ( "vars.queue [ 0 ].details.length" )
 		t.time =  math.floor ( time/60 ) .. ":" .. time % 60
 		--t.bitrate
-		print(getvar ( "vars.queue [ 0 ].details.samplerate" ) , ":" , getvar ( "vars.queue [ 0 ].details.bitrate" ) , ":" , getvar ( "vars.queue [ 0 ].details.channels" ))
 		t.audio = getvar ( "vars.queue [ 0 ].details.samplerate" ) .. ":" .. getvar ( "vars.queue [ 0 ].details.bitrate" ) .. ":" .. getvar ( "vars.queue [ 0 ].details.channels" )
 		--t.updating_db
 		--t.error
@@ -293,13 +295,12 @@ commands.clear = function ( line , skt )
 	return
 end
 commands.playlistinfo = function ( line , skt )
-	r = ""
-	local pl = getvar ( "vars.pl [ vars.softqueuepl ]" )
-	local queue = getvar ( "vars.hardqueue" )
+	local pl , err = execute ( "core.info.getplaylist" , { getvar ("vars.softqueuepl" ) } )
+	local queue = execute ( "core.info.getplaylist" )
 	
 	function tag ( item , tag )
 		local tag = item.details.tags [ tag ]
-		if not tag or not tag [ 1 ] then return "" 
+		if not tag or not tag [ 1 ] then return nil
 		else
 			local r = tag [ 1 ]
 			for i = 2, #tag do
@@ -309,19 +310,35 @@ commands.playlistinfo = function ( line , skt )
 		end
 	end
 	
+	local d = { }
 	i = 1
 	while true do
 		local t = pl [ i ]
 		if not t then break end
-		print("W" , t.source , t.details , t.details.length )
-		r = r .. "file: " .. t.source .. "\nTime: " .. t.details.length .. "\nArtist: " .. tag ( t , "artist" )  .. "\nAlbum: " .. tag ( t , "album" ) .. "\nTitle: " .. tag ( t , "title" ) .. "\nTrack: " .. tag ( t , "tracknumber" ) .. "\nGenre: " .. tag ( t , "genre" ) .. "\nDisc: " .. tag ( t , "discnumber" ) .. "\nPos: " .. i - 1 .. "\nId: " .. i - 1 .. "\n"
+		d [ i ] = {
+			file = t.source ;
+			Time = t.details.length ;
+			Artist = tag ( t , "artist" ) ;
+			Album = tag ( t , "album" ) ;
+			Title = tag ( t , "title" ) ;
+			Track = tag ( t , "tracknumber" ) ;
+			Genre = tag ( t , "genre" ) ;
+			Disc = tag ( t , "discnumber" ) ;
+			Pos = i - 1 ;
+			Id = i - 1 ;
+		}
 		i = i + 1
 	end
-	print(r)
-	print(getvar ( "vars.queue" )[1].source )
-	print(getvar ( "vars.pl [ vars.softqueuepl ]" ) )
-	print(getvar ( "vars.hardqueue" ) )
-	return r .. "\n"
+	
+	local r = ""
+	for i , v in ipairs ( d ) do
+		for k , v in pairs ( v ) do
+			print(k,v)
+			r = r .. k .. ": " .. tostring ( v ) .. "\n"
+		end
+	end
+	
+	return r
 end
 commands.pause = function ( line , skt )
 	local pause = tonumber ( string.match ( line , "pause[ \t]+([01])" ) )

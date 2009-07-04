@@ -24,7 +24,8 @@ loadfile ( dir .. "config" ) ( ) -- Load config
 
 
 require "lanes"
-local func = lanes.gen ( "base table string package os math io" , { ["globals"] = { config = config , updatelog = updatelog , ferror = ferror } } , loadfile ( dir .. "lane.lua" ) )
+--print(loadfile ( dir .. "lane.lua" ))
+local func = lanes.gen ( "base table string package os math io" , { ["globals"] = { config = config , updatelog = updatelog , ferror = ferror , thread = newlinda ( ) } } , loadfile ( dir .. "lane.lua" ) )
 local lane = func ( address , port )
 
 return _NAME , _VERSION

@@ -82,14 +82,16 @@ pcall ( require , "luarocks.require" ) -- Activates luarocks if available.
 -- Get ready for multi-threading
 require "lanes"
 local timeout = 0.001
-lindas = { }
-
-do 
-	local func = lanes.gen ( "base table string package os math io" , { ["globals"] = { config = config , updatelog = updatelog , ferror = ferror } } , loadfile ( "modules/server.lua" ) )
+local lindas = { }
+function newlinda ( )
 	local linda = lanes.linda ( )
 	lindas [ #lindas + 1 ] = linda
-	
-	lane = func ( linda , config.address , config.port )
+	return linda
+end
+do 
+	local func = lanes.gen ( "base table string package os math io" , { ["globals"] = { config = config , updatelog = updatelog , ferror = ferror } } , loadfile ( "modules/server.lua" ) )
+		
+	lane = func ( newlinda ( ) , config.address , config.port )
 end
 
 -- Plugin Time!
@@ -152,10 +154,10 @@ local function buildMetatableGet ( ref )
 	}
 end
 
+require "lomp-debug" -- TODO: remove debug
+
 -- Initialisation finished.
 updatelog ( "LOMP Loaded " .. os.date ( "%c" ) , 3 )
-
-require "lomp-debug" -- TODO: remove debug
 
 local i = 1
 while true do

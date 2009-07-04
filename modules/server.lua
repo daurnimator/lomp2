@@ -144,7 +144,7 @@ local function httpsend ( skt , requestdetails , responsedetails )
 				end
 			end
 		else -- Don't have zlib
-			--print ( "Zlib missing" )
+			--updatelog ( "Zlib missing" , 5 )
 		end
 	end
 	do -- md5
@@ -223,10 +223,12 @@ local function getvar ( thread , name )
 	local timeout = nil
 	thread:send ( timeout , "var" , name )
 	
-	local val , key = thread:receive ( timeout , "returnval" )
+	local val , key = thread:receive ( timeout , "returnvar" )
 	local ok , err = unpack ( val )
 	if ok then
-		return err
+		return unpack ( err )
+	else
+		return false , err
 	end
 end
 local function auth ( headers )
@@ -278,6 +280,7 @@ local function xmlrpcserver ( thread , skt , requestdetails )
 		local ok , result = execute ( thread , method_name , list_params )
 
 		if ok then
+			print(result)
 			result = table.serialise ( result ) -- MASSIVE HACK, makes it hard for non-lua xmlrpc clients - not really xmlrpc any more.
 		end
 		local body = xmlrpc.srvEncode ( result , not ok )

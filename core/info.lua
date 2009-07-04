@@ -27,6 +27,24 @@ function getlistofplaylists ( )
 	return t
 end
 
-function getplaylist ( pl )
-	return core.playlist.fetch ( pl )
+function getplaylist ( pl , revision , backto )
+	return core.playlist.fetch ( pl , revision , backto )
 end
+
+function gethardqueue ( revision , backto )
+	return core.playlist.fetch ( -2 , revision , backto )
+end
+
+--[[local lookup = {
+	loop = function ( ) return vars.loop end ;
+	["repeat"] = function ( ) return vars.rpt end ;
+	softqueuepl = function ( ) return vars.softqueuepl end ;
+	playlist = function ( ) return setmetatable ( { } , { __index = function ( t , k ) return getplaylist ( k ) end } ) end ;
+	playlistrev = function ( ) return setmetatable ( { } , { __index = function ( t , k ) return setmetatable ( { } , { __index = function ( t , j ) return getplaylist ( k , j , j ) end } ) end } ) end ; -- playlistrev [ pl ] [ revision ]
+	playlistdiff = function ( ) return setmetatable ( { } , { __index = function ( t , k ) return setmetatable ( { } , { __index = function ( t , j ) return setmetatable ( { } , { __index = function ( t , l ) return getplaylist ( k , l , j ) end } ) end } ) end } ) end ; -- playlistdiff [ pl ] [ early ] [ later ]
+}
+
+setmetatable ( core.info , { __index = function ( t , k )
+	local f = lookup [ k ]
+	if f then return f ( ) end
+end } )--]]
