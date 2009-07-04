@@ -68,10 +68,10 @@ do -- Restore State
 		core.playlist.new ( "Hard Queue" , -2 ) 
 		vars.softqueuepl = -1
 	end
+	vars.emptyplaylist = vars.playlist [ -1 ]
+	vars.hardqueue = vars.playlist [ -2 ]
+	vars.played.revision = vars.played.revision or 0
 end
-
-vars.emptyplaylist = vars.playlist [ -1 ]
-vars.hardqueue = vars.playlist [ -2 ]
 
 function core.checkfileaccepted ( filename )
 	local extension = string.match ( filename , "%.?([^%./]+)$" )

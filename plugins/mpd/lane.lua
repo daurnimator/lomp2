@@ -201,7 +201,7 @@ commands.command_list_ok_begin = function ( line , skt )
 		local ok , a = v ( )
 		if ok then
 			j = j + 1
-			r = r .. ok .. "list_OK\n"
+			r = r .. ok .. "OK\n"
 		elseif ok == false then
 			-- RAISE ERROR?
 			--r = r .. a
@@ -218,7 +218,6 @@ commands.commands = function ( line , skt )
 	for k in pairs ( commands ) do
 		r = r .. "command: " .. k .. "\n"
 	end
-	r = r .. "OK\n"
 	return r	
 end
 
@@ -230,7 +229,6 @@ commands.notcommands = function ( line , skt )
 			r = r .. "command: " .. k .. "\n"
 		end
 	end
-	r = r .. "OK\n"
 	return r	
 end
 
@@ -295,12 +293,24 @@ commands.clear = function ( line , skt )
 	return
 end
 commands.playlistinfo = function ( line , skt )
+	local start , finish = string.match ( line , "^playlistinfo%s+(%d*)%s*:?%s*(%d*)" )
+	start = tonumber ( start )
+	finish = tonumber ( finish )
 	local pl , err = execute ( "core.info.getplaylist" , { getvar ("vars.softqueuepl" ) } )
 	local queue = execute ( "core.info.getplaylist" )
+
+	if start then
+		if not finish then
+			finish = start 
+		end
+	else
+		start = 1
+		finish = #pl
+	end
 	
 	function tag ( item , tag )
 		local tag = item.details.tags [ tag ]
-		if not tag or not tag [ 1 ] then return nil
+		if not tag or not tag [ 1 ] then return
 		else
 			local r = tag [ 1 ]
 			for i = 2, #tag do
@@ -311,11 +321,9 @@ commands.playlistinfo = function ( line , skt )
 	end
 	
 	local d = { }
-	i = 1
-	while true do
+	for i = start , finish do
 		local t = pl [ i ]
-		if not t then break end
-		d [ i ] = {
+		d [ #d + 1 ] = {
 			file = t.source ;
 			Time = t.details.length ;
 			Artist = tag ( t , "artist" ) ;
@@ -327,13 +335,11 @@ commands.playlistinfo = function ( line , skt )
 			Pos = i - 1 ;
 			Id = i - 1 ;
 		}
-		i = i + 1
 	end
 	
 	local r = ""
 	for i , v in ipairs ( d ) do
 		for k , v in pairs ( v ) do
-			print(k,v)
 			r = r .. k .. ": " .. tostring ( v ) .. "\n"
 		end
 	end
@@ -341,7 +347,7 @@ commands.playlistinfo = function ( line , skt )
 	return r
 end
 commands.pause = function ( line , skt )
-	local pause = tonumber ( string.match ( line , "pause[ \t]+([01])" ) )
+	local pause = tonumber ( string.match ( line , "pause%s+([01])" ) )
 	if pause == 1 then
 		execute ( "core.playback.pause" )
 	elseif pause == 0 then

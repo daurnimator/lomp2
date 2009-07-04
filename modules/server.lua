@@ -280,8 +280,8 @@ local function xmlrpcserver ( thread , skt , requestdetails )
 		local ok , result = execute ( thread , method_name , list_params )
 
 		if ok then
-			print(result)
 			result = table.serialise ( result ) -- MASSIVE HACK, makes it hard for non-lua xmlrpc clients - not really xmlrpc any more.
+			--print(result)
 		end
 		local body = xmlrpc.srvEncode ( result , not ok )
 		
