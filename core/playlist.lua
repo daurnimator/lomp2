@@ -13,95 +13,142 @@ require "general"
 
 module ( "lomp.core.playlist" , package.see ( lomp ) )
 
-function okpl ( pl )
-	if type ( pl ) == "string" then pl = table.valuetoindex ( vars.pl , "name" , pl ) end
-	if type ( pl ) ~= "number" or pl < 0 or pl > #vars.pl then
+require "core.triggers"
+
+function getnum ( playlistnum )
+	if type ( playlistnum ) ~= "number" or not vars.playlist [ playlistnum ] then
 		return false
+	else
+		return vars.playlist [ playlistnum ]
 	end	
 end
 
-function new ( name , pl )
-	if type ( name ) ~= "string" or name == "hardqueue" or ( name == "Library" and pl ~= 0 ) then name = "New Playlist" end
-	if pl ~= nil and ( type ( pl ) ~= "number" or pl > #vars.pl + 1 or pl < -1 ) then 
-		return ferror ( "'New playlist' called with invalid playlist number" , 2 )
-	end
+local function playlistrev ( revisions , latest , earliest )
+	earliest = earliest or 0
 	
-	pl = pl or #vars.pl + 1
-	vars.pl [ pl ] = { name = name , revision = 0 }
-	vars.pl.revision = vars.pl.revision + 1
+	local function index ( t , k )
+		for i = latest , earliest , -1 do
+			local v = revisions [ i ] [ k ]
+			if v then return v end
+		end
+		--[[local i = latest
+		local maxlength
+		local function subindex ( t , k )
+			maxlength = maxlength or revisions [ i ].length
+			local r
+			if ( maxlength and type ( k ) == "number" and k > maxlength ) then return nil
+			elseif i == earliest then 
+				r = revisions [ earliest ]
+			else 
+				r = setmetatable ( revisions [ i ] , { __index = subindex } )
+			end
+			i = i - 1
+			return r [ k ]
+		end
+		return subindex ( t , k )--]]
+	end	
 	
-	updatelog ( "Created new playlist #" .. pl .. " '" .. name .. "'" , 4 )
-	return pl , name
+	return setmetatable ( { } , { __index = index } )
 end
-function delete ( pl )
-	pl = okpl ( pl )
-	if not pl then
-		return ferror ( "'Delete playlist' called with invalid playlist" , 2 ) 
+
+local function collapserev ( revisions , latest , earliest )
+	local proxy = playlistrev ( revisions , latest , earliest )
+	local t , i = { } , 1
+	while true do
+		local tmp = proxy [ i ]
+		if not tmp then break end
+		t [ i ] = tmp
+		i = i + 1
+	end
+	t.length = proxy.length
+	t.name = proxy.name
+	return t
+end
+
+function fetch ( num , rev )
+	local pl = getnum ( num )
+	if not pl then return false end
+	rev = rev or pl.revision
+	local t = collapserev ( pl.revisions , rev )
+	t.revision = rev
+	return t
+end
+
+function new ( name , playlistnumber )
+	if playlistnumber and type ( playlistnumber ) ~= "number" then return ferror ( "'New Playlist' called with invalid playlistnumber" , 1 ) end
+	if not tostring ( name ) then return ferror ( "'New Playlist' called with invalid name" , 1 ) end
+	name = name or "" -- "Untitled Playlist"
+	
+	playlistnumber = playlistnumber or ( #vars.playlist + 1 )
+	
+	local mt = { }
+	local revisions = { [ 0 ] = { name = name , length = 0 } }
+	local pl = setmetatable ( { revision = 0 , revisions = revisions } , mt )
+	
+	mt.__index = function ( t , k ) return playlistrev ( revisions , pl.revision ) [ k ] end
+	mt.__newindex = function ( t , k , v )
+		print("NEW PLAYLIST newindex",t,k,v )
 	end
 	
-	local name = vars.pl [ pl ].name
-	table.remove ( vars.pl , pl )
+	vars.playlist [ playlistnumber ] = pl
+	vars.playlist.revision = vars.playlist.revision + 1
+	
+	triggers.triggercallback ( "playlist_created" , playlistnumber , pl )
+	
+	return playlistnumber , name
+end
+
+function delete ( num )
+	local pl = getnum ( num )
+	if not pl then
+		return ferror ( "'Delete playlist' called with invalid playlist" , 1 ) 
+	end
+	
+	local name = pl.name
+	vars.playlist [ num ] = nil
 	vars.pl.revision = vars.pl.revision + 1
 	if pl == vars.queue.softqueuepl then vars.queue.softqueuepl = -1 end -- If deleted playlist was the soft queue
 	
-	updatelog ( "Deleted playlist #" .. pl .. " (" .. name .. ")" , 4 )
-	return pl
+	triggers.triggercallback ( "playlist_deleted" , num , pl )
+	
+	return num
 end
-function clear ( pl )
-	pl = okpl ( pl )
+
+function clear ( num )
+	local pl = getnum ( num )
 	if not pl then
-		return ferror ( "'Clear playlist' called with invalid playlist" , 2 ) 
+		return ferror ( "'Clear playlist' called with invalid playlist" , 1 ) 
 	end
 	
-	--vars.pl [ pl ] = { name = name ; revision = revision + 1 }
+	pl.revisions = { [ 0 ] = { name = pl.name , length = 0 } }
 	
-	repeat
-		table.remove ( vars.pl [ pl ]  )
-	until not vars.pl [ pl ] [ 1 ] 
+	triggers.triggercallback ( "playlist_cleared" , num , pl )
 	
-	vars.pl [ pl ].revision = vars.pl [ pl ].revision + 1
-	
-	updatelog ( "Cleared playlist #" .. pl .. " (" .. vars.pl [ pl ].name .. ")" , 4 )
 	return pl
 end
-function randomise ( pl )
-	pl = okpl ( pl )
+
+function randomise ( num )
+	local pl = getnum ( num )
 	if not pl then
-		return ferror ( "'Randomise playlist' called with invalid playlist" , 2 ) 
+		return ferror ( "'Randomise playlist' called with invalid playlist" , 1 ) 
 	end
 	
-	table.randomize ( vars.pl [ pl ] )
-	vars.pl [ pl ].revision = vars.pl [ pl ].revision + 1
+	pl.revisions [ #pl.revisions + 1 ] = table.randomize ( collapserev ( pl.revisions , pl.revision ) )
 	
-	updatelog ( "Randomised playlist #" .. pl .. " (" .. vars.pl [ pl ].name .. ")" , 4 )
-	return pl
+	triggers.triggercallback ( "playlist_sorted" , num , pl )
+	
+	return true
 end
-function sort ( pl , reverse , field , subfield )
-	pl = okpl ( pl )
+
+function sort ( num , eq )
+	local pl = getnum ( num )
 	if not pl then
-		return ferror ( "'Sort playlist' called with invalid playlist" , 2 ) 
+		return ferror ( "'Sort playlist' called with invalid playlist" , 1 )
 	end
 
-	if type ( field ) ~= "string" then return ferror ( "'Sort playlist' called with invalid field" , 2 ) end
-	if subfield and type ( subfield ) ~= "string" then return ferror ( "'Sort playlist' called with invalid subfield" , 2 ) end
+	pl.revisions [ #pl.revisions + 1 ] = table.stablesort ( collapserev ( pl.revisions , pl.revision ) , eq )
 	
-	local function eq ( e1 , e2 )
-		e1 = e1.details [ field ]
-		e2 = e2.details [ field ]
-		if subfield then
-			e1 = e1 [ subfield ]
-			e2 = e2 [ subfield ]
-		end
-		
-		if not reverse then
-			if e1 < e2 then return true else return false end
-		else
-			if e1 > e2 then return true else return false end
-		end
-	end
-	table.stablesort ( vars.pl [ pl ] , eq )
-	vars.pl [ pl ].revision = vars.pl [ pl ].revision + 1
+	triggers.triggercallback ( "playlist_sorted" , num , pl )
 	
-	updatelog ( "Sorted playlist #" .. pl .. " (" .. vars.pl [ pl ].name .. ")" , 4 )
-	return pl
+	return true
 end

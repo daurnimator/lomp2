@@ -13,11 +13,19 @@ require "general"
 
 module ( "lomp.triggers" , package.see ( lomp ) )
 
-local callbacks = { 
-	songplaying = { } , -- songplaying ( typ , source ) -- Triggered when song is played
-	songabouttofinsh = { } , -- songabouttofinish ( )
-	songfinished = { } , -- songfinished ( typ , source )
-	songstopped = { } , -- songstopped ( typ , source , stopoffset )
+local callbacks = {
+	playlist_created = { function ( num , pl ) updatelog ( "Created playlist #" .. num .. ": '" .. pl.name .. "'" , 4 ) end } ;
+	playlist_deleted = { function ( num , pl ) updatelog ( "Deleted playlist #" .. num .. " (" .. pl.name .. ")" , 4 ) end } ;
+	playlist_cleared = { function ( num , pl ) updatelog ( "Cleared playlist #" .. num .. " (" .. pl.name .. ")" , 4 ) end } ;
+	playlist_sorted = { function ( num , pl ) updatelog ( "Sorted playlist #" .. num .. " (" .. pl.name .. ")" , 4 ) end } ;
+	
+	item_added = { function ( num , pl , position , object ) updatelog ( "Added item to playlist #" .. num .. " (" .. pl.name .. ") position #" .. position .. " Source: " .. object.source  , 4 ) end } ;
+	item_removed = { function ( num , pl , position , object ) updatelog ( "Removed item from playlist #" .. num .. " (" .. pl.name .. ") position #" .. position .. " Source: " .. object.source  , 4 ) end } ;
+	
+	songplaying = { } ; -- songplaying ( typ , source ) -- Triggered when song is played
+	songabouttofinsh = { } ; -- songabouttofinish ( )
+	songfinished = { } ; -- songfinished ( typ , source )
+	songstopped = { } ; -- songstopped ( typ , source , stopoffset )
 }
 
 function registercallback ( callback , func , name )

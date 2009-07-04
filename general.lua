@@ -113,13 +113,13 @@ function packn ( skip , _ , ... )
 end
 
 -- Randomize a table
-function table.randomize ( tbl , n , count )
+function table.randomize ( tbl , n )
 	n = n or #tbl
-	for i = 1 , count or n do
+	for i = 1 , n do
 		local j = math.random ( i , n )
-		tbl [ i ], tbl [ j ] = tbl [ j ] , tbl [ i ]
+		tbl [ i ] , tbl [ j ] = tbl [ j ] , tbl [ i ]
 	end
-	return true , tbl
+	return tbl
 end
 
 -- Sort a table stabily
@@ -148,7 +148,7 @@ function table.stablesort ( a , equalitycheck , func )
 	end
 end
 
--- Returns a non-deep copy of tbl
+-- Returns a shallow copy of tbl
 function table.copy ( tbl )
 	local t = { }
 	for k , v in pairs ( tbl ) do

@@ -14,11 +14,12 @@ require "core.triggers"
 
 module ( "lomp.player" , package.see ( lomp ) )
 
-extensions = {	"ogg" ,
-				"flac" ,
-				"mp3" ,
-				"wav" ,
-				"wv",
+extensions = {	"ogg" ;
+				"flac" ;
+				"mp3" ;
+				"wav" ;
+				"wv" ;
+				"m4a" ; "m4r" ;
 }
 
 local pipeline = gst.ElementFactory.make ( "playbin2" , "player" )

@@ -19,114 +19,99 @@ item.typ = "file" or "stream"
 item.source = source path
 --]]
 
+require "core.triggers"
+require "core.playlist"
+require "modules.metadata"
+
 require "core.localfileio"
 
 function create ( typ , source )
 	local item = { typ = typ , source = source , laststarted = false }
-	item.details = tags.getdetails ( source )
+	item.details = metadata.getdetails ( source )
 	return item
 end
 
-function additem ( object , pl , pos )
-	local place
-	if pl == nil or pl == "hardqueue" then -- If no playlist given, or expressly stated: add to hard queue
-		pl = "hardqueue"
-		place = vars.hardqueue
-	else	
-		if type ( pl ) == "string" then pl = table.valuetoindex ( vars.pl , "name" , pl ) end
-		if type ( pl ) ~= "number" or pl < 0 or pl > #vars.pl then 
-			return ferror ( "'Add item' called with invalid playlist" , 1 )
-		end
-		place = vars.pl [ pl ]
-	end
-	if type ( pos ) ~= "number" then
-		if pos == nil or pos > #place then pos = #place + 1 -- Add to end of playlist/queue
-		elseif pos < 1 then pos = 1
-		else	return ferror ( "'Add item' called with invalid position" , 1 )
-		end
-	end
-	
-	table.insert ( place , pos , object )
-	place.revision = place.revision + 1
-	
-	updatelog ( "Added item to playlist " .. pl .. " (" .. place.name .. ") position #" .. pos .. " Source: " .. object.source  , 4 )
-	return pl , pos --, object
+function copyitem ( item )
+	return table.copy ( item )
 end
-function removeitem ( pl , pos )
-	local place
-	if pl == "hardqueue" then
-		pl = "hardqueue"
-		place = vars.hardqueue
-	else
-		if type ( pl ) == "string" then pl = table.valuetoindex ( vars.pl , "name" , pl ) end
-		if type ( pl ) ~= "number" or pl < 0 or pl > #vars.pl then 
-			return ferror ( "'Remove item' called with invalid playlist" , 1 ) 
-		end
-		place = vars.pl [ pl ]
+
+function additem ( object , playlistnum , position )
+	local pl = core.playlist.getnum ( playlistnum )
+	if not pl then return ferror ( "'Add Item' called with invalid playlist" , 1 ) end
+	local pllength = pl.length
+	if position and type ( position ) ~= "number" then return ferror ( "'Add Item' called with invalid position" , 1 ) else position = position or ( pllength + 1 ) end
+
+	local newrev = { length = pllength + 1 }
+	
+	for i = pllength , position , -1 do
+		newrev [ i + 1 ] = pl [ i ]
 	end
-	if type ( pos ) ~= "number" or pos < 1 or pos > #vars.pl [ pl ] then
+	newrev [ pllength + 1 ] = object
+		
+	pl.revisions [ #pl.revisions + 1 ] = newrev
+	pl.revision = pl.revision + 1
+	
+	triggers.triggercallback ( "item_added" , playlistnum , pl , position , object )
+	
+	return position
+end
+
+function removeitem ( playlistnum , position )
+	local pl = core.playlist.getnum ( playlistnum )
+	if not pl then return ferror ( "'Remove item' called with invalid playlist" , 1 ) end
+	if type ( position ) ~= "number" or not pl [ position ] then
 		return ferror ( "'Remove item' called with invalid item" , 1 ) 
 	end
 	
-	removeditem = table.remove ( place , pos )
-	place.revision = place.revision + 1
+	local pllength = pl.length
+	local newrev = { length = pllength - 1 }
+	local object = pl [ position ]
 	
-	updatelog ( "Removed item from playlist " .. pl .. " (" .. place.name .. ") position #" .. pos .. " Source: " .. object.source  , 4 )
-	return pl , pos --, removeditem
+	for i = position + 1, pllength do
+		newrev [ i - 1 ] = pl [ i ]
+	end
+	
+	pl.revisions [ #pl.revisions + 1 ] = newrev
+	pl.revision = pl.revision + 1
+	
+	triggers.triggercallback ( "item_removed" , playlistnum , pl , position , object )
+
+	return true
 end
-function copytoplaylist ( newpl , newpos , oldpl , oldpos )
-	local oldplace
-	if oldpl == nil or oldpl == "hardqueue" then
-		oldplace = vars.hardqueue
-	else
-		if type ( oldpl ) == "string" then oldpl = table.valuetoindex ( vars.pl , "name" , oldpl ) end
-		if type ( oldpl ) ~= "number" or oldpl < 0 or oldpl > #vars.pl then 
-			return ferror ( "'Copy to playlist' called with invalid old playlist" , 1 ) 
-		end
-		oldplace = vars.pl [ oldpl ]
+
+function copytoplaylist ( newplnum , newpos , oldplnum , oldpos )
+	local newpl = core.playlist.getnum ( newplnum )
+	if not newpl then return ferror ( "'Copy to playlist' called with invalid new playlist" , 1 ) end
+	local oldpl = core.playlist.getnum ( oldplnum )
+	if not oldpl then return ferror ( "'Copy to playlist' called with invalid old playlist" , 1 ) end
+	if not oldpl [ pos ] then
+		return ferror ( "'Copy to playlist' called with invalid old item position" , 1 ) 
 	end
-	if type ( oldpos ) ~= "number" or oldpos < 1 or oldpos > #vars.pl [ pl ] then
-		return ferror ( "'Copy to playlist' called with invalid old item" , 1 ) 
+	if newpos and type ( newpos ) ~= "number" then
+		return ferror ( "'Copy to playlist' called with invalid new position" , 1 ) 
+	else newpos = newpos or ( newpl.length + 1 ) -- If new position is not given, add to end of playlist.
 	end
-	local newplace
-	if newpl == nil or newpl == "hardqueue" then
-		newplace = vars.hardqueue
-	else
-		if type ( newpl ) == "string" then newpl = table.valuetoindex ( vars.pl , "name" , newpl ) end
-		if type ( newpl ) ~= "number" or newpl < 0 or newpl > #vars.pl then 
-			return ferror ( "'Copy to playlist' called with invalid new playlist" , 1 ) 
-		end
-		newplace = vars.pl [ newpl ]
-	end
-	if type ( newpos ) ~= "number" or newpos < 1 or newpos > #vars.pl [ pl ] then
-		if newpos == nil then
-			newpos = #newplace + 1 -- If new position is not given, add to end of playlist.
-		else	return ferror ( "'Copy to playlist' called with invalid new item" , 1 ) 
-		end
-	end
+
+	additem ( copyitem ( oldpl [ oldpos ] ) , newpos , newplnum , newpos )
 	
-	--table.insert ( newplace , newpos , oldplace [ oldpos ] )
-	newplace [ newpos ] = table.copy ( oldplace [ oldpos ] )
-	
-	if oldpl == newpl then
-		-- Copy within a playlist
-		vars.pl [ oldpl ].revision = vars.pl [ oldpl ].revision + 1
-	else
-		-- Copy between playlists
-		vars.pl [ oldpl ].revision = vars.pl [ oldpl ].revision + 1
-		vars.pl [ newpl ].revision = vars.pl [ newpl ].revision + 1
-	end
-	
-	return newpl , newpos , oldpl , oldpos , newplace [ newpos ]
+	return newpos
 end
-function movetoplaylist ( newpl , newpos , oldpl , oldpos )
-	local newpl , newpos , oldpl , oldpos = copytoplaylist ( newpl , newpos , oldpl , oldpos )
-	if not newpl then -- Copy error'd
-		return newpl , newpos
+
+function movetoplaylist ( newplnum , newpos , oldplnum , oldpos )
+	local newpl = core.playlist.getnum ( newplnum )
+	if not newpl then return ferror ( "'Move to playlist' called with invalid new playlist" , 1 ) end
+	local oldpl = core.playlist.getnum ( oldplnum )
+	if not oldpl then return ferror ( "'Move to playlist' called with invalid old playlist" , 1 ) end
+	
+	local object = oldpl [ oldpos ]
+	if type ( oldpos ) ~= "number" or not object then
+		return ferror ( "'Move to playlist' called with invalid old item position" , 1 ) 
 	end
-	local pl , pos , tmp = removeitem ( oldpl , oldpos )
-	if not pl then
-		return pl , pos
-	end
-	return newpl , newpos , oldpl , oldpos , tmp
+	
+	if newpos and type ( newpos ) ~= "number" then return ferror ( "'Move to playlist' called with invalid new position" , 1 ) else newpos = newpos or ( newpl.length + 1 ) end
+	
+	additem ( object , newplnum , newpos )
+	removeitem ( oldplnum , oldpos )
+	
+	return newpos
 end

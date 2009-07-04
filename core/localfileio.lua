@@ -19,7 +19,7 @@ require "lfs"
 function addfile ( path , pl , pos )
 	-- Check path exists
 	if type ( path ) ~= "string" then return ferror ( "'Add file' called with invalid path" , 1 ) end
-	
+	print(path)
 	local filename = string.match ( path , "([^/]+)$" )
 	local a , err = core.checkfileaccepted ( filename )
 	if a then
@@ -31,12 +31,19 @@ function addfile ( path , pl , pos )
 end
 
 function addfolder ( path , pl , pos , recurse )
+	if recurse then
+		if type ( recurse ) ~= "number" then
+			recurse = math.huge -- near infinite recursion
+		end
+	else
+		recurse = 0
+	end
 	-- Check path exists
 	if type ( path ) ~= "string" then return ferror ( "'Add folder' called with invalid path" , 1 ) end
 	if string.sub ( path , -1) == "/" then path = string.sub ( path , 1 , ( string.len( path ) - 1 ) ) end -- Remove trailing slash if needed
 	
 	if type ( pl ) == "string" then pl = table.valuetoindex ( vars.pl , "name" , pl ) end
-	if type ( pl ) ~= "number" or pl < 0 or pl > #vars.pl then return ferror ( "'Add folder' called with invalid playlist" , 1 ) end
+	if type ( pl ) ~= "number" or not vars.playlist [ pl ] then return ferror ( "'Add folder' called with invalid playlist" , 1 ) end
 	if type ( pos ) ~= "number" then pos = nil end
 	
 	updatelog ( "Adding folder '" .. path .. "' to playlist #" .. pl , 3 )
@@ -54,7 +61,7 @@ function addfolder ( path , pl , pos , recurse )
 				ferror ( err , 3 )
 			end
 		elseif mode == "directory" and entry ~= "." and entry ~= ".." then
-			if recurse then addfolder ( fullpath , pl , true , true ) end --TODO: max recursion depth?
+			if recurse > 0 then addfolder ( fullpath , pl , true , recurse - 1 ) end
 		end
 	end
 	if config.sortcaseinsensitive then table.sort ( dircontents , function ( a , b ) if string.lower ( a ) < string.lower ( b ) then return true end end ) end-- Put in alphabetical order of path (case insensitive) 

@@ -75,7 +75,7 @@ end
 require "general"
 require "lomp-core"
 
-require "modules.tags"
+require "modules.metadata"
 require "modules.albumart"
 
 do -- Restore State

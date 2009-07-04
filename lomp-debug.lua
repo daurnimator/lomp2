@@ -14,39 +14,32 @@ require "general"
 module ( "lomp" , package.seeall )
 
 require "lomp-core"
+require "core.info"
 
 function core.listpl ( )
-	local t = { }
-	t [ 0 ] = { name = vars.pl [ 0 ].name , revision = vars.pl [ 0 ].revision }
-	for i , v in ipairs ( vars.pl ) do
-		t [ i ] = { name = v.name , revision = v.revision }
+	local info = core.info.getlistofplaylists ( )
+	local str = "Listing Playlists:\n" 
+	for i , v in ipairs ( info ) do
+		str = str .. "Playlist #" .. v.index .. "\t" .. v.name .. "\trev: " .. v.revision .. " Items " .. v.items .. "\n"
 	end
-	
-	str = "Playlists: (Last Revision: " .. vars.pl.revision .. ")\n"
-	str = str .. "Playlist #" .. 0 .. "\t" .. vars.pl[0].name .. " \tRevision " .. vars.pl[0].revision.. " Contains " .. #vars.pl[0] .. " items.\n"
-	for i , v in ipairs( vars.pl ) do
-		str = str .. "Playlist #" .. i .. "\t" .. v.name .. " \tRevision " .. v.revision.. " Contains " .. #v .. " items.\n"
-	end
-	
-	return t , str
+	return str
 end
 
 function core.listentries ( pl )
-	if type( pl ) == "string" then pl = valuetoindex ( vars.pl , "name" , key ) end
-	assert ( type ( pl ) == "number" , "Provide a playlist" )
-	local s = "Listing Playlist #" .. pl .. " \t(Revision: " .. vars.pl [ pl ].revision .. ")\n"
-	for i , v in ipairs( vars.pl[pl] ) do
+	local info = core.info.getplaylist ( pl )
+	local s = "Listing Playlist #" .. pl .. " \t(Revision: " .. info.revision .. ")\n"
+	for i , v in ipairs ( info ) do
 		s = s .. "Entry #" .. i .. " \t(" .. v.typ .. ") \tSource: '" .. v.source .. "'\n"
 	end
-	return pl , vars.pl [ pl ] , s
+	return s
 end
 
 function core.listallentries ( )
 	local s = ""
-	for i,v in ipairs(lomp.vars.pl) do
-		s = s .. select ( 3, lomp.core.listentries ( i ) )
-	end
-	return vars.pl , s
+	for k , v in pairs ( vars.playlist ) do if type ( k ) == "number" then
+		s = s .. core.listentries ( k )
+	end end
+	return s
 end
 
 function core.listqueue ( )
@@ -98,10 +91,10 @@ end
 function demo ( )
 	core.reloadlibrary ( )
 	local pl = core.playlist.new ( "Flac Files" )
-	--core.localfileio.addfile ( '/media/sdc1/Random Downloaded/Andrew Desilva - Just Like Good Music (Quazimodo elctric disco 12.MP3' , pl )
-	core.localfileio.addfile ( '/media/windows/Documents and Settings/Daurnimator/My Documents/My Music/Destroy Rock & Roll/Mylo - 5 in My Arms.mp3' , pl )
-	core.localfileio.addfile ( '/media/windows/Documents and Settings/Daurnimator/My Documents/My Music/Destroy Rock & Roll/Mylo - Valley of the Dolls.mp3' , pl )
-	--core.localfileio.addfile ( "/media/sdc1/Downloaded/Zombie Nation, Kernkraft 400 CDS/[03] Zombie Nation - Kernkraft 400.wv" , pl ) 
+	core.localfileio.addfile ( '/media/sdc1/Random Downloaded/Andrew Desilva - Just Like Good Music (Quazimodo elctric disco 12.MP3' , pl )
+	--core.localfileio.addfile ( '/media/windows/Documents and Settings/Daurnimator/My Documents/My Music/Destroy Rock & Roll/Mylo - 5 in My Arms.mp3' , pl )
+	--core.localfileio.addfile ( '/media/windows/Documents and Settings/Daurnimator/My Documents/My Music/Destroy Rock & Roll/Mylo - Valley of the Dolls.mp3' , pl )
+	core.localfileio.addfile ( "/media/sdc1/Downloaded/Zombie Nation, Kernkraft 400 CDS/[03] Zombie Nation - Kernkraft 400.wv" , pl ) 
 	core.setsoftqueueplaylist ( 1 )
 	pv ( )
 	core.setsoftqueueplaylist ( 0 )
@@ -122,9 +115,8 @@ function a ( ... ) print ("testing!", ... ) return "test done" end
 function pv ( )
 	p ( "=========== PRINT OUT OF STATE: \n" )
 	p ( "Current State: " .. core.playback.state .. "\n")
-	p ( select( 2 , core.listpl ( ) ) )
-	p ( select( 3 , core.listentries ( 0 ) ) )
-	p ( select( 2 , core.listallentries ( ) ) )
+	p ( core.listpl ( ) )
+	p ( core.listallentries ( ) )
 	p ( select( 2 , core.listqueue ( ) ) )
 	p ( select( 2 , core.listplayed ( ) ) )
 	p ( "=========== END PRINT OUT" )

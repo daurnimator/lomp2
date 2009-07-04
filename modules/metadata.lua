@@ -11,7 +11,7 @@
 
 require "general"
 
-module ( "lomp.tags" , package.see ( lomp ) )
+module ( "lomp.metadata" , package.see ( lomp ) )
 
 require "SaveToTable"
 
@@ -99,7 +99,7 @@ end
 
 -- Public functions
 function getdetails ( path )
-	if type ( path ) ~= "string" then return ferror ( "tags.getdetails called without valid path: " .. ( path or "" ) , 3 ) end
+	if type ( path ) ~= "string" then return ferror ( "metadata.getdetails called without valid path: " .. ( path or "" ) , 3 ) end
 	return cache [ path ]
 end
 

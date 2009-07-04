@@ -13,18 +13,20 @@ require "general"
 
 module ( "lomp.core.info" , package.see ( lomp ) )
 
-function getplaylistinfo ( pl )
-	return { revision = vars.pl [ pl ].revision , items = #vars.pl [ pl ] , index = pl , name = vars.pl [ pl ].name }
+function getplaylistinfo ( num )
+	local pl = core.playlist.getnum ( num )
+	if not pl then return false end
+	return { revision = pl.revision , items = pl.length , index = num , name = pl.name }
 end
 
 function getlistofplaylists ( )
 	local t = { }
-	for i = 1 , #vars.pl do
-		t [ i ] = getplaylistinfo ( i )
-	end
+	for i , v in pairs ( vars.playlist ) do if type ( i ) == "number" then
+		t [ #t + 1 ] = getplaylistinfo ( i )
+	end end
 	return t
 end
 
 function getplaylist ( pl )
-	return table.indexedcopy ( vars.pl [ pl ] ) --vars.pl [ pl ]
+	return core.playlist.fetch ( pl )
 end

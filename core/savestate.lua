@@ -13,32 +13,44 @@ require "general"
 
 module ( "lomp" , package.seeall )
 
+-- Safe string
+local function ss ( s )
+	return string.format ( '%q' , s )
+end
+
 function core.savestate ( )
 	local s = core._NAME .. "\t" .. core._VERSION .. " State File.\tCreated: " .. os.date ( ) .. "\n"
 	
-	s = s .. "vars = {\n"
-	s = s .. "\trpt = " .. tostring ( vars.rpt ) .. ";\n"
-	s = s .. "\tloop = " .. tostring ( vars.loop ) .. ";\n"
-	-- Queue
-	s = s .. "\tsoftqueuepl = " .. vars.softqueuepl .. ";\n"
-	s = s .. "\tploffset = " .. vars.ploffset .. ";\n"
-	s = s .. "\thardqueue = {\n"
+	s = s .. "vars = { \n"
+		.. "\trpt = " .. tostring ( vars.rpt ) .. ";\n"
+		.. "\tloop = " .. tostring ( vars.loop ) .. ";\n"
+		.. "\tsoftqueuepl = " .. vars.softqueuepl .. ";\n"
+		.. "\tploffset = " .. vars.ploffset .. ";\n"
+		.. "};\n"
+	--[[s = s .. "\thardqueue = {\n"
 	if vars.hardqueue [ 0 ] then s = s .. '\t\t[0] = core.item.create(' .. string.format ( '%q' , vars.hardqueue [ 0 ].typ ) .. ',' .. string.format ( '%q' , vars.hardqueue [ 0 ].source ) .. ') ;\n' end
 	for i = 1 , ( #vars.hardqueue ) do
 		s = s .. '\t\tcore.item.create(' .. string.format ( '%q' , vars.hardqueue [ i ].typ ) .. ',' .. string.format ( '%q' , vars.hardqueue [ i ].source ) .. ') ;\n'
 	end
-	s = s .. "\t};\n"
+	s = s .. "\t};\n"--]]
 	
 	-- Playlists
-	s = s .. "\tpl = {\n"
-	for i = 0 , #vars.pl do
-		s = s .. "\t\t[" .. i .. "]={ revision = 0 ; name = " .. string.format ( '%q' , vars.pl [ i ].name ) .. ';\n'
-		for j , entry in ipairs ( vars.pl [ i ] ) do
-			s = s .. '\t\t\tcore.item.create(' .. string.format ( '%q' , entry.typ ) .. ',' .. string.format ( '%q' , entry.source ) .. ') ;\n'
+	local i = -2
+	while true do
+		local pl = vars.playlist [ i ]
+		if not pl then break end
+		s = s .. "core.playlist.create(" .. ss ( pl.name ) .. "," .. i .. ")\n" -- Name in this line does nothing
+			.. "vars.playlist[" .. i .. "].revisions[0]={name=" .. ss ( pl.name ) .. ";length=" .. pl.length .. ";\n"
+		local j = 1
+		while true do
+			local item = pl [ j ]
+			if not item then break end
+			s = s .. "\tcore.item.create(" .. ss ( item.typ ) .. "," .. ss ( item.source ) .. ");\n"
+			j = j + 1
 		end
-		s = s .. '\t\t};\n'
+		i = i + 1
+		s = s .. '}\n'
 	end
-	s = s .. '\t};\n'
 	
 	-- History (played)
 	s = s .. "\tplayed = {\n"
@@ -49,13 +61,12 @@ function core.savestate ( )
 	end
 	s = s .. "\t};\n"
 	
-	s = s .. "};\n"
 	
 	-- Plugin specified things??
 	
-	local file, err = io.open( config.statefile , "w+" )
+	local file, err = io.open ( config.statefile , "w+" )
 	if err then 
-		return ferror ( "Could not open state file: '" .. err , 2 ) 
+		return ferror ( "Could not open state file: " .. err , 2 ) 
 	end
 	file:write ( s )
 	file:flush ( )
