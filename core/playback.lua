@@ -56,16 +56,20 @@ function stop ( )
 	end
 end
 function pause ( )
-	player.pause ( )
-	state = "paused"
-	
-	return state
+	if player.pause ( ) then
+		state = "paused"
+		return true
+	else
+		return false
+	end
 end
 function unpause ( )
-	player.unpause ( )
-	state = "playing"
-	
-	return state
+	if player.unpause ( ) then
+		state = "playing"
+			return true
+	else
+		return false
+	end
 end
 function togglepause ( )
 	if state == "playing" then
@@ -153,9 +157,9 @@ end
 function backward ( ) -- Moves back one song from the history
 	stop ( )
 	if vars.played [ 1 ] then
-		table.insert ( vars.queue , 0 , vars.played [ 1 ] ) -- Move most recent history to current, shifting current to hardqueue (and shifting any others up)
+		core.additem ( vars.played [ 1 ] , -2 , 1 )
+		--table.insert ( vars.queue , 0 , vars.played [ 1 ] ) -- Move most recent history to current, shifting current to hardqueue (and shifting any others up)
 		table.remove ( vars.played , 1 ) -- Shifts all elements down
-		vars.queue.revision = vars.queue.revision + 1
 		vars.played.revision = vars.played.revision + 1
 		return true
 	else -- Nothing in history.
@@ -164,3 +168,4 @@ function backward ( ) -- Moves back one song from the history
 end
 
 triggers.registercallback ( "songabouttofinsh" , function ( ) forward ( true ) end , "queuenextsong" )
+
