@@ -4,37 +4,64 @@ By Daurnimator
 Dependencies:
 	Lua 5.1						http://www.lua.org/
 		download:				http://www.lua.org/ftp/lua-5.1.4.tar.gz
+		can be obatained via:			apt-get install lua5.1
 
-	Lgob (with gstreamer)				http://oproj.tuxfamily.org/wiki/doku.php?id=lgob
+	LuaLanes					http://luaforge.net/projects/lanes/
+		download:				http://luaforge.net/frs/shownotes.php?release_id=1282
+
+	Lgob (gstreamer module)				http://oproj.tuxfamily.org/wiki/doku.php?id=lgob
 	
 	Lua-iconv					http://luaforge.net/projects/lua-iconv/
 		can be obtained via:			luarocks install lua-iconv
 	
 	LuaSocket					http://www.tecgraf.puc-rio.br/~diego/professional/luasocket/
 		download:				http://luaforge.net/projects/luasocket/
+		can be obtained via:			apt-get install liblua5.1-socket2
+				or:			luarocks install luasocket
 	
 	Copas						http://www.keplerproject.org/copas/index.html
 		download:				http://luaforge.net/frs/?group_id=100
-		can be obtained via: 			luarocks install copas
+		can be obtained via: 			apt-get install liblua5.1-copas0
+							luarocks install copas
 		Depends on:
 			Coxpcall			http://coxpcall.luaforge.net/
-			can be obtained via: 		luarocks install coxpcall
+			can be obtained via: 		apt-get install liblua5.1-coxpcall0
+					or:		luarocks install coxpcall
 	
 	LuaXMLRPC					http://www.keplerproject.org/luaxmlrpc/
-		(included)
+		(now included)
+		can be obtained (permanently) via:	apt-get install liblua5.1-xmlrpc0
 		Depends on:
 			LuaExpat			http://www.keplerproject.org/luaexpat/
 				download:		http://luaforge.net/frs/?group_id=13
-				can be obtained via:	luarocks install luaexpat
+				can be obtained via:	apt-get install liblua5.1-expat0
+						or:	luarocks install luaexpat
 	
 	LuaFileSystem					http://www.keplerproject.org/luafilesystem/
-		can be obtained via: 			luarocks install luafilesystem
+		can be obtained via: 			apt-get install liblua5.1-filesystem0
+						or:	luarocks install luafilesystem
+
+	Vstruct						http://www.funkyhorror.net/toxicfrog/projects/vstruct/
+		(now included)
+		download: 				http://www.funkyhorror.net/toxicfrog/projects/vstruct/vstruct-1.0b3.tar.bz2
 
 Optional Dependencies:
 	luarocks					http://luarocks.org/
 	
 	lzlib	(for http gzip compression)		http://luaforge.net/projects/lzlib/
-		can be obtained via: 			luarocks install lzlib
+		can be obtained via: 			apt-get install liblua5.1-zip0
+				or:			luarocks install lzlib
 
 	md5						http://www.inf.puc-rio.br/~roberto/md5/md5-5/md5.html
-		can be obtained via: 			luarocks install md5
+		can be obtained via: 			apt-get install liblua5.1-md5-0
+				or:			luarocks install md5
+
+==> Systems with apt-get should be able to get most of the dependencies with:
+apt-get install lua5.1 liblua5.1-socket2 liblua5.1-copas0 liblua5.1-coxpcall0 liblua5.1-copas0 liblua5.1-xmlrpc0 liblua5.1-expat0 liblua5.1-filesystem0 liblua5.1-zip0 liblua5.1-md5-0
+apt-get install luarocks
+luarocks install lua-iconv
+apt-get install gstreamer0.10-plugins-base libgstreamer-plugins-base0.10-dev gstreamer0.10-plugins-good gstreamer0.10-plugins-bad gstreamer0.10-plugins-ugly
+
+The Lanes package in luarocks is currently broken, so you will have to install in manually.
+Lgob is a tricky install, and currently a very new library, you will have to install it manually.
+
