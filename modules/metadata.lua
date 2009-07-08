@@ -64,14 +64,12 @@ local function getitem ( path )
 	}
 	item.extension = string.lower ( string.match ( item.filename , "%.([^%./]+)$" ) )
 
-	do
-		local f = exttodec [ item.extension ]
-		if f then
-			local ok , err = f ( item )
-			if not ok then return ferror ( "Corrupt/Bad File: " .. item.path , 3 ) end
-		else
-			return ferror ( "Unknown format: " .. item.extension , 3 )
-		end
+	local f = exttodec [ item.extension ]
+	if f then
+		local ok , err = f ( item )
+		if not ok then return nil , updatelog ( "Corrupt/Bad File: " .. item.path , 3 ) end
+	else
+		return nil , updatelog ( "Unknown format: " .. item.extension , 3 )
 	end
 	
 	setmetatable ( item.tags , { 

@@ -15,11 +15,11 @@ require "core.triggers"
 module ( "lomp.player" , package.see ( lomp ) )
 
 extensions = {	"ogg" ;
-				"flac" ;
-				"mp3" ;
-				"wav" ;
-				"wv" ;
-				"m4a" ; "m4r" ;
+			"flac" ;
+			"mp3" ;
+			"wav" ;
+			"wv" ;
+			"m4a" ; "m4r" ;
 }
 
 local pipeline = gst.ElementFactory.make ( "playbin2" , "player" )
@@ -28,6 +28,7 @@ bus:add_signal_watch ( )
 
 function queuesong ( typ , source )
 	local uri
+	--print(typ,source)
 	if typ == "file" then
 		uri = "file://" .. source
 	end
@@ -130,7 +131,6 @@ bus:connect ( "message::eof" , function ( )
 	
 --bus:connect ( "message::state-changed" , function ( ) print ("statechange" ) end )
 
-pipeline:connect ( "about-to-finish" , function ( ) 
-		--print("about to finish" )
+pipeline:connect ( "about-to-finish" , function ( )
 		triggers.triggercallback ( "songabouttofinsh" )
 	end )

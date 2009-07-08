@@ -65,7 +65,7 @@ function string.trim ( str )
 	return str:gsub( "^%s*(.-)%s*$", "%1" )
 end
 
--- Converts string in specified encoding to utf16
+-- Converts string in specified encoding to utf8
 function utf8 ( str , encoding )
 	if not encoding then encoding = "ISO-8859-1" end
 	return iconv.new ( "UTF-8" ,  encoding ):iconv ( str )

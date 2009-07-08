@@ -21,12 +21,12 @@ function auth ( username , password )
 	return "Basic " .. e
 end
 
-function cmd ( method_name , params , address , port , headers )
+function c ( cmds , address , port , headers )
 	address = address or "127.0.0.1"
 	port = port or 5667
 	headers = headers or { }
 	
-	local method_call = Json.Encode ( { { cmd = method_name , params = params } } )
+	local method_call = Json.Encode ( cmds )
 	local sink = { }
 	
 	local b , c , h = http.request {
@@ -37,14 +37,12 @@ function cmd ( method_name , params , address , port , headers )
 		source = ltn12.source.string ( method_call ) ;
 	}
 	if b == 1 then
-		local r = Json.Decode ( table.concat ( sink ) ) [ 1 ]
-		if r [ 1 ] then
-			print ( table.serialise ( r [ 2 ] ) )
-		else
-			print ( "FAIL" , table.serialise ( r ) )
-		end
+		return Json.Decode ( table.concat ( sink ) )
 	else
-		print(b,c,h)
+		error ( c )
 	end
+end
 
+function p ( t )
+	print(table.serialise ( t ) )
 end
