@@ -42,7 +42,6 @@ function addfolder ( path , pl , pos , recurse )
 	if type ( path ) ~= "string" then return ferror ( "'Add folder' called with invalid path" , 1 ) end
 	if string.sub ( path , -1) == "/" then path = string.sub ( path , 1 , ( string.len( path ) - 1 ) ) end -- Remove trailing slash if needed
 	
-	if type ( pl ) == "string" then pl = table.valuetoindex ( vars.pl , "name" , pl ) end
 	if type ( pl ) ~= "number" or not vars.playlist [ pl ] then return ferror ( "'Add folder' called with invalid playlist" , 1 ) end
 	if type ( pos ) ~= "number" then pos = nil end
 	

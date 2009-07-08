@@ -81,15 +81,6 @@ function ascii ( str , encoding )
 	return iconv.new ( "ISO-8859-1" ,  encoding ):iconv ( str )
 end
 
--- Finds first value in tbl that matches pattern "key"
-function table.valuetoindex ( tbl , value , key )
-	for i,v in ipairs ( tbl ) do
-		if string.find( v[value] , '^' .. key .. '$' ) then 
-			return i
-		end
-	end
-end
-
 -- Append a tbl to another
  -- newtbl is the table that will have tbl appended to it
 function table.append ( newtbl , tbl )

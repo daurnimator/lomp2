@@ -67,7 +67,7 @@ local function getitem ( path )
 	local f = exttodec [ item.extension ]
 	if f then
 		local ok , err = f ( item )
-		if not ok then return nil , updatelog ( "Corrupt/Bad File: " .. item.path , 3 ) end
+		if not ok then return nil , updatelog ( "Corrupt/Bad File: " .. item.path .. ":" .. ( err or "" ) , 3 ) end
 	else
 		return nil , updatelog ( "Unknown format: " .. item.extension , 3 )
 	end
