@@ -26,29 +26,12 @@ end
 local function playlistrev ( revisions , latest , earliest )
 	earliest = earliest or 0
 	
-	local function index ( t , k )
+	return setmetatable ( { } , { __index = function ( t , k )
 		for i = latest , earliest , -1 do
 			local v = revisions [ i ] [ k ]
 			if v then return v end
 		end
-		--[[local i = latest
-		local maxlength
-		local function subindex ( t , k )
-			maxlength = maxlength or revisions [ i ].length
-			local r
-			if ( maxlength and type ( k ) == "number" and k > maxlength ) then return nil
-			elseif i == earliest then 
-				r = revisions [ earliest ]
-			else 
-				r = setmetatable ( revisions [ i ] , { __index = subindex } )
-			end
-			i = i - 1
-			return r [ k ]
-		end
-		return subindex ( t , k )--]]
-	end	
-	
-	return setmetatable ( { } , { __index = index } )
+	end } )
 end
 
 local function collapserev ( revisions , latest , earliest )
@@ -88,7 +71,7 @@ function new ( name , playlistnumber )
 	local revisions = { [ 0 ] = { name = name , length = 0 } }
 	local pl = setmetatable ( { revision = 0 , revisions = revisions } , mt )
 	
-	mt.__index = function ( t , k ) return playlistrev ( revisions , pl.revision ) [ k ] end
+	mt.__index = function ( t , k ) return playlistrev ( revisions , pl.revision , 0 ) [ k ] end
 	mt.__newindex = function ( t , k , v )
 		print("NEW PLAYLIST newindex",t,k,v )
 	end

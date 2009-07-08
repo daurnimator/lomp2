@@ -9,13 +9,12 @@
 	You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ]]
 
-package.path = package.path .. ";libs/?.lua"
+require "general"
 
 pcall ( require , "luarocks.require" ) -- Activates luarocks if available.
 
 local xmlrpc = require ( "xmlrpc" )
 local socket = require ( "socket" )
-require"general"
 
 function auth ( username , password )
 	require"mime" -- For base64 encoding of authorisation
@@ -67,8 +66,10 @@ function cmd ( method_name , params , address , port , headers )
 
 	local ok , response , faultcode = xmlrpc.clDecode ( body )
 	if ok then
-		response = response or lxp.lom.parse(b)[2][2][1][1] -- MASSIVE HACK
-		return loadstring ( "return {" .. response  .. "}") ( )
+		print(ok,response,faultcode,body)
+		return response
+		--response = response or lxp.lom.parse(b)[2][2][1][1] -- MASSIVE HACK
+		--return loadstring ( "return {" .. response  .. "}") ( )
 	else
 		error ( "Code: " .. faultcode .. "\t Message: " .. response )
 		return false

@@ -280,10 +280,11 @@ local function xmlrpcserver ( thread , skt , requestdetails )
 		local ok , result = execute ( thread , method_name , list_params )
 
 		if ok then
-			result = table.serialise ( result ) -- MASSIVE HACK, makes it hard for non-lua xmlrpc clients - not really xmlrpc any more.
-			--print(result)
+			--result = table.serialise ( result ) -- MASSIVE HACK, makes it hard for non-lua xmlrpc clients - not really xmlrpc any more.
+			print(result,table.serialise(result))
 		end
 		local body = xmlrpc.srvEncode ( result , not ok )
+		print(body)
 		
 		httpsend ( skt , requestdetails , { status = 200 , headers = { [ 'content-length' ] = "text/xml" } , body = body } )
 			
@@ -461,7 +462,7 @@ local function jsonserver ( thread , skt , requestdetails )
 	require "Json"
 	--print ( "Json cmd received: " , requestdetails.body )
 	local hdr = { ["content-type"] = "application/json" }
-	if requestdetails.Method == "POST" then 
+	if requestdetails.Method == "POST" then
 		local o = Json.Decode ( requestdetails.body )
 		if type ( o ) == "table" then
 			local t = { }

@@ -39,7 +39,7 @@ function deregistercallback ( callback , name )
 	callbacks [ callback ] [ name ] = nil
 end
 function triggercallback ( callback , ... )
-	for i , v in ipairs ( callbacks [ callback ] ) do v ( ... ) end
+	for i , v in ipairs ( callbacks [ callback ] ) do pcall ( v , ... ) end
 end
 
 registercallback ( "songplaying" , function ( )
