@@ -9,18 +9,20 @@
 	You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ]]
 
-require "lgob.gst"
 require "core.triggers"
 
 module ( "lomp.player" , package.see ( lomp ) )
 
-extensions = {	"ogg" ;
-			"flac" ;
-			"mp3" ;
-			"wav" ;
-			"wv" ;
-			"m4a" ; "m4r" ;
+local extensions = {	
+	"ogg" ;
+	"flac" ;
+	"mp3" ;
+	"wav" ;
+	"wv" ;
+	"m4a" ; "m4r" ;
 }
+
+require "lgob.gst"
 
 local pipeline = gst.ElementFactory.make ( "playbin2" , "player" )
 local bus = pipeline:get_bus ( )
@@ -28,7 +30,6 @@ bus:add_signal_watch ( )
 
 function queuesong ( typ , source )
 	local uri
-	--print(typ,source)
 	if typ == "file" then
 		uri = "file://" .. source
 	end

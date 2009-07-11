@@ -504,7 +504,7 @@ local function lompserver ( thread , skt )
 			if chunk < 25 then
 				local data , err = copas.receive ( skt )
 				if err == "closed" then return end
-				if rsize <=1 and data == "\r\n" then -- skip blank lines @ start
+				if rsize <= 1 and data == "\r\n" then -- skip blank lines @ start
 				elseif data then
 					request = request .. data .. "\r\n"
 					

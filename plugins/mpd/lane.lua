@@ -9,6 +9,12 @@
 	You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ]]
 
+local strfind = string.find
+local tblconcat = function ( t , ... ) if not t then return "" end return table.concat ( t , ... ) end
+local strformat = string.format
+
+require "general"
+
 pcall ( require , "luarocks.require" ) -- Activates luarocks if available.
 require "socket"
 require "copas"
@@ -19,6 +25,15 @@ if type ( port ) ~= "number" or port > 65535 or port <= 0 then port = 6600 end
 local mpdversion = "0.13.0"
 
 local plrev = { { 0 , 0 } }
+
+local songid = setmetatable ( { } , { __index = function ( t , k ) 
+	if type ( k ) ~= "number" then
+		local id = #t + 1
+		rawset ( t , id, k )
+		rawset ( t , k , id )
+		return id
+	end
+end ; } )
 
 local commands = { }
 local allcommands = { 	
@@ -34,7 +49,7 @@ local allcommands = {
 	
 	-- Playlist Commands
 	add = false , addid = false , clear = false , currentsong = false , delete = false , deleteid = false , load = false , rename = false , move = false , moveid = false ,
-	playlist = false , playlistinfo = false , playlistid = false , plchanges = false , plchangesposid = false ,
+	playlist = false , playlistinfo = true , playlistid = false , plchanges = false , plchangesposid = false ,
 	rm = false , save = false , shuffle = false , swap = false , swapid = false ,
 	listplaylist = false , listplaylistinfo = false , playlistadd = false , playlistclear = false , playlistdelete = false , playlistmove = false , playlistfind = false , playlistsearch = false ,
 	
@@ -100,18 +115,22 @@ local function makeackmsg ( errorid , position ,  current_command ,  message_tex
 	return "ACK [".. errorid .. "@".. position .. "] {" ..  ( current_command or "" ) .. "} " .. ( message_text or "" ) .. "\n"
 end
 
+function hashconcat ( t , f) 
+        local r = { }
+        f = f or "%s: %s\n"
+        for k , v in pairs ( t ) do
+                r [ #r + 1 ] = strformat ( f , k , tostring ( v ) )
+        end
+	return tblconcat ( r )
+end
+  
 local function doline ( line , skt )
-	local i , j , cmd = string.find ( line , "([^ \t]+)" )
+	local i , j , cmd = strfind ( line , "([^ \t]+)" )
 	if i then
 		if commands [ cmd ] then
 			local t , err = commands [ cmd ] ( line , skt )
 			if type ( t ) == "table" then
-				local r = ""
-				for k , v in pairs ( t ) do
-					r = r .. k .. ": " .. tostring ( v ) .. "\n"
-				end
-				r = r
-				return r
+				return hashconcat ( t )
 			elseif type ( t ) == "string" then
 				return t
 			elseif t == nil then
@@ -143,7 +162,7 @@ local function mpdserver ( skt )
 				ok = makeackmsg ( ack [ 1 ] , 0 , ack [ 2 ] , ack [ 3 ] )
 			--else -- nil.... bad commands array entry
 			end
-			updatelog ( "MPD Replying: \n" .. ( ok or "NOT OK" ) , 5 , _G )
+			--updatelog ( "MPD Replying: \n" .. ( ok or "NOT OK" ) , 5 , _G )
 			local bytessent , err = copas.send ( skt , ok )
 		else
 			if err == "closed" then
@@ -266,11 +285,11 @@ commands.status = function ( line , skt )
 	}
 	if state ~= "stop" then
 		t.song = getvar ( "vars.ploffset" )
-		--t.songid
-		local time = getvar ( "vars.queue [ 0 ].details.length" )
-		t.time =  math.floor ( time/60 ) .. ":" .. time % 60
+		t.songid = songid [ getvar ( "vars.queue [ 0 ].source" ) ]
+		local time = getvar ( "vars.queue [ 0 ].length" )
+		t.time = math.floor ( time/60 ) .. ":" .. time % 60
 		--t.bitrate
-		t.audio = getvar ( "vars.queue [ 0 ].details.samplerate" ) .. ":" .. getvar ( "vars.queue [ 0 ].details.bitrate" ) .. ":" .. getvar ( "vars.queue [ 0 ].details.channels" )
+		t.audio = getvar ( [[vars.queue [ 0 ].samplerate .. ":" .. vars.queue [ 0 ].bitrate .. ":" .. vars.queue [ 0 ].channels]] )
 		--t.updating_db
 		--t.error
 	end
@@ -292,12 +311,17 @@ commands.clear = function ( line , skt )
 	execute ( "core.playlist.clear" , { getvar ( "vars.softqueuepl" ) } )
 	return
 end
+commands.playlistid = function ( line , skt )
+	local songid = string.match ( line , "^playlistid%s+\"?(%d+)" )
+	if not songid then return commands.playlistinfo ( "playlistinfo" , skt ) end
+	
+end
 commands.playlistinfo = function ( line , skt )
-	local start , finish = string.match ( line , "^playlistinfo%s+(%d*)%s*:?%s*(%d*)" )
+	local start , finish = string.match ( line , "^playlistinfo%s+\"?(%d*)%s*:?%s*(%d*)" )
 	start = tonumber ( start )
 	finish = tonumber ( finish )
-	local pl , err = execute ( "core.info.getplaylist" , { getvar ("vars.softqueuepl" ) } )
-	local queue = execute ( "core.info.getplaylist" )
+	local pl , err = execute ( "core.playlist.fetch" , { getvar ("vars.softqueuepl" ) } )
+	--local queue = execute ( "core.playlist.fetch" )
 
 	if start then
 		if not finish then
@@ -307,47 +331,34 @@ commands.playlistinfo = function ( line , skt )
 		start = 1
 		finish = #pl
 	end
-	
-	function tag ( item , tag )
-		local tag = item.details.tags [ tag ]
-		if not tag or not tag [ 1 ] then return
-		else
-			local r = tag [ 1 ]
-			for i = 2, #tag do
-				r = r .. "; " .. tag [ i ]
-			end
-			return r
-		end
-	end
-	
+		
 	local d = { }
 	for i = start , finish do
-		local t = pl [ i ]
-		d [ #d + 1 ] = {
-			file = t.source ;
-			Time = t.details.length ;
-			Artist = tag ( t , "artist" ) ;
-			Album = tag ( t , "album" ) ;
-			Title = tag ( t , "title" ) ;
-			Track = tag ( t , "tracknumber" ) ;
-			Genre = tag ( t , "genre" ) ;
-			Disc = tag ( t , "discnumber" ) ;
-			Pos = i - 1 ;
-			Id = i - 1 ;
-		}
-	end
-	
-	local r = ""
-	for i , v in ipairs ( d ) do
-		for k , v in pairs ( v ) do
-			r = r .. k .. ": " .. tostring ( v ) .. "\n"
+		local item = pl [ i ]
+		if item then
+			local tags = item.tags
+			local id = songid [ item.source ]
+			d [ i ] = hashconcat {
+				file = item.source ;
+				Time = item.length ;
+				Artist = tblconcat ( tags.artist , "; " ) ;
+				Album = tblconcat ( tags.album , "; " )  ;
+				Title = tblconcat ( tags.title , "; " ) ;
+				Track = tblconcat ( tags.tracknumber , "; " ) ;
+				Genre = tblconcat ( tags.genre , "; " ) ;
+				Disc = tblconcat ( tags.discnumber , "; " ) ;
+				Pos = i - 1 ;
+				Id = id ;
+			}
+		else
+			d [ i ] = ""
 		end
 	end
 	
-	return r
+	return tblconcat ( d , nil , start , finish )
 end
 commands.pause = function ( line , skt )
-	local pause = tonumber ( string.match ( line , "pause%s+([01])" ) )
+	local pause = tonumber ( string.match ( line , "pause%s+\"?([01])" ) )
 	if pause == 1 then
 		execute ( "core.playback.pause" )
 	elseif pause == 0 then
@@ -358,7 +369,7 @@ commands.pause = function ( line , skt )
 	return
 end
 commands.play = function ( line , skt )
-	local song = tonumber ( string.match ( line , "play[ \t]+(%d+)" ) )
+	local song = tonumber ( string.match ( line , "play%s+\"?(%d+)" ) )
 	if song then
 		execute ( "core.playback.goto" , { song } )
 		execute ( "core.playback.play" )

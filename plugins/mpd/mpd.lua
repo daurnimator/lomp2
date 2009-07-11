@@ -22,9 +22,7 @@ _VERSION = 0.1
 
 loadfile ( dir .. "config" ) ( ) -- Load config
 
-
 require "lanes"
---print(loadfile ( dir .. "lane.lua" ))
 local func = lanes.gen ( "base table string package os math io" , { ["globals"] = { config = config , updatelog = updatelog , ferror = ferror , thread = newlinda ( ) } } , loadfile ( dir .. "lane.lua" ) )
 local lane = func ( address , port )
 

@@ -26,7 +26,7 @@ function core.listpl ( )
 end
 
 function core.listentries ( pl )
-	local info = core.info.getplaylist ( pl )
+	local info = core.playlist.fetch ( pl )
 	local s = "Listing Playlist #" .. pl .. " \t(Revision: " .. info.revision .. ")\n"
 	for i , v in ipairs ( info ) do
 		s = s .. "Entry #" .. i .. " \t(" .. v.typ .. ") \tSource: '" .. v.source .. "'\n"
@@ -134,7 +134,7 @@ end--]] p = print
 
 triggers.registercallback ( "songplaying" , function ( )
 		-- Print new song stats
-		local t = vars.queue [ 0 ].details
+		local t = vars.queue [ 0 ]
 		print( "--------------------Now playing file: ", t.filename )
 		for k , v in pairs ( t ) do
 			print ( k , v )

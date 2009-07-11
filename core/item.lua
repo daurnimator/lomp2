@@ -26,9 +26,7 @@ require "modules.metadata"
 require "core.localfileio"
 
 function create ( typ , source )
-	local item = { typ = typ , source = source , laststarted = false }
-	item.details = metadata.getdetails ( source )
-	return item
+	return setmetatable ( { typ = typ , source = source , laststarted = false } , { __index = metadata.getdetails ( source ) } )
 end
 
 function copyitem ( item )

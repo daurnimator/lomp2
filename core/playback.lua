@@ -167,5 +167,5 @@ function backward ( ) -- Moves back one song from the history
 	end
 end
 
-triggers.registercallback ( "songabouttofinsh" , function ( ) forward ( true ) end , "queuenextsong" )
+triggers.registercallback ( "songabouttofinish" , function ( ) forward ( true ) end , "queuenextsong" )
 

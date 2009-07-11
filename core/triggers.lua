@@ -23,7 +23,7 @@ local callbacks = {
 	item_removed = { function ( num , pl , position , object ) updatelog ( "Removed item from playlist #" .. num .. " (" .. pl.name .. ") position #" .. position .. " Source: " .. object.source  , 4 ) end } ;
 	
 	songplaying = { } ; -- songplaying ( typ , source ) -- Triggered when song is played
-	songabouttofinsh = { } ; -- songabouttofinish ( )
+	songabouttofinish = { } ; -- songabouttofinish ( )
 	songfinished = { } ; -- songfinished ( typ , source )
 	songstopped = { } ; -- songstopped ( typ , source , stopoffset )
 }

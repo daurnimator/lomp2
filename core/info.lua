@@ -27,14 +27,7 @@ function getlistofplaylists ( )
 	return t
 end
 
-function getplaylist ( pl , revision , backto )
-	local fullplaylist = core.playlist.fetch ( pl , revision , backto )
-	local t = { }
-	for i , v in ipairs ( fullplaylist ) do
-		t [ i ] = { source = v.source , typ = v.typ }
-	end
-	return t
-end
+getplaylist = core.playlist.fetch
 
 function gethardqueue ( revision , backto )
 	return getplaylist ( -2 , revision , backto )
