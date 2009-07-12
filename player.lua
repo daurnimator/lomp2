@@ -13,7 +13,7 @@ require "core.triggers"
 
 module ( "lomp.player" , package.see ( lomp ) )
 
-local extensions = {	
+extensions = {	
 	"ogg" ;
 	"flac" ;
 	"mp3" ;
@@ -59,12 +59,14 @@ function changesong ( newtyp , newsource , newoffset )
 end
 
 function pause ( )
+	if getstate ( ) ~= "playing" then return false end
 	pipeline:set_state ( gst.STATE_PAUSED )
 	pipeline:get_state ( -1 )
 	return true
 end
 
 function unpause ( )
+	if getstate ( ) ~= "paused" then return false end
 	pipeline:set_state ( gst.STATE_PLAYING )
 	pipeline:get_state ( -1 )
 	return true
@@ -76,19 +78,25 @@ function stop ( )
 	return true
 end
 
-function seek ( offset , percent )
+function seek ( offset , relative , percent )
 	if type ( offset ) ~= "number" then return false end
+	
+	local tracklength = select ( 3 , pipeline:query_duration( gst.FORMAT_TIME ) )
+	
 	if percent then
-		if offset < 0 or offset > 100 then
-			return false
-		else
-			local tracklength = select ( 3 , pipeline:query_duration( gst.FORMAT_TIME ) )
-			offset = ( offset / 100 ) * tracklength 
-			return pipeline:seek_simple ( gst.FORMAT_TIME , offset )
-		end
+		offset = ( offset / 100 ) * tracklength 
 	else
-		return pipeline:seek_simple ( gst.FORMAT_TIME , offset * 1000 )
+		offset = offset * 1000 -- Convert from seconds to milliseconds
 	end
+	
+	if relative then
+		local currentposition = select ( 3 , pipeline:query_position( gst.FORMAT_TIME ) )
+		offset = offset + currentposition
+	end
+	
+	if offset > tracklength or offset < 0 then return false end
+	
+	return pipeline:seek_simple ( gst.FORMAT_TIME , offset )
 end
 
 function getstate ( )
@@ -122,7 +130,7 @@ function unmute ( )
 end
 
 function getvolume ( )
-	return pipeline:get ( "volume" ) * 100
+	return pipeline:get ( "volume" ) * 100 , pipeline:get ( "mute" )
 end
 
 bus:connect ( "message::eof" , function ( )
@@ -133,5 +141,5 @@ bus:connect ( "message::eof" , function ( )
 --bus:connect ( "message::state-changed" , function ( ) print ("statechange" ) end )
 
 pipeline:connect ( "about-to-finish" , function ( )
-		triggers.triggercallback ( "songabouttofinsh" )
+		triggers.triggercallback ( "songabouttofinish" )
 	end )

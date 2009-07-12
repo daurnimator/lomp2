@@ -6,9 +6,6 @@ Dependencies:
 		download:				http://www.lua.org/ftp/lua-5.1.4.tar.gz
 		can be obatained via:			apt-get install lua5.1
 
-	LuaLanes					http://luaforge.net/projects/lanes/
-		download:				http://luaforge.net/frs/shownotes.php?release_id=1282
-
 	Lgob (gstreamer module)				http://oproj.tuxfamily.org/wiki/doku.php?id=lgob
 	
 	Lua-iconv					http://luaforge.net/projects/lua-iconv/
@@ -62,6 +59,5 @@ apt-get install luarocks
 luarocks install lua-iconv
 apt-get install gstreamer0.10-plugins-base libgstreamer-plugins-base0.10-dev gstreamer0.10-plugins-good gstreamer0.10-plugins-bad gstreamer0.10-plugins-ugly
 
-The Lanes package in luarocks is currently broken, so you will have to install in manually.
 Lgob is a tricky install, and currently a very new library, you will have to install it manually.
 

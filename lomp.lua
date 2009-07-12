@@ -73,27 +73,21 @@ end
 
 require "general"
 
--- Get ready for multi-threading
-require "lanes"
-local lindas = { }
-function newlinda ( )
-	local linda = lanes.linda ( )
-	lindas [ #lindas + 1 ] = linda
-	return linda
+local steps = { }
+function addstep ( func )
+	for i , v in ipairs ( steps ) do
+		if v == func then return end
+	end
+	steps [ #steps + 1 ] = func
 end
 
 require "lomp-core"
 
 require "modules.metadata"
 require "modules.albumart"
+require "modules.server"
 
 pcall ( require , "luarocks.require" ) -- Activates luarocks if available.
-
-do 
-	local func = lanes.gen ( "base table string package os math io" , { ["globals"] = { config = config , updatelog = updatelog , ferror = ferror } } , loadfile ( "modules/server.lua" ) )
-		
-	lane = func ( newlinda ( ) , config.address , config.port )
-end
 
 -- Plugin Time!
 updatelog ( "Loading plugins." , 3 )
@@ -155,6 +149,44 @@ local function buildMetatableGet ( ref )
 	}
 end
 
+function cmd ( cmd , params )
+	local fn , fail = loadstring ( "return " .. cmd )
+	if fail then -- Check for compilation errors (eg, syntax)
+		return false , fail
+	else
+		setfenv ( fn , setmetatable ( { } , buildMetatableCall( _M ) ) )
+		local ok , func = pcall ( fn )
+		if not ok then -- Check for no errors while finding function
+			return false , func
+		elseif not func then -- Make sure function was found, func already has to be a function or nil, so we only need to exclude the nil case
+			return false , "Not a function"
+		else
+			local function interpret ( ok , err , ... )
+				if not ok then return false , err
+				else return ok , { err , ... } end
+			end
+			return interpret ( pcall ( func , unpack ( params or { } ) ) )
+		end                     
+	end
+end
+
+function var ( var )
+	local fn , fail = loadstring ( "return " .. var )
+	if fail then -- Check for compilation errors
+		return false , fail
+	else
+		setfenv ( fn , setmetatable ( { } , buildMetatableGet ( _M ) ) )
+		local ok , var = pcall ( fn )
+		if not ok then -- Check for no errors while finding function
+			return false , var
+		elseif type ( var ) ~= "string" and type ( var ) ~= "table" and type ( var ) ~= "number" and type ( var ) ~= "boolean" and var ~= nil then -- Make sure function was found, var already has to be a string, number or nil
+			return false , "Not a variable, tried to return value of: " .. type ( var )
+		else
+			return ok , var
+		end
+	end
+end
+
 require "lomp-debug" -- TODO: remove debug
 
 -- Initialisation finished.
@@ -162,42 +194,6 @@ updatelog ( "LOMP Loaded " .. os.date ( "%c" ) , 3 )
 
 local i = 1
 while true do
-	local val , key = lindas [ i ]:receive ( 0.01 , "cmd" , "var" )
-	if key == "cmd" and type ( val ) == "table" and type ( val.cmd ) == "string" and not ( val.parameters and type ( val.parameters ) ~= "table" ) then -- Cmds
-		local fn , fail = loadstring ( "return " .. val.cmd )
-		if fail then -- Check for compilation errors (eg, syntax)
-			lindas [ i ]:send ( nil , "returncmd" , { false , fail } )
-		else
-			setfenv ( fn , setmetatable ( { } , buildMetatableCall( _M ) ) )
-			local ok , func = pcall ( fn )
-			if not ok then -- Check for no errors while finding function
-				lindas [ i ]:send ( nil , "returncmd" , { false , func } )
-			elseif not func then -- Make sure function was found, func already has to be a function or nil, so we only need to exclude the nil case
-				lindas [ i ]:send ( nil , "returncmd" , { false , "Not a function" } )
-			else
-				local function interpret ( ok , err , ... )
-					if not ok then return false , err
-					else return ok , { err , ... } end
-				end
-				lindas [ i ]:send ( nil , "returncmd" , { interpret ( pcall ( func , unpack ( val.parameters or { } ) ) ) } )
-			end			
-		end
-	elseif key == "var" and type ( val ) == "string" then -- Vars
-		local fn , fail = loadstring ( "return " .. val )
-		if fail then -- Check for compilation errors
-			lindas [ i ]:send ( nil , "returnvar" , { false , fail } )
-		else
-			setfenv ( fn , setmetatable ( { } , buildMetatableGet ( _M ) ) )
-			local ok , var = pcall ( fn )
-			if not ok then -- Check for no errors while finding function
-				lindas [ i ]:send ( nil , "returnvar" , { false , var } )
-			elseif type ( var ) ~= "string" and type ( var ) ~= "table" and type ( var ) ~= "number" and type ( var ) ~= "boolean" and var ~= nil then -- Make sure function was found, var already has to be a string, number or nil
-				lindas [ i ]:send ( nil , "returnvar" , { false , "Not a variable, tried to return value of: " .. type ( var ) } )
-			else
-				lindas [ i ]:send ( nil , "returnvar" , { ok , var } )
-			end
-		end
-	end
-	
-	if i == #lindas then i = 1 else i = i + 1 end
+	steps [ i ] ( )
+	if i == #steps then i = 1 else i = i + 1 end
 end

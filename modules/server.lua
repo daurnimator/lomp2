@@ -11,6 +11,8 @@
 
 require "general"
 
+module ( "lomp.server" , package.see ( lomp ) )
+
 local versionstring = "Lomp Server 0.0.1" --core._NAME .. ' ' .. core._VERSION
 
 local tsort = table.sort
@@ -203,32 +205,24 @@ local function httpsend ( skt , requestdetails , responsedetails )
 		
 	return status , reasonphrase , bytessent
 end
-local function execute ( thread , name , parameters )
+local function execute ( name , parameters )
 	-- Executes a function, given a string
 	-- Example of string: core.playback.play
 	if type ( name ) ~= "string" then return false end
 	if parameters and type ( parameters ) ~= "table" then return false end
 	
-	local timeout = nil
-	thread:send ( timeout , "cmd" , { cmd = name , parameters = parameters } )
-	
-	local val , key = thread:receive ( timeout , "returncmd" )
-	return unpack ( val )
+	return cmd ( name , parameters )
 end
-local function getvar ( thread , name )
+local function getvar ( name )
 	-- Executes a function, given a string
 	-- Example of string: core.playback.play
 	if type ( name ) ~= "string" then return false end
 	
-	local timeout = nil
-	thread:send ( timeout , "var" , name )
-	
-	local val , key = thread:receive ( timeout , "returnvar" )
-	local ok , err = unpack ( val )
-	if ok then
-		return unpack ( err )
+	local ok , results = var ( name )
+	if ok then 
+		return results
 	else
-		return false , err
+		return nil , results
 	end
 end
 local function auth ( headers )
@@ -256,7 +250,7 @@ local function auth ( headers )
 	end
 end
 
-local function xmlrpcserver ( thread , skt , requestdetails )
+local function xmlrpcserver ( skt , requestdetails )
 	require "xmlrpc"
 	local authorised , typ = auth ( requestdetails.headers )
 	if not authorised then
@@ -277,7 +271,7 @@ local function xmlrpcserver ( thread , skt , requestdetails )
 		end
 		list_params = { depack ( list_params or { } ) }
 		
-		local ok , result = execute ( thread , method_name , list_params )
+		local ok , result = execute ( method_name , list_params )
 
 		if ok then
 			--result = table.serialise ( result ) -- MASSIVE HACK, makes it hard for non-lua xmlrpc clients - not really xmlrpc any more.
@@ -291,7 +285,7 @@ local function xmlrpcserver ( thread , skt , requestdetails )
 		return true
 	end
 end
-local function basiccmdserver ( thread , skt , requestdetails )
+local function basiccmdserver ( skt , requestdetails )
 	-- Execute action based on GET string.
 	local authorised , typ = auth ( requestdetails.headers )
 	if not authorised then
@@ -354,13 +348,13 @@ local function basiccmdserver ( thread , skt , requestdetails )
 					return 500 , doc
 				end
 			end
-			local status , doc = makeresponse ( execute ( thread , cmd , params ) )
+			local status , doc = makeresponse ( execute ( cmd , params ) )
 			local code , str , msg , bytessent = httpsend ( skt , requestdetails , { status = status , body = doc } )
 			return true
 		end
 	end
 end
-local function webserver ( thread , skt , requestdetails )
+local function webserver ( skt , requestdetails )
 		local code , doc , hdr = nil , nil , { }
 		local publicdir = "."
 		local allowdirectorylistings = true
@@ -458,7 +452,7 @@ local function webserver ( thread , skt , requestdetails )
 		
 		return true
 end
-local function jsonserver ( thread , skt , requestdetails )
+local function jsonserver ( skt , requestdetails )
 	require "Json"
 	--print ( "Json cmd received: " , requestdetails.body )
 	local hdr = { ["content-type"] = "application/json" }
@@ -469,7 +463,7 @@ local function jsonserver ( thread , skt , requestdetails )
 			local code = 200
 			for i , v in ipairs ( o ) do
 				if v.cmd then
-					t [ i ] = { execute ( thread , v.cmd , v.params ) }
+					t [ i ] = { execute ( v.cmd , v.params ) }
 				else -- Not a command?
 					code = 206
 					t [ i ] = { false , "Provide a function" }
@@ -487,7 +481,7 @@ local function jsonserver ( thread , skt , requestdetails )
 		while true do
 			local v = requestdetails.queryvars [ tostring ( i ) ]
 			if not v then break end
-			t [ i ] = getvar ( thread , v )
+			t [ i ] = getvar ( v )
 			i = i + 1
 		end
 		httpsend ( skt , requestdetails , { status = 200 , headers = hdr , body = Json.Encode ( t ) } )
@@ -496,7 +490,7 @@ local function jsonserver ( thread , skt , requestdetails )
 		httpsend ( skt , requestdetails , { status = 400 , headers = hdr } )
 	end
 end
-local function lompserver ( thread , skt )
+local function lompserver ( skt )
 	while true do -- Keep doing it until connection is closed.
 		-- Retrive HTTP header
 		local found , chunk , code , request , rsize = false , 0 , false , "" , 0
@@ -545,19 +539,19 @@ local function lompserver ( thread , skt )
 		
 		if Method == "POST" then
 			if file == "/LOMP" and headers [ "content-type" ] == "text/xml" then -- This is an xmlrpc command for lomp
-				xmlrpcserver ( thread , skt , requestdetails )
+				xmlrpcserver ( skt , requestdetails )
 			elseif file == "/JSON" then
-				jsonserver ( thread , skt , requestdetails )
+				jsonserver ( skt , requestdetails )
 			else
-				webserver ( thread , skt , requestdetails )
+				webserver ( skt , requestdetails )
 			end
 		elseif Method == "GET" or Method == "HEAD" then
 			if file == "/BasicCMD" then
-				basiccmdserver ( thread , skt , requestdetails )
+				basiccmdserver ( skt , requestdetails )
 			elseif file == "/JSON" then
-				jsonserver ( thread , skt , requestdetails )
+				jsonserver ( skt , requestdetails )
 			else
-				webserver ( thread , skt , requestdetails )
+				webserver ( skt , requestdetails )
 			end
 		elseif Method == "TRACE" then -- Send back request as body
 			httpsend ( skt , requestdetails , 200 , { [ 'content-type'] = "message/http" } , request )
@@ -569,9 +563,8 @@ local function lompserver ( thread , skt )
 		break
 	end
 end
-function server.initiate ( thread , host , port )
-	local srv, err
-	srv , err = socket.bind ( host , port , 100 )
+function server.initiate ( host , port )
+	local srv, err = socket.bind ( host , port , 100 )
 	if srv then 
 		--[[copas.addserver( server , function echoHandler ( skt )
 			while true do
@@ -585,18 +578,13 @@ function server.initiate ( thread , host , port )
 				end
 			end
 		end ) --]] -- Echo Handler
-		copas.addserver ( srv , function ( skt ) return lompserver ( thread , skt ) end )
+		copas.addserver ( srv , function ( skt ) return lompserver ( skt ) end )
 		updatelog ( "Server started; bound to '" .. host .. "', port #" .. port , 4 , _G ) 
 		return true
 	else
 		return ferror ( "Server could not be started: " .. err , 0 )
 	end
 end
-function server.step ( )
-	copas.step ( )
-end
 
-server.initiate ( ... )
-while true do
-	server.step ( )
-end
+server.initiate ( config.address , config.port )
+addstep ( copas.step )
