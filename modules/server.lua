@@ -325,8 +325,8 @@ local function basiccmdserver ( skt , requestdetails )
 		end
 		
 		do
-			local doc
 			local function makeresponse ( ok , response )
+				local doc
 				if ok then
 					doc = "<html><head><title>Completed Command: " .. cmd .. "</title></head><body><h1>Completed Command: " .. cmd .. "</h1><h2>Results:</h2><ul>" 
 					for i , v in ipairs ( response ) do
@@ -339,11 +339,7 @@ local function basiccmdserver ( skt , requestdetails )
 					
 					return 200 , doc
 				else
-					doc = "<html><head><title>Failure in: " .. cmd .. "</title></head><body><h1>Failure in: " .. cmd .. "</h1><h2>Error:</h2>" 
-					if not pcallok then
-						doc = doc .. "<p>" .. response .. "</p>"
-					end					
-					doc = doc .. "</body></html>" 
+					doc = "<html><head><title>Failure in: " .. cmd .. "</title></head><body><h1>Failure in: " .. cmd .. "</h1><h2>Error:</h2><p>" .. response .. "</p></body></html>" 
 					
 					return 500 , doc
 				end

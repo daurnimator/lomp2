@@ -69,11 +69,11 @@ function new ( name , playlistnumber )
 	
 	local mt = { }
 	local revisions = { [ 0 ] = { name = name , length = 0 } }
-	local pl = setmetatable ( { revision = 0 , revisions = revisions } , mt )
+	local pl = setmetatable ( { revisions = revisions } , mt )
 	
-	mt.__index = function ( t , k ) return playlistrev ( revisions , pl.revision , 0 ) [ k ] end
+	mt.__index = function ( t , k ) if k == "revision" then return #pl.revisions else return playlistrev ( revisions , pl.revision , 0 ) [ k ] end end
 	mt.__newindex = function ( t , k , v )
-		print("NEW PLAYLIST newindex",t,k,v )
+		print("PLAYLIST newindex",t,k,v )
 	end
 	
 	vars.playlist [ playlistnumber ] = pl

@@ -25,6 +25,9 @@ function core.savestate ( )
 		.. "vars.softqueuepl = " .. vars.softqueuepl .. ";\n"
 		.. "vars.ploffset = " .. vars.ploffset .. ";\n"
 	
+	--local current = vars.queue [ 0 ]
+	--if current then core.item.additem ( current , -2 , 1 ) end -- If currently playing a song, add to start of hardqueue so its first up
+	
 	-- Playlists
 	local i = -2
 	while true do

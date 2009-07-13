@@ -12,6 +12,8 @@
 require "general"
 require "player"
 
+local strfind , strmatch , strlower = string.find , string.match , string.lower
+
 module ( "lomp" , package.seeall )
 
 local t = os.time ( )
@@ -36,17 +38,20 @@ vars = {
 }
 
 function core.quit ( )
+	player.stop ( )
+	
 	if metadata.savecache then
 		local ok , err = metadata.savecache ( )
 	end
 	if core.savestate then 
 		local ok , err = core.savestate ( )
 	end
-	local ok = player.stop ( )
+	
 	
 	updatelog ( "Quiting by request" , 4 )
 	
-	os.exit ( )
+	quit = true
+	return true
 end
 
 core._VERSION = core._MAJ .. "." .. core._MIN .. "." .. core._INC 
@@ -74,8 +79,8 @@ do -- Restore State
 end
 
 function core.checkfileaccepted ( filename )
-	local extension = string.match ( filename , "%.?([^%./]+)$" )
-	extension = string.lower ( extension )
+	local extension = strmatch ( filename , "%.?([^%./]+)$" )
+	extension = strlower ( extension )
 	
 	local accepted = false
 	for i , v in ipairs ( player.extensions ) do
@@ -83,8 +88,7 @@ function core.checkfileaccepted ( filename )
 	end
 	if accepted == true then 
 		for i , v in ipairs ( config.banextensions ) do
-			local found = string.find ( extension , v )
-			if found then return false , ( "Banned file extension (" .. extension .. "): " .. filename )  end
+			if strfind ( extension , v ) then return false , ( "Banned file extension (" .. extension .. "): " .. filename )  end
 		end
 	else	return false, ( "Invalid file type (" .. extension .. "): " .. filename )
 	end
@@ -100,9 +104,7 @@ vars.queue = setmetatable ( { } , {
 			return vars.hardqueue [ k ]
 		else
 			local softqueuelen = vars.playlist [ vars.softqueuepl ].length
-			if softqueuelen <= 0 then
-				--return nil
-			else
+			if softqueuelen > 0 then
 				local insoft = vars.ploffset + k - vars.hardqueue.length
 				if insoft > softqueuelen and vars.loop and ( insoft - softqueuelen ) < vars.ploffset then
 					insoft = insoft - softqueuelen
@@ -110,7 +112,7 @@ vars.queue = setmetatable ( { } , {
 				return vars.playlist [ vars.softqueuepl ] [ insoft ] -- This could be an item OR nil
 			end
 		end
-	end,
+	end ;
 } )
 
 function core.setsoftqueueplaylist ( num )

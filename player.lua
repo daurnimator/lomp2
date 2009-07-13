@@ -29,6 +29,7 @@ local bus = pipeline:get_bus ( )
 bus:add_signal_watch ( )
 
 function queuesong ( typ , source )
+	if not typ or not source then return false end
 	local uri
 	if typ == "file" then
 		uri = "file://" .. source
@@ -38,19 +39,13 @@ function queuesong ( typ , source )
 end
 
 function play ( typ , source , offset )
-	queuesong ( typ , source )
+	if not typ or not source then return false end
 	
-	pipeline:set_state ( gst.STATE_PLAYING )
-	pipeline:get_state ( -1 )
-	
-	if offset then seek ( offset ) end
-	return true
-end
-
-function changesong ( newtyp , newsource , newoffset )	
 	pipeline:set_state ( gst.STATE_READY )
 	pipeline:get_state ( -1 )
-	queuesong ( newtyp , newsource )
+	
+	queuesong ( typ , source )
+	
 	pipeline:set_state ( gst.STATE_PLAYING )
 	pipeline:get_state ( -1 )
 	
@@ -90,8 +85,7 @@ function seek ( offset , relative , percent )
 	end
 	
 	if relative then
-		local currentposition = select ( 3 , pipeline:query_position( gst.FORMAT_TIME ) )
-		offset = offset + currentposition
+		offset = offset + getposition ( )
 	end
 	
 	if offset > tracklength or offset < 0 then return false end
@@ -133,6 +127,11 @@ function getvolume ( )
 	return pipeline:get ( "volume" ) * 100 , pipeline:get ( "mute" )
 end
 
+function getposition ( )
+	local r , t , position = pipeline:query_position( gst.FORMAT_TIME )
+	return position / 1000 -- Convert from milliseconds to seconds
+end
+
 bus:connect ( "message::eof" , function ( )
 		--print("eof")
 		--triggers.triggercallback ( "songstopped" , typ , source , offset )
@@ -141,5 +140,6 @@ bus:connect ( "message::eof" , function ( )
 --bus:connect ( "message::state-changed" , function ( ) print ("statechange" ) end )
 
 pipeline:connect ( "about-to-finish" , function ( )
+		updatelog ( "About to finish song" , 5 )
 		triggers.triggercallback ( "songabouttofinish" )
 	end )

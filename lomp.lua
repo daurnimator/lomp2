@@ -192,8 +192,10 @@ require "lomp-debug" -- TODO: remove debug
 -- Initialisation finished.
 updatelog ( "LOMP Loaded " .. os.date ( "%c" ) , 3 )
 
+quit = false
+
 local i = 1
-while true do
+while not quit do
 	steps [ i ] ( )
 	if i == #steps then i = 1 else i = i + 1 end
 end

@@ -112,18 +112,18 @@ function next ( )
 end
 
 function forward ( queueonly ) -- Moves forward one song in the queue
-	local m -- More songs left?
+	local success
 	if vars.queue [ 0 ] then
 		if vars.queue [ 0 ].played then
 			table.insert ( vars.played , 1 , vars.queue [ 0 ] ) -- Add current to played (history)
 			vars.played.revision = vars.played.revision + 1
 		end
 	end
-	if #vars.hardqueue > 0 then -- Hard queue left
-		table.remove ( vars.hardqueue , 0 ) -- Shifts all elements down
+	if vars.hardqueue.length > 0 then -- Hard queue left
+		vars.queue [ 0 ] = vars.hardqueue [ 1 ]
+		core.item.removeitem ( -2 , 1 )
 		
-		vars.hardqueue.revision = vars.hardqueue.revision + 1
-		m = true
+		success = true
 	else
 		if vars.queue [ 1 ] then
 			vars.queue [ 0 ] = vars.queue [ 1 ]
@@ -136,23 +136,23 @@ function forward ( queueonly ) -- Moves forward one song in the queue
 					
 				end
 			end
-			m = true
-		else -- No more songs.
-			m = false
+			success = true -- More songs left
+		else
+			success = false -- No more songs.
 		end
 	end
 	if state == "playing" then
-		if m then
+		if success then
 			if queueonly then
-				player.queuesong ( vars.queue [ 0 ].typ , vars.queue [ 0 ].source )
+				success = player.queuesong ( vars.queue [ 0 ].typ , vars.queue [ 0 ].source )
 			else
-				player.changesong ( vars.queue [ 0 ].typ , vars.queue [ 0 ].source ) 
+				success = player.play ( vars.queue [ 0 ].typ , vars.queue [ 0 ].source ) 
 			end
 		end
 	else
 		stop ( ) -- Stop if in non-playing state (eg, paused)
 	end
-	if m then return true else return false end
+	return success
 end
 function backward ( ) -- Moves back one song from the history
 	stop ( )
