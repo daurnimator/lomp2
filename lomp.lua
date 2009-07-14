@@ -93,6 +93,7 @@ require "lomp-core"
 require "modules.metadata"
 require "modules.albumart"
 require "modules.server"
+require "modules.filter"
 
 pcall ( require , "luarocks.require" ) -- Activates luarocks if available.
 

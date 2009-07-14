@@ -34,7 +34,7 @@ function core.savestate ( )
 		local pl = vars.playlist [ i ]
 		if not pl then break end
 		s = s .. "core.playlist.new(" .. ss ( pl.name ) .. "," .. i .. ")\n" -- Name in this line does nothing
-			.. "vars.playlist[" .. i .. "].revisions[0]={name=" .. ss ( pl.name ) .. ";length=" .. pl.length .. ";\n"
+			.. "vars.playlist[" .. i .. "].revisions[1]={length=" .. pl.length .. ";\n"
 		local j = 1
 		while true do
 			local item = pl [ j ]
