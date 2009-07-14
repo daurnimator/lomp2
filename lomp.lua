@@ -17,6 +17,8 @@ end
 
 module ( "lomp" , package.seeall )
 
+quit = false
+
 do 
 	log = ""
 
@@ -196,8 +198,6 @@ require "lomp-debug" -- TODO: remove debug
 
 -- Initialisation finished.
 updatelog ( "LOMP Loaded " .. os.date ( "%c" ) , 3 )
-
-quit = false
 
 local i = 1
 while not quit do

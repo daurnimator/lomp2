@@ -141,5 +141,5 @@ bus:connect ( "message::eof" , function ( )
 
 pipeline:connect ( "about-to-finish" , function ( )
 		updatelog ( "About to finish song" , 5 )
-		triggers.triggercallback ( "songabouttofinish" )
+		triggers.triggercallback ( "player_abouttofinish" )
 	end )

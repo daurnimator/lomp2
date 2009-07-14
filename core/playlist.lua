@@ -79,7 +79,7 @@ function new ( name , playlistnumber )
 	vars.playlist [ playlistnumber ] = pl
 	vars.playlist.revision = vars.playlist.revision + 1
 	
-	triggers.triggercallback ( "playlist_created" , playlistnumber , pl )
+	triggers.triggercallback ( "playlist_create" , playlistnumber , pl )
 	
 	return playlistnumber , name
 end
@@ -95,7 +95,7 @@ function delete ( num )
 	vars.pl.revision = vars.pl.revision + 1
 	if pl == vars.queue.softqueuepl then vars.queue.softqueuepl = -1 end -- If deleted playlist was the soft queue
 	
-	triggers.triggercallback ( "playlist_deleted" , num , pl )
+	triggers.triggercallback ( "playlist_delete" , num , pl )
 	
 	return num
 end
@@ -108,7 +108,7 @@ function clear ( num )
 	
 	pl.revisions = { [ 0 ] = { name = pl.name , length = 0 } }
 	
-	triggers.triggercallback ( "playlist_cleared" , num , pl )
+	triggers.triggercallback ( "playlist_clear" , num , pl )
 	
 	return pl
 end
@@ -121,7 +121,7 @@ function randomise ( num )
 	
 	pl.revisions [ #pl.revisions + 1 ] = table.randomise ( collapserev ( pl.revisions , pl.revision ) , pl.length )
 	
-	triggers.triggercallback ( "playlist_sorted" , num , pl )
+	triggers.triggercallback ( "playlist_sort" , num , pl )
 	
 	return true
 end
@@ -134,7 +134,7 @@ function sort ( num , eq )
 
 	pl.revisions [ #pl.revisions + 1 ] = table.stablesort ( collapserev ( pl.revisions , pl.revision ) , eq )
 	
-	triggers.triggercallback ( "playlist_sorted" , num , pl )
+	triggers.triggercallback ( "playlist_sort" , num , pl )
 	
 	return true
 end

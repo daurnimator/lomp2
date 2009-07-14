@@ -36,6 +36,8 @@ function play ( fromoffset )
 	state = "playing"
 	vars.queue [ 0 ].laststarted = os.time ( )
 	
+	triggers.triggercallback ( "playback_startsong" , typ , source )
+	
 	return true
 end
 
@@ -48,7 +50,7 @@ function stop ( )
 		player.stop ( )
 		state = "stopped"
 		
-		triggers.triggercallback ( "songstopped" , typ , source , stopoffset )
+		triggers.triggercallback ( "playback_stop" , typ , source , stopoffset )
 		
 		return true
 	else -- Nothing to stop...
@@ -58,6 +60,7 @@ end
 function pause ( )
 	if player.pause ( ) then
 		state = "paused"
+		triggers.triggercallback ( "playback_pause" )
 		return true
 	else
 		return false
@@ -66,7 +69,8 @@ end
 function unpause ( )
 	if player.unpause ( ) then
 		state = "playing"
-			return true
+		triggers.triggercallback ( "playback_unpause" )
+		return true
 	else
 		return false
 	end
@@ -84,22 +88,18 @@ end
 function goto ( songnum )
 	stop ( )
 	
-	if songnum == 0 then -- Stop?
-		
+	if songnum == 0 then
+		return true
 	elseif songnum > 0 then
-		local r
 		for i = 1 , songnum do
-			r = forward ( )
-			if not r then break end
+			if not forward ( ) then return false end
 		end
-		return r
+		return true
 	elseif songnum < 0 then
-		local r
 		for i = 1 , -songnum do
-			r = backward ( )
-			if not r then break end
+			if not select ( 2 , backward ( ) ) then return false end
 		end
-		return r
+		return true
 	end
 end
 
@@ -143,11 +143,13 @@ function forward ( queueonly ) -- Moves forward one song in the queue
 	end
 	if state == "playing" then
 		if success then
+			local typ , source = vars.queue [ 0 ].typ , vars.queue [ 0 ].source 
 			if queueonly then
-				success = player.queuesong ( vars.queue [ 0 ].typ , vars.queue [ 0 ].source )
+				success = player.queuesong ( typ , source )
 			else
-				success = player.play ( vars.queue [ 0 ].typ , vars.queue [ 0 ].source ) 
+				success = player.play ( typ , source ) 
 			end
+			triggers.triggercallback ( "playback_startsong" , typ , source )
 		end
 	else
 		stop ( ) -- Stop if in non-playing state (eg, paused)
@@ -164,11 +166,11 @@ function backward ( ) -- Moves back one song from the history
 		vars.queue [ 0 ] = vars.played [ 1 ]
 		table.remove ( vars.played , 1 ) -- Shifts all elements down
 		vars.played.revision = vars.played.revision + 1
-		return true
+		return true , true
 	else -- Nothing in history.
-		return false
+		return true , false
 	end
 end
 
-triggers.registercallback ( "songabouttofinish" , function ( ) forward ( true ) end , "queuenextsong" )
+triggers.registercallback ( "player_abouttofinish" , function ( ) forward ( true ) end , "queuenextsong" )
 

@@ -12,6 +12,10 @@
 local dir = dir -- Grab vars needed
 local updatelog , ferror = updatelog , ferror
 
+local strfind = string.find
+local tblinsert , tblremove , tblconcat = table.insert , table.remove , table.concat
+local osdate , ostime = os.date , os.time
+
 -- Scrobbler Plugin
  -- Sends data to last.fm, etc
 
@@ -41,17 +45,17 @@ function handshake ( user , md5pass , count )
 		return ferror ( "Could not handshake with last.fm" , 1 )
 	end
 	
-	local time = os.time ( )
+	local time = ostime ( )
 	local authenticationtoken = md5.sumhexa ( md5pass .. time )
 	local rurl = "http://post.audioscrobbler.com/?hs=true&p=1.2.1&c=" .. clientid .. "&v=" .. clientver .. "&u=" .. user .. "&t=" .. time .. "&a=" .. authenticationtoken
 	
 	local body , code , h = http.request ( rurl )
 	if code == 200 then
-		local i , j , cap = string.find ( body , "([^\n]+)" )
+		local i , j , cap = strfind ( body , "([^\n]+)" )
 		if cap == "OK" then
-			i , j , sessionid = string.find ( body , "([^\n]+)" , j + 2 )
-			i , j , nowplayingurl = string.find ( body , "([^\n]+)" , j + 2 )
-			i , j , submissionurl = string.find ( body , "([^\n]+)" , j + 2 )
+			i , j , sessionid = strfind ( body , "([^\n]+)" , j + 2 )
+			i , j , nowplayingurl = strfind ( body , "([^\n]+)" , j + 2 )
+			i , j , submissionurl = strfind ( body , "([^\n]+)" , j + 2 )
 			if sessionid and nowplayingurl and submissionurl then
 				return cap
 			else
@@ -62,8 +66,8 @@ function handshake ( user , md5pass , count )
 		elseif cap == "BADAUTH" then
 			return false , cap , "Incorrect user/password combination"
 		elseif cap == "BADTIME" then
-			return false , cap , "Fix your damn clock, do you really think your time is currently " .. os.date ( "%c" , time )
-		elseif string.find ( cap , "^FAILED" ) then
+			return false , cap , "Fix your damn clock, do you really think your time is currently " .. osdate ( "%c" , time )
+		elseif strfind ( cap , "^FAILED" ) then
 			-- Retry
 			return handshake ( user , md5pass , count )
 		end
@@ -81,11 +85,11 @@ function nowplaying ( typ , songpath )
 	--local songpath = lomp.vars.queue [ 0 ].source
 	local songdetails = lomp.tags.getdetails ( songpath )
 	
-	local artistname = url.escape ( table.concat ( songdetails.tags.artist , ", " ) )
-	local trackname = url.escape ( table.concat ( songdetails.tags.title , ", " ) )
-	local album = url.escape ( table.concat ( songdetails.tags.album , ", " ) )
+	local artistname = url.escape ( tblconcat ( songdetails.tags.artist , ", " ) )
+	local trackname = url.escape ( tblconcat ( songdetails.tags.title , ", " ) )
+	local album = url.escape ( tblconcat ( songdetails.tags.album , ", " ) )
 	local length = url.escape ( songdetails.length or "" )
-	local tracknumber = url.escape ( table.concat ( songdetails.tags.tracknumber , " , " ) )
+	local tracknumber = url.escape ( tblconcat ( songdetails.tags.tracknumber , " , " ) )
 	local musicbrainzid = ""
 	
 	local rbody = "s=" .. sessionid .. "&a=" .. artistname .. "&t=" .. trackname .. "&b=" .. album .. "&l=" .. length .. "&n=" .. tracknumber .. "&m=" .. musicbrainzid
@@ -93,7 +97,7 @@ function nowplaying ( typ , songpath )
 	local body , code , h = http.request ( nowplayingurl , rbody )
 
 	if code == 200 then
-		local i , j , cap = string.find ( body , "([^\n]+)" )
+		local i , j , cap = strfind ( body , "([^\n]+)" )
 		if cap == "OK" then
 			return true
 		elseif cap == "BADSESSION" then
@@ -130,7 +134,7 @@ function submissions ( )
 	local body , code , h = http.request ( submissionurl , rbody )
 	
 	if code == 200 then
-		local i , j , cap = string.find ( body , "([^\n]+)" )
+		local i , j , cap = strfind ( body , "([^\n]+)" )
 		if cap == "OK" then
 			-- Remove tracks from submit queue
 			submissionsqueue = { }
@@ -139,46 +143,46 @@ function submissions ( )
 			updatelog ( "Bad last.fm session, re-handshaking" , 2 )
 			sessionid = nil
 			submissions ( )
-		elseif string.find ( cap , "^FAILED" ) then
+		elseif strfind ( cap , "^FAILED" ) then
 		end
 	end
 end
 function addtosubmissions ( typ , source )
-	local d = lomp.tags.getdetails ( source )
+	local d = lomp.metadata.getdetails ( source )
 	if not d.length or d.length <= 30 then return false end -- Has to be > 30 seconds in length to submit
 	local t = { }
-	t.artist = url.escape ( table.concat ( d.tags.artist , ", " ) )
-	t.title = url.escape ( table.concat ( d.tags.title , ", " ) )
-	t.starttime = os.time ( )
+	t.artist = url.escape ( tblconcat ( d.tags.artist , ", " ) )
+	t.title = url.escape ( tblconcat ( d.tags.title , ", " ) )
+	t.starttime = ostime ( )
 	if typ == "file" then t.source = "P" elseif typ == "stream" then t.source "R" else t.source = "P" end
 	t.rating = "" -- TODO: Should check track rating and maybe give "L" ....
 	t.length = url.escape ( d.length or "" )
-	t.album = url.escape ( table.concat ( d.tags.album , ", " ) )
-	t.tracknumber = url.escape ( table.concat ( d.tags.tracknumber , ", " ) )
+	t.album = url.escape ( tblconcat ( d.tags.album , ", " ) )
+	t.tracknumber = url.escape ( tblconcat ( d.tags.tracknumber , ", " ) )
 	t.musicbrainz = ""
-	table.insert ( submissionsqueue , t )
+	tblinsert ( submissionsqueue , t )
 	return true
 end
 
 function enablescrobbler ( )
-	lomp.triggers.registercallback ( "songplaying" , nowplaying , "Scrobbler Now-Playing" )
-	lomp.triggers.registercallback ( "songplaying" , addtosubmissions , "Scrobbler Add Song To Submit Queue" )
-	lomp.triggers.registercallback ( "songstopped" , function ( typ , source , stopoffset ) 
+	lomp.triggers.registercallback ( "playback_startsong" , nowplaying , "Scrobbler Now-Playing" )
+	lomp.triggers.registercallback ( "playback_startsong" , addtosubmissions , "Scrobbler Add Song To Submit Queue" )
+	lomp.triggers.registercallback ( "playback_stop" , function ( typ , source , stopoffset ) 
 		local d = lomp.metadata.getdetails ( source )
 		if stopoffset > 240 
 		or ( d and d.length and ( stopoffset / d.length ) > 0.5 ) then
 			submissions ( ) 
 		else 
-			table.remove ( submissionsqueue )
+			tblremove ( submissionsqueue )
 		end 
 	end , "Scrobbler Submissions" )
 	
 	enabled = true
 end
 function disablescrobbler ( )
-	deregistercallback ( "songplaying" , "Scrobbler Now-Playing" )
-	deregistercallback ( "songplaying" , "Scrobbler Add Song To Submit Queue" )
-	deregistercallback ( "songstopped" , "Scrobbler Submissions" )
+	lomp.triggers.deregistercallback ( "playback_startsong" , "Scrobbler Now-Playing" )
+	lomp.triggers.deregistercallback ( "playback_startsong" , "Scrobbler Add Song To Submit Queue" )
+	lomp.triggers.deregistercallback ( "playback_stop" , "Scrobbler Submissions" )
 	
 	enabled = false
 end

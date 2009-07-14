@@ -14,18 +14,21 @@ require "general"
 module ( "lomp.triggers" , package.see ( lomp ) )
 
 local callbacks = {
-	playlist_created = { function ( num , pl ) updatelog ( "Created playlist #" .. num .. ": '" .. pl.name .. "'" , 4 ) end } ;
-	playlist_deleted = { function ( num , pl ) updatelog ( "Deleted playlist #" .. num .. " (" .. pl.name .. ")" , 4 ) end } ;
-	playlist_cleared = { function ( num , pl ) updatelog ( "Cleared playlist #" .. num .. " (" .. pl.name .. ")" , 4 ) end } ;
-	playlist_sorted = { function ( num , pl ) updatelog ( "Sorted playlist #" .. num .. " (" .. pl.name .. ")" , 4 ) end } ;
+	playlist_create = { function ( num , pl ) updatelog ( "Created playlist #" .. num .. ": '" .. pl.name .. "'" , 4 ) end } ;
+	playlist_delete = { function ( num , pl ) updatelog ( "Deleted playlist #" .. num .. " (" .. pl.name .. ")" , 4 ) end } ;
+	playlist_clear = { function ( num , pl ) updatelog ( "Cleared playlist #" .. num .. " (" .. pl.name .. ")" , 4 ) end } ;
+	playlist_sort = { function ( num , pl ) updatelog ( "Sorted playlist #" .. num .. " (" .. pl.name .. ")" , 4 ) end } ;
 	
-	item_added = { function ( num , pl , position , object ) updatelog ( "Added item to playlist #" .. num .. " (" .. pl.name .. ") position #" .. position .. " Source: " .. object.source  , 4 ) end } ;
-	item_removed = { function ( num , pl , position , object ) updatelog ( "Removed item from playlist #" .. num .. " (" .. pl.name .. ") position #" .. position .. " Source: " .. object.source  , 4 ) end } ;
+	item_add = { function ( num , pl , position , object ) updatelog ( "Added item to playlist #" .. num .. " (" .. pl.name .. ") position #" .. position .. " Source: " .. object.source  , 4 ) end } ;
+	item_remove = { function ( num , pl , position , object ) updatelog ( "Removed item from playlist #" .. num .. " (" .. pl.name .. ") position #" .. position .. " Source: " .. object.source  , 4 ) end } ;
 	
-	songplaying = { } ; -- songplaying ( typ , source ) -- Triggered when song is played
-	songabouttofinish = { } ; -- songabouttofinish ( )
-	songfinished = { } ; -- songfinished ( typ , source )
-	songstopped = { } ; -- songstopped ( typ , source , stopoffset )
+	playback_stop = { } ; -- ( typ , source , stopoffset )
+	playback_pause = { } ;--  ( )
+	playback_unpause = { } ; -- ( )
+	playback_startsong = { } ; -- ( typ , source ) -- Triggered when song is played
+	
+	player_abouttofinish = { } ; -- ( )
+	player_finished = { } ; -- ( typ , source )
 }
 
 function registercallback ( callback , func , name )
@@ -42,6 +45,6 @@ function triggercallback ( callback , ... )
 	for i , v in ipairs ( callbacks [ callback ] ) do v ( ... ) end
 end
 
-registercallback ( "songplaying" , function ( )
+registercallback ( "playback_startsong" , function ( )
 		vars.queue [ 0 ].played = true -- Better way to figure this out?
 	end , "Set Played" )

@@ -132,24 +132,18 @@ end
 	end
 end--]] p = print
 
-triggers.registercallback ( "songplaying" , function ( )
+triggers.registercallback ( "playback_startsong" , function ( )
 		-- Print new song stats
 		local t = vars.queue [ 0 ]
 		print( "--------------------Now playing file: ", t.filename )
 		for k , v in pairs ( t ) do
-			print ( k , v )
-			if k == "tags" then
-				print ( "==== Tags:" )
-				for tag , val in pairs ( v ) do
-					for i , v in ipairs ( val ) do
-						print ( "Tag:" , tag , " = " , v ) 
-					end
-				end
+			print ( "", k , v )
+		end
+		print ( "==== Tags:" )
+		for tag , val in pairs ( t.tags ) do
+			for i , v in ipairs ( val ) do
+				print ( "" , "Tag:" , tag , " = " , v ) 
 			end
 		end
 		print ( "----------------------------------------------------------------" )
 	end , "Print song stats to screen" )
-
-triggers.registercallback ( "songfinished" , function ( )
-		print ( "Song has finished!!!!" )
-	end , "Debug" )
