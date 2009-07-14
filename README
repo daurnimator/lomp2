@@ -4,7 +4,7 @@ By Daurnimator
 Dependencies:
 	Lua 5.1						http://www.lua.org/
 		download:				http://www.lua.org/ftp/lua-5.1.4.tar.gz
-		can be obatained via:			apt-get install lua5.1
+		can be obtained via:			apt-get install lua5.1
 
 	Lgob (gstreamer module)				http://oproj.tuxfamily.org/wiki/doku.php?id=lgob
 	

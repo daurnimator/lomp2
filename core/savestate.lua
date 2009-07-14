@@ -25,8 +25,8 @@ function core.savestate ( )
 		.. "vars.softqueuepl = " .. vars.softqueuepl .. ";\n"
 		.. "vars.ploffset = " .. vars.ploffset .. ";\n"
 	
-	--local current = vars.queue [ 0 ]
-	--if current then core.item.additem ( current , -2 , 1 ) end -- If currently playing a song, add to start of hardqueue so its first up
+	local current = vars.queue [ 0 ]
+	if current then core.item.additem ( current , -2 , 1 ) end -- If currently playing a song, add to start of hardqueue so its first up
 	
 	-- Playlists
 	local i = -2
@@ -55,6 +55,9 @@ function core.savestate ( )
 	end
 	s = s .. "};\n"
 	
+	-- Player
+	local volume , mute = player.getvolume ( )
+	s = s .. "player.setvolume(" .. volume .. "); player." .. ( ( mute and "" ) or "un" ) .. "mute();\n"
 	
 	-- Plugin specified things??
 	
@@ -86,7 +89,7 @@ function core.restorestate ( )
 			if not f then
 				return ferror ( "Could not load state file: " .. err , 1 )
 			end
-			local t = { core = core , vars = vars } -- To make functions available - security issues?
+			local t = { core = core , vars = vars , player = player } -- To make functions available - security issues?
 			setfenv ( f , t )
 			f ( )
 		else

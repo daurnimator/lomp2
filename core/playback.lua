@@ -156,9 +156,12 @@ function forward ( queueonly ) -- Moves forward one song in the queue
 end
 function backward ( ) -- Moves back one song from the history
 	stop ( )
+	local current = vars.queue [ 0 ]
+	if current then
+		core.item.additem ( current , -2 , 1 )
+	end
 	if vars.played [ 1 ] then
-		core.item.additem ( vars.played [ 1 ] , -2 , 1 )
-		--table.insert ( vars.queue , 0 , vars.played [ 1 ] ) -- Move most recent history to current, shifting current to hardqueue (and shifting any others up)
+		vars.queue [ 0 ] = vars.played [ 1 ]
 		table.remove ( vars.played , 1 ) -- Shifts all elements down
 		vars.played.revision = vars.played.revision + 1
 		return true
