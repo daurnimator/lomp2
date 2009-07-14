@@ -119,7 +119,7 @@ function randomise ( num )
 		return ferror ( "'Randomise playlist' called with invalid playlist" , 1 ) 
 	end
 	
-	pl.revisions [ #pl.revisions + 1 ] = table.randomize ( collapserev ( pl.revisions , pl.revision ) )
+	pl.revisions [ #pl.revisions + 1 ] = table.randomise ( collapserev ( pl.revisions , pl.revision ) , pl.length )
 	
 	triggers.triggercallback ( "playlist_sorted" , num , pl )
 	

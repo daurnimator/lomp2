@@ -106,8 +106,8 @@ function packn ( skip , _ , ... )
 	end
 end
 
--- Randomize a table
-function table.randomize ( tbl , n )
+-- Randomise a table
+function table.randomise ( tbl , n )
 	n = n or #tbl
 	for i = 1 , n do
 		local j = math.random ( i , n )
@@ -200,24 +200,19 @@ end
 function table.serialise ( t , prefix )
 	prefix = prefix or ""
 	local s = ""
-	for k , v in pairs ( t ) do
-		if type ( k ) == "number" then 
-			k = '[' .. k .. ']'
-		else -- Its a string
-			k = '[' .. string.format ( '%q' , k ) .. ']'
+	
+	if type ( t ) == "table" then
+		local tbl = { }
+		for k , v in pairs ( t ) do
+			tbl [ #tbl + 1 ] = prefix .. '\t[' .. table.serialise ( k ) .. '] = ' .. table.serialise ( v , prefix .. "\t" )
 		end
-		
-		if type ( v ) == "table" then
-			s = s .. prefix .. k .. '= {\n'
-			s = s .. table.serialise ( v , prefix .. "\t" )
-			s = s .. prefix .. '};\n'
-		elseif type ( v ) == "string" then
-			s = s .. prefix .. k .. '= ' .. string.format ( '%q' , v ) .. ';\n'
-		elseif type ( v ) == "number" then
-			s = s .. prefix .. k .. '= ' .. v .. ';\n'
-		elseif type ( v ) == "boolean" then
-			s = s .. prefix .. k .. '= ' .. tostring ( v ) .. ';\n'
-		end
+		return prefix .. '{\n' .. table.concat ( tbl , ";\n" ) .. "\n" .. prefix .. '}'
+	elseif type ( t ) == "number" then
+		return t
+	elseif type ( t ) == "boolean" then
+		return tostring ( t )
+	--elseif type ( t ) == "string" then
+	else -- All other formats (including string and userdata)
+		return string.format ( '%q' , tostring ( t ) )
 	end
-	return s
 end

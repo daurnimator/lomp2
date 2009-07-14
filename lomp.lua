@@ -37,9 +37,13 @@ do
 	log = nil
 end
 
-local logfilehandle , err = io.open ( config.logfile , "a+" )
-if err then error ( data .. "Could not open log file: '" .. err .. "'\n" ) end
-
+local function openlogfile ( )
+	local logfilehandle , err = io.open ( config.logfile , "a+" )
+	if err then error ( data .. "Could not open log file: '" .. err .. "'\n" ) end
+	logfilehandle:setvbuf ( "no" )
+	return logfilehandle
+end
+local logfilehandle = openlogfile ( )
 function updatelog ( data , level )
 	data = tostring ( data )
 	if not level then level = 2 end
@@ -55,17 +59,14 @@ function updatelog ( data , level )
 	data = os.time ( ) .. ": \t" .. data
 	if level <= config.verbosity then io.stderr:write ( data .. "\n" ) end
 	if not io.type ( logfilehandle ) or io.type ( logfilehandle ) == "closed" then
-		local err
-		logfilehandle , err = io.open ( config.logfile , "a+" )
-		if err then error ( "Log file unavailable: " .. err ) end
+		logfilehandle = openlogfile ( )
 	end
 	data = data .. "\n"
 	
 	logfilehandle:seek ( "end" )
 	logfilehandle:write ( data )
-	logfilehandle:flush ( )
 	
-	if level == 0 then os.exit( 1 ) end
+	if level == 0 then os.exit ( 1 ) end
 	
 	return true
 end
@@ -203,3 +204,5 @@ while not quit do
 	steps [ i ] ( )
 	if i == #steps then i = 1 else i = i + 1 end
 end
+
+logfilehandle:close ( )
