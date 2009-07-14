@@ -182,12 +182,12 @@ function var ( var )
 	else
 		setfenv ( fn , setmetatable ( { } , buildMetatableGet ( _M ) ) )
 		local ok , var = pcall ( fn )
-		if not ok then -- Check for no errors while finding function
+		if not ok then -- Check for no errors while finding variable
 			return false , var
 		elseif type ( var ) ~= "string" and type ( var ) ~= "table" and type ( var ) ~= "number" and type ( var ) ~= "boolean" and var ~= nil then -- Make sure function was found, var already has to be a string, number or nil
 			return false , "Not a variable, tried to return value of: " .. type ( var )
 		else
-			return ok , var
+			return ok , var -- var could be nil
 		end
 	end
 end

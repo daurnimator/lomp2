@@ -477,9 +477,17 @@ local function jsonserver ( skt , requestdetails )
 		while true do
 			local v = requestdetails.queryvars [ tostring ( i ) ]
 			if not v then break end
-			t [ i ] = getvar ( v )
+			local result , err = getvar ( v )
+			if err then
+				t [ i ] = { false , err }
+			elseif result == nil then
+				t [ i ] = { true , Json.Null } -- NOTE: Should this be { false , "No value" } ??
+			else
+				t [ i ] = { true , result }
+			end
 			i = i + 1
 		end
+		--print ( "Json reply: " , Json.Encode ( t ) )
 		httpsend ( skt , requestdetails , { status = 200 , headers = hdr , body = Json.Encode ( t ) } )
 	else
 		-- Unsupported json method
@@ -522,7 +530,7 @@ local function lompserver ( skt )
 		file = socket.url.unescape ( file )
 		local queryvars = { }
 		if querystring then
-			for k, v in strgmatch( querystring , "([^=]+)=([^&]+)" ) do --"([%w%-%%%_%.%~]+)=([%w%%%-%_%.%~]+)&?") do
+			for k, v in strgmatch( querystring , "([^=]+)=([^&]+)&?" ) do --"([%w%-%%%_%.%~]+)=([%w%%%-%_%.%~]+)&?") do
 				queryvars [ socket.url.unescape ( k ) ] = socket.url.unescape ( v )
 			end
 		end
