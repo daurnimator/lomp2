@@ -143,7 +143,7 @@ local function doline ( line , skt )
 			return false , { 5 , nil , 'unknown command "' .. cmd .. '"' }
 		end
 	else
-		updatelog ( "FAILED CMD FIND" .. line .. i .. j .. cmd , 5 , _G )
+		updatelog ( "FAILED CMD FIND" .. line .. i .. j .. cmd , 5 )
 		return 
 	end
 end
@@ -153,7 +153,7 @@ local function mpdserver ( skt )
 	while true do
 		local line , err = copas.receive( skt )
 		if line then
-			if line ~= "status" then updatelog ( "New MPD Command: " .. line , 5 , _G ) end
+			if line ~= "status" then updatelog ( "New MPD Command: " .. line , 5 ) end
 			local ok , ack = doline ( line , skt )
 			if ok then
 				ok = ok .. "OK\n"
@@ -161,14 +161,14 @@ local function mpdserver ( skt )
 				ok = makeackmsg ( ack [ 1 ] , 0 , ack [ 2 ] , ack [ 3 ] )
 			--else -- nil.... bad commands array entry
 			end
-			--updatelog ( "MPD Replying: \n" .. ( ok or "NOT OK" ) , 5 , _G )
+			--updatelog ( "MPD Replying: \n" .. ( ok or "NOT OK" ) , 5 )
 			local bytessent , err = copas.send ( skt , ok )
 		else
 			if err == "closed" then
 				-- "MPD Client Disconnected"
 				return
 			else
-				return ferror ( "MPD Socket Error: " .. err , 3 , _G )
+				return ferror ( "MPD Socket Error: " .. err , 3 )
 			end
 		end
 	end
@@ -414,9 +414,9 @@ function initiate ( host , port )
 	srv , err = socket.bind ( host , port , 100 )
 	if srv then 
 		copas.addserver ( srv , mpdserver )
-		return updatelog ( "MPD server started; bound to '" .. host .. "', port #" .. port , 4 , _G ) 
+		return updatelog ( "MPD server started; bound to '" .. host .. "', port #" .. port , 4 ) 
 	else
-		return ferror ( "MPD server could not be started: " .. err , 1 , _G )
+		return ferror ( "MPD server could not be started: " .. err , 1 )
 	end
 end
 

@@ -59,5 +59,4 @@ apt-get install luarocks
 luarocks install lua-iconv
 apt-get install gstreamer0.10-plugins-base libgstreamer-plugins-base0.10-dev gstreamer0.10-plugins-good gstreamer0.10-plugins-bad gstreamer0.10-plugins-ugly
 
-Lgob is a tricky install, and currently a very new library, you will have to install it manually.
-
+Lgob is a tricky install, and currently a very new library, you will have to install it manually. (see url above)

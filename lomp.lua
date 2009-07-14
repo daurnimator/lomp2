@@ -36,10 +36,12 @@ do
 	
 	log = nil
 end
-	
-function updatelog ( data , level , env )
-	env = env or ( getfenv and getfenv ( ) ) or _G
-	data = env.tostring ( data )
+
+local logfilehandle , err = io.open ( config.logfile , "a+" )
+if err then error ( data .. "Could not open log file: '" .. err .. "'\n" ) end
+
+function updatelog ( data , level )
+	data = tostring ( data )
 	if not level then level = 2 end
 	
 	if level == 0 then data = "Fatal error: \t\t" .. data
@@ -50,24 +52,26 @@ function updatelog ( data , level , env )
 	elseif level == 5 then data = "Debug: \t\t\t" .. data
 	end
 	
-	data = env.os.time ( ) .. ": \t" .. data
-	if level <= env.config.verbosity then env.io.stderr:write ( data .. "\n" ) end --env.print ( data ) end
-	
+	data = os.time ( ) .. ": \t" .. data
+	if level <= config.verbosity then io.stderr:write ( data .. "\n" ) end
+	if not io.type ( logfilehandle ) or io.type ( logfilehandle ) == "closed" then
+		local err
+		logfilehandle , err = io.open ( config.logfile , "a+" )
+		if err then error ( "Log file unavailable: " .. err ) end
+	end
 	data = data .. "\n"
 	
-	local file , err = env.io.open ( env.config.logfile , "a+" )
-	if err then error ( data .. "Could not open log file: '" .. err .. "'\n" ) end
-	file:seek ( "end" )
-	file:write ( data )
-	file:flush ( )
-	file:close ( )
+	logfilehandle:seek ( "end" )
+	logfilehandle:write ( data )
+	logfilehandle:flush ( )
+	
 	if level == 0 then os.exit( 1 ) end
+	
 	return true
 end
-function ferror ( data , level , env )
-	if not env or not env.updatelog then env = _G end
-	if updatelog and not env.updatelog then env.updatelog = updatelog end
-	env.updatelog ( data , level , env )
+-- A macro to log an error and return false and an error.
+function ferror ( data , level )
+	updatelog ( data , level )
 	return false , data
 end
 
