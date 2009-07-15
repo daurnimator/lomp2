@@ -57,6 +57,7 @@ function stop ( )
 		return false
 	end
 end
+
 function pause ( )
 	if player.pause ( ) then
 		state = "paused"
@@ -66,6 +67,7 @@ function pause ( )
 		return false
 	end
 end
+
 function unpause ( )
 	if player.unpause ( ) then
 		state = "playing"
@@ -75,6 +77,7 @@ function unpause ( )
 		return false
 	end
 end
+
 function togglepause ( )
 	if state == "playing" then
 		return pause ( )
@@ -156,6 +159,7 @@ function forward ( queueonly ) -- Moves forward one song in the queue
 	end
 	return success
 end
+
 function backward ( ) -- Moves back one song from the history
 	stop ( )
 	local current = vars.queue [ 0 ]
@@ -170,6 +174,12 @@ function backward ( ) -- Moves back one song from the history
 	else -- Nothing in history.
 		return true , false
 	end
+end
+
+
+function seek ( offset , relative , percent )
+	if type ( offset ) ~= "number" then return false end
+	return player.seek ( offset , relative , percent )
 end
 
 triggers.registercallback ( "player_abouttofinish" , function ( ) forward ( true ) end , "queuenextsong" )

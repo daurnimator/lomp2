@@ -35,20 +35,14 @@ item.extra = {...}
 --]]
 
 modules = {
-	"modules.fileinfo.wavpack" ,
-	"modules.fileinfo.mpeg" ,
-	"modules.fileinfo.flac"
+	"modules.fileinfo.wavpack" ;
+	"modules.fileinfo.mpeg" ;
+	"modules.fileinfo.flac" ;
+	"modules.fileinfo.ogg" ;
 }
 
-local mpeg = require 
-local flac = require 
-
-require "modules.fileinfo.APE"
-require "modules.fileinfo.id3v2"
-require "modules.fileinfo.id3v1"
-
-exttodec = { }
-exttoenc = { }
+local exttodec = { }
+local exttoenc = { }
 for i , v in ipairs ( modules ) do
 	local extensions , decoder , encoder = unpack ( require ( v ) )
 	for i , v in ipairs ( extensions ) do
@@ -62,7 +56,7 @@ local function getitem ( path )
 		path = path ;
 		filename = string.match ( path , "([^/]+)$" ) ;
 		tags = { } ;
-		extras = { } ;
+		extra = { } ;
 	}
 	item.extension = string.lower ( string.match ( item.filename , "%.([^%./]+)$" ) )
 

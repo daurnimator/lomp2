@@ -69,7 +69,7 @@ local allcommands = {
 	playid = false , 
 	random = false , ["repeat"] = true ,
 	seek = false , seekid = false ,
-	setvol = false ,
+	setvol = true ,
 	volume = false ,
 	
 	-- Misc
@@ -137,7 +137,7 @@ local function doline ( line , skt )
 			elseif t == false then
 				return false , err
 			else
-				error ( "Bad type" )
+				error ( "Doline: Bad type" )
 			end
 		else
 			return false , { 5 , nil , 'unknown command "' .. cmd .. '"' }
@@ -399,6 +399,14 @@ commands["repeat"] = function ( line , skt ) -- repeat is a lua reserverd word, 
 		return
 	else
 		return false , { 2 , "repeat" , "Bad argument" }
+	end
+end
+commands.setvol = function ( line , skt )
+	local vol = tonumber ( string.match ( line , "setvol%s+\"?(%d+)" ) )
+	if vol >= 0 and vol <= 100 then
+		execute ( "player.setvolume"  , { vol } )
+	else
+		return false , { 2 , nil , "bad or no argument" }
 	end
 end
 commands.close = function ( line , skt )

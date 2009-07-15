@@ -12,6 +12,9 @@
 local dir = dir -- Grab vars needed
 local updatelog , ferror = updatelog , ferror
 
+local lomp = lomp
+
+local pcall , require , loadfile , ipairs = pcall , require , loadfile , ipairs
 local strfind = string.find
 local tblinsert , tblremove , tblconcat = table.insert , table.remove , table.concat
 local osdate , ostime = os.date , os.time
@@ -19,15 +22,15 @@ local osdate , ostime = os.date , os.time
 -- Scrobbler Plugin
  -- Sends data to last.fm, etc
 
-module ( "scrobbler" , package.seeall )
+module ( "scrobbler" )
 
 _NAME = "Last.fm Audio Scrobbler"
 _VERSION = 0.1
 
 pcall ( require , "luarocks.require" ) -- Activates luarocks if available.
 
-http = require "socket.http"
-url = require("socket.url")
+local http = require "socket.http"
+local url = require "socket.url"
 require "md5" 
 
 loadfile ( dir .. "config" ) ( ) -- Load config

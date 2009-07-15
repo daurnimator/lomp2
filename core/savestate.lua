@@ -19,7 +19,8 @@ local function ss ( s )
 end
 
 function core.savestate ( )
-	local s = core._NAME .. "\t" .. core._VERSION .. " State File.\tCreated: " .. os.date ( ) .. "\n"
+	local s = core._NAME .. "\t" .. core._VERSION .. " State File.\tCreated: " .. os.date ( ) .. "\n\n"
+		.. "local cpn , cic = core.playlist.new , core.item.create\n"
 		.. "vars.rpt = " .. tostring ( vars.rpt ) .. ";\n"
 		.. "vars.loop = " .. tostring ( vars.loop ) .. ";\n"
 		.. "vars.softqueuepl = " .. vars.softqueuepl .. ";\n"
@@ -33,13 +34,13 @@ function core.savestate ( )
 	while true do
 		local pl = vars.playlist [ i ]
 		if not pl then break end
-		s = s .. "core.playlist.new(" .. ss ( pl.name ) .. "," .. i .. ")\n" -- Name in this line does nothing
+		s = s .. "cpn(" .. ss ( pl.name ) .. "," .. i .. ")\n" -- Name in this line does nothing
 			.. "vars.playlist[" .. i .. "].revisions[1]={length=" .. pl.length .. ";\n"
 		local j = 1
 		while true do
 			local item = pl [ j ]
 			if not item then break end
-			s = s .. "\tcore.item.create(" .. ss ( item.typ ) .. "," .. ss ( item.source ) .. ");\n"
+			s = s .. "\tcic(" .. ss ( item.typ ) .. "," .. ss ( item.source ) .. ");\n"
 			j = j + 1
 		end
 		i = i + 1
@@ -51,7 +52,7 @@ function core.savestate ( )
 	local n
 	if #vars.played > config.history then n = config.history else n = #vars.played end
 	for i = 1 , n do
-		s = s .. '\tcore.item.create(' .. string.format ( '%q' , vars.played [ i ].typ ) .. ',' .. string.format ( '%q' , vars.played [ i ].source ) .. ') ;\n'
+		s = s .. '\tcic(' .. string.format ( '%q' , vars.played [ i ].typ ) .. ',' .. string.format ( '%q' , vars.played [ i ].source ) .. ') ;\n'
 	end
 	s = s .. "};\n"
 	

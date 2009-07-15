@@ -74,9 +74,8 @@ function stop ( )
 end
 
 function seek ( offset , relative , percent )
-	if type ( offset ) ~= "number" then return false end
-	
 	local tracklength = select ( 3 , pipeline:query_duration( gst.FORMAT_TIME ) )
+	local currentposition = select ( 3 , pipeline:query_position( gst.FORMAT_TIME ) )
 	
 	if percent then
 		offset = ( offset / 100 ) * tracklength 
@@ -85,7 +84,7 @@ function seek ( offset , relative , percent )
 	end
 	
 	if relative then
-		offset = offset + getposition ( )
+		offset = currentposition + offset
 	end
 	
 	if offset > tracklength or offset < 0 then return false end
@@ -133,11 +132,10 @@ function getposition ( )
 end
 
 bus:connect ( "message::eof" , function ( )
-		--print("eof")
-		--triggers.triggercallback ( "songstopped" , typ , source , offset )
+		playback.state = "stopped"
 	end )
-	
---bus:connect ( "message::state-changed" , function ( ) print ("statechange" ) end )
+
+bus:connect ( "message" , function ( ... ) print ("statechange" , ... ) end )
 
 pipeline:connect ( "about-to-finish" , function ( )
 		updatelog ( "About to finish song" , 5 )
