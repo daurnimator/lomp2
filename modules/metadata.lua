@@ -59,23 +59,25 @@ end
 
 local function getitem ( path )
 	local item = { 
-		path = path ,
-		filename = string.match ( path , "([^/]+)$" )
+		path = path ;
+		filename = string.match ( path , "([^/]+)$" ) ;
+		tags = { } ;
+		extras = { } ;
 	}
 	item.extension = string.lower ( string.match ( item.filename , "%.([^%./]+)$" ) )
 
 	local f = exttodec [ item.extension ]
 	if f then
 		local ok , err = f ( item )
-		if not ok then return nil , updatelog ( "Corrupt/Bad File: " .. item.path .. ":" .. ( err or "" ) , 3 ) end
+		if not ok then updatelog ( "Corrupt/Bad File: " .. item.path .. ":" .. ( err or "" ) , 3 ) end
 	else
-		return nil , updatelog ( "Unknown format: " .. item.extension , 3 )
+		updatelog ( "Unknown format: " .. item.extension , 3 )
 	end
 	
 	setmetatable ( item.tags , { 
 		__index = function ( t , k )
 			if k:sub ( 1 , 1 ):match ( "%w" ) then
-				return { "Unknown " .. k }
+				--return { "Unknown " .. k }
 			end
 		end ,
 	} )

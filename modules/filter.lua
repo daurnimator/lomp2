@@ -17,7 +17,6 @@ require "core.playlist"
 
 function reduce ( tbl , func )
 	local results , nexti = { } , 1
-	print(func,#tbl,table.serialise ( tbl))
 	for i , v in ipairs ( tbl ) do
 		if func ( v , i ) then 
 			results [ nexti ] = v
@@ -59,6 +58,17 @@ function filter ( int , out , func )
 	return outfunc ( reduce ( intbl , func ) )
 end
 
---[[function test ( )
-	return filter ( { type = "playlist" , index = 0 } , { type = "playlist" } , function ( o ) print(table.serialise( o.tags ) ) end )
-end--]]
+common = {
+	tag = function ( int , out , field , pattern ) 
+		return filter ( int , out , function ( item )
+			local tagfield = item.tags [ field ]
+			if not tagfield then return false end		
+			
+			for i , v in ipairs ( tagfield ) do
+				if v:find ( pattern ) then return true end
+			end
+			
+			return false
+		end )
+	end ;
+}
