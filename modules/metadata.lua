@@ -84,6 +84,7 @@ local function maketagcache ( tbl )
 		__index = function ( t , k )
 			local item = getitem ( k )
 			if item then
+				item.fetched = os.time ( )
 				t [ k ] = item
 				return item
 			end
