@@ -206,7 +206,7 @@ function table.serialise ( t , prefix )
 		for k , v in pairs ( t ) do
 			tbl [ #tbl + 1 ] = prefix .. '\t[' .. table.serialise ( k ) .. '] = ' .. table.serialise ( v , prefix .. "\t" )
 		end
-		return prefix .. '{\n' .. table.concat ( tbl , ";\n" ) .. "\n" .. prefix .. '}'
+		return '{\n' .. table.concat ( tbl , ";\n" ) .. "\n" .. prefix .. '}'
 	elseif type ( t ) == "number" then
 		return t
 	elseif type ( t ) == "boolean" then
