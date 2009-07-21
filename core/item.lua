@@ -34,7 +34,7 @@ function copyitem ( item )
 end
 
 function additem ( object , playlistnum , position )
-	local pl = core.playlist.getnum ( playlistnum )
+	local pl = core.playlist.getplaylist ( playlistnum )
 	if not pl then return ferror ( "'Add Item' called with invalid playlist" , 1 ) end
 	local pllength = pl.length
 	if position and type ( position ) ~= "number" then return ferror ( "'Add Item' called with invalid position" , 1 ) else position = position or ( pllength + 1 ) end
@@ -54,7 +54,7 @@ function additem ( object , playlistnum , position )
 end
 
 function removeitem ( playlistnum , position )
-	local pl = core.playlist.getnum ( playlistnum )
+	local pl = core.playlist.getplaylist ( playlistnum )
 	if not pl then return ferror ( "'Remove item' called with invalid playlist" , 1 ) end
 	if type ( position ) ~= "number" or not pl [ position ] then
 		return ferror ( "'Remove item' called with invalid item" , 1 ) 
@@ -76,9 +76,9 @@ function removeitem ( playlistnum , position )
 end
 
 function copytoplaylist ( newplnum , newpos , oldplnum , oldpos )
-	local newpl = core.playlist.getnum ( newplnum )
+	local newpl = core.playlist.getplaylist ( newplnum )
 	if not newpl then return ferror ( "'Copy to playlist' called with invalid new playlist" , 1 ) end
-	local oldpl = core.playlist.getnum ( oldplnum )
+	local oldpl = core.playlist.getplaylist ( oldplnum )
 	if not oldpl then return ferror ( "'Copy to playlist' called with invalid old playlist" , 1 ) end
 	if not oldpl [ pos ] then
 		return ferror ( "'Copy to playlist' called with invalid old item position" , 1 ) 
@@ -94,9 +94,9 @@ function copytoplaylist ( newplnum , newpos , oldplnum , oldpos )
 end
 
 function movetoplaylist ( newplnum , newpos , oldplnum , oldpos )
-	local newpl = core.playlist.getnum ( newplnum )
+	local newpl = core.playlist.getplaylist ( newplnum )
 	if not newpl then return ferror ( "'Move to playlist' called with invalid new playlist" , 1 ) end
-	local oldpl = core.playlist.getnum ( oldplnum )
+	local oldpl = core.playlist.getplaylist ( oldplnum )
 	if not oldpl then return ferror ( "'Move to playlist' called with invalid old playlist" , 1 ) end
 	
 	local object = oldpl [ oldpos ]

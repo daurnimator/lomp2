@@ -268,7 +268,7 @@ commands.status = function ( line , skt )
 		else return nil end
 	end
 	
-	local currentrev = getvar ( "{ vars.playlist [ vars.softqueuepl ].revision , vars.hardqueue.revision }" )
+	local currentrev = getvar ( "{ vars.playlist [ vars.softqueueplaylist ].revision , vars.hardqueue.revision }" )
 	if currentrev [ 1 ] ~= plrev [ #plrev ] [ 1 ] or currentrev [ 2 ] ~= plrev [ #plrev ] [ 2 ] then
 		plrev [ #plrev + 1 ] = currentrev
 	end
@@ -278,7 +278,7 @@ commands.status = function ( line , skt )
 		["repeat"] = booleantonumber ( getvar ( "vars.rpt" ) ) ;
 		random = 0 ;
 		playlist = #plrev ;
-		playlistlength = getvar ( "vars.hardqueue.length + vars.playlist [ vars.softqueuepl ].length" ) ;
+		playlistlength = getvar ( "vars.hardqueue.length + vars.playlist [ vars.softqueueplaylist ].length" ) ;
 		xfade = 0 ;
 		state = state ;
 	}
@@ -307,7 +307,7 @@ commands.urlhandlers = function ( line , skt )
 	}
 end
 commands.clear = function ( line , skt )
-	execute ( "core.playlist.clear" , { getvar ( "vars.softqueuepl" ) } )
+	execute ( "core.playlist.clear" , { getvar ( "vars.softqueueplaylist" ) } )
 	return
 end
 commands.playlistid = function ( line , skt )
@@ -319,7 +319,7 @@ commands.playlistinfo = function ( line , skt )
 	local start , finish = string.match ( line , "^playlistinfo%s+\"?(%d*)%s*:?%s*(%d*)" )
 	start = tonumber ( start )
 	finish = tonumber ( finish )
-	local pl , err = execute ( "core.playlist.fetch" , { getvar ("vars.softqueuepl" ) } )
+	local pl , err = execute ( "core.playlist.fetch" , { getvar ("vars.softqueueplaylist" ) } )
 	--local queue = execute ( "core.playlist.fetch" )
 
 	if start then

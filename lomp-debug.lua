@@ -43,7 +43,7 @@ function core.listallentries ( )
 end
 
 function core.listqueue ( )
-	local s = "Listing Queue\nSoft Queue is currently: " .. vars.softqueuepl .. "\n"
+	local s = "Listing Queue\nSoft Queue is currently: " .. vars.softqueueplaylist .. "\n"
 	s = s .. "Currently Looping? " .. tostring ( vars.loop ) .. "\n"
 	if vars.queue[0] then
 		s = s .. "Current Song: " .. " \t(" .. vars.queue [ 0 ].typ .. ") \tSource: '" .. vars.queue [ 0 ].source .. "'\n"

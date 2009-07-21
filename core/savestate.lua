@@ -23,11 +23,11 @@ function core.savestate ( )
 		.. "local cpn , cic = core.playlist.new , core.item.create\n"
 		.. "vars.rpt = " .. tostring ( vars.rpt ) .. ";\n"
 		.. "vars.loop = " .. tostring ( vars.loop ) .. ";\n"
-		.. "vars.softqueuepl = " .. vars.softqueuepl .. ";\n"
+		.. "vars.softqueueplaylist = " .. vars.softqueueplaylist .. ";\n"
 		.. "vars.ploffset = " .. vars.ploffset .. ";\n"
 	
 	local current = vars.queue [ 0 ]
-	if current then core.item.additem ( current , -2 , 1 ) end -- If currently playing a song, add to start of hardqueue so its first up
+	if current then core.item.additem ( current , core.playlist.getnum ( vars.hardqueue ) , 1 ) end -- If currently playing a song, add to start of hardqueue so its first up
 	
 	-- Playlists
 	local i = -2

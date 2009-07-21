@@ -15,12 +15,17 @@ module ( "lomp.core.playlist" , package.see ( lomp ) )
 
 require "core.triggers"
 
-function getnum ( playlistnum )
+function getplaylist ( playlistnum )
 	if type ( playlistnum ) ~= "number" or not vars.playlist [ playlistnum ] then
 		return false
 	else
 		return vars.playlist [ playlistnum ]
 	end	
+end
+
+function getnum ( playlist )
+	
+	return playlist.index
 end
 
 local function playlistval ( revisions , k , latest , earliest )
@@ -47,7 +52,7 @@ local function collapserev ( revisions , latest , earliest )
 end
 
 function fetch ( num , latest , earliest )
-	local pl = getnum ( num )
+	local pl = getplaylist ( num )
 	if not pl then return false , "Invalid playlist" end
 	latest = latest or pl.revision
 	earliest = earliest or 0
@@ -72,7 +77,7 @@ function new ( name , playlistnumber )
 				if k == "revision" then 
 					return #t.revisions 
 				elseif type ( _M [ k ] ) == "function" and k ~= "new" then
-					return function ( self , ... ) return _M [ k ] ( self.index , ... ) end
+					return function ( self , ... ) return _M [ k ] ( getnum ( self ) , ... ) end
 				else 
 					return playlistval ( t.revisions , k , #t.revisions , 0 )
 				end 
@@ -95,7 +100,7 @@ function new ( name , playlistnumber )
 end
 
 function delete ( num )
-	local pl = getnum ( num )
+	local pl = getplaylist ( num )
 	if not pl then
 		return ferror ( "'Delete playlist' called with invalid playlist" , 1 ) 
 	end
@@ -103,7 +108,7 @@ function delete ( num )
 	local name = pl.name
 	vars.playlist [ num ] = nil
 	vars.pl.revision = vars.pl.revision + 1
-	if pl == vars.queue.softqueuepl then vars.queue.softqueuepl = -1 end -- If deleted playlist was the soft queue
+	if pl == vars.queue.softqueueplaylist then vars.queue.softqueueplaylist = -1 end -- If deleted playlist was the soft queue
 	
 	triggers.triggercallback ( "playlist_delete" , pl )
 	
@@ -111,7 +116,7 @@ function delete ( num )
 end
 
 function clear ( num )
-	local pl = getnum ( num )
+	local pl = getplaylist ( num )
 	if not pl then
 		return ferror ( "'Clear playlist' called with invalid playlist" , 1 ) 
 	end
@@ -124,7 +129,7 @@ function clear ( num )
 end
 
 function randomise ( num )
-	local pl = getnum ( num )
+	local pl = getplaylist ( num )
 	if not pl then
 		return ferror ( "'Randomise playlist' called with invalid playlist" , 1 ) 
 	end
@@ -137,7 +142,7 @@ function randomise ( num )
 end
 
 function sort ( num , eq )
-	local pl = getnum ( num )
+	local pl = getplaylist ( num )
 	if not pl then
 		return ferror ( "'Sort playlist' called with invalid playlist" , 1 )
 	end

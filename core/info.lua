@@ -14,7 +14,7 @@ require "general"
 module ( "lomp.core.info" , package.see ( lomp ) )
 
 function getplaylistinfo ( num )
-	local pl = core.playlist.getnum ( num )
+	local pl = core.playlist.getplaylist ( num )
 	if not pl then return false end
 	return { revision = pl.revision , items = pl.length , index = num , name = pl.name }
 end
@@ -28,8 +28,3 @@ function getlistofplaylists ( )
 end
 
 getplaylist = core.playlist.fetch
-
-function gethardqueue ( revision , backto )
-	return getplaylist ( -2 , revision , backto )
-end
-

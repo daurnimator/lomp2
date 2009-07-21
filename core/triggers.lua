@@ -14,6 +14,11 @@ require "general"
 module ( "lomp.triggers" , package.see ( lomp ) )
 
 local callbacks = {
+	loop = { } ; -- ( loop )
+	ploffset = { } ; -- ( ploffset )
+	softqueueplaylist = { } ; -- ( softqueueplaylist)
+	rpt = { } ; -- ( repeat )
+	
 	playlist_create = { function ( pl ) updatelog ( "Created playlist #" .. pl.index .. ": '" .. pl.name .. "'" , 4 ) end } ;
 	playlist_delete = { function ( pl ) updatelog ( "Deleted playlist #" .. pl.index .. " (" .. pl.name .. ")" , 4 ) end } ;
 	playlist_clear = { function ( pl ) updatelog ( "Cleared playlist #" .. pl.index .. " (" .. pl.name .. ")" , 4 ) end } ;
@@ -22,13 +27,13 @@ local callbacks = {
 	item_add = { function ( num , pl , position , object ) updatelog ( "Added item to playlist #" .. num .. " (" .. pl.name .. ") position #" .. position .. " Source: " .. object.source  , 4 ) end } ;
 	item_remove = { function ( num , pl , position , object ) updatelog ( "Removed item from playlist #" .. num .. " (" .. pl.name .. ") position #" .. position .. " Source: " .. object.source  , 4 ) end } ;
 	
-	playback_stop = { } ; -- ( typ , source , stopoffset )
-	playback_pause = { } ;--  ( )
+	playback_stop = { } ; -- ( type , source , offset )
+	playback_pause = { } ; -- ( offset )
 	playback_unpause = { } ; -- ( )
-	playback_startsong = { } ; -- ( typ , source ) -- Triggered when song is played
+	playback_startsong = { } ; -- ( type , source )
 	
-	player_abouttofinish = { } ; -- ( )
-	player_finished = { } ; -- ( typ , source )
+	player_abouttofinish = { } ;
+	player_finished = { } ;
 }
 
 function registercallback ( callback , func , name )

@@ -56,21 +56,18 @@ end
 function pause ( )
 	if getstate ( ) ~= "playing" then return false end
 	pipeline:set_state ( gst.STATE_PAUSED )
-	pipeline:get_state ( -1 )
-	return true
+	return getstate ( )
 end
 
 function unpause ( )
 	if getstate ( ) ~= "paused" then return false end
 	pipeline:set_state ( gst.STATE_PLAYING )
-	pipeline:get_state ( -1 )
-	return true
+	return getstate ( )
 end
 
 function stop ( )
 	pipeline:set_state ( gst.STATE_READY )
-	pipeline:get_state ( -1 )
-	return true
+	return getstate ( )
 end
 
 function seek ( offset , relative , percent )

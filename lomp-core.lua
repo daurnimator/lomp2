@@ -24,18 +24,33 @@ core = {
 	_INC = 1 ,
 }
 
-vars = { 
-	init= t ,
-	playlist = setmetatable ( {
-		revision = 0 ,
-	} , { __newindex = function ( t , k , v ) if type ( k ) == "number" then rawset ( t , k , v ) elseif k == "revision" then rawset ( t , k , v ) end end } ) ,
-	played = { 
-		revision = 0 ,
-	} ,
-	loop = false , -- Loop soft playlist?
-	rpt = true , -- When end of soft playlist reached, go back to start of soft playlist?
-	ploffset = 0 ,
+local triggeronchange = { 
+	loop = true ;
+	rpt = true ;
+	ploffset = true ;
+	softqueueplaylist = true ;
 }
+
+vars = setmetatable ( { 
+		init= t ;
+		playlist = setmetatable ( {
+				revision = 0 ;
+			} , { __newindex = function ( t , k , v ) if type ( k ) == "number" then rawset ( t , k , v ) elseif k == "revision" then rawset ( t , k , v ) end end } ) ;
+		played = { 
+			revision = 0
+		} ;
+		loop = false ; -- Loop soft playlist?
+		rpt = true ; -- When end of soft playlist reached, go back to start of soft playlist?
+		ploffset = 0 ;
+	} , {
+		__newindex = function ( t , k , v )
+			local val = vars [ k ]
+			rawset ( t , k , v )
+			if triggeronchange [ k ] then
+				triggers.triggercallback ( k , val )
+			end
+		end ;
+} )
 
 function core.quit ( )
 	player.stop ( )
@@ -85,21 +100,24 @@ end
 -- Misc Helper Functions
 
 function core.reloadlibrary ( )
-	core.playlist.clear ( 0 )
+	local playlistnum = core.playlist.getnum ( vars.library )
+	core.playlist.clear ( playlistnum )
 	for i , v in ipairs ( config.library ) do
-		core.localfileio.addfolder ( v , 0 , nil , true )
+		core.localfileio.addfolder ( v , playlistnum , nil , true )
 	end
 	return true
 end
 
 function core.enablelooping ( )
-	vars.loop = true
-	return true , vars.loop
+	local loop = true
+	vars.loop = loop
+	return true , loop
 end
 
 function core.disablelooping ( )
-	vars.loop = false
-	return true , vars.loop
+	local loop = false
+	vars.loop = loop
+	return true , loop
 end
 
 function core.checkfileaccepted ( filename )
@@ -124,7 +142,7 @@ function core.setsoftqueueplaylist ( num )
 		return ferror ( "'Set soft queue playlist' called with invalid playlist" , 1 ) 
 	end
 	
-	vars.softqueuepl = num
+	vars.softqueueplaylist = num
 	vars.ploffset = 0 -- Reset offset
 	
 	return num
@@ -135,14 +153,13 @@ do -- Restore State
 	local ok , err = core.restorestate ( )
 	if not ok then
 		core.playlist.new ( "Library" , 0 ) -- Create Library (Just playlist 0)
-		core.playlist.new ( "Empty Playlist" , -1 ) 
+		vars.softqueueplaylist = core.playlist.new ( "Empty Playlist" , -1 ) 
 		core.playlist.new ( "Hard Queue" , -2 ) 
-		vars.softqueuepl = -1
-		core.reloadlibrary ( )
 	end
+	vars.library = vars.playlist [ 0 ]
 	vars.emptyplaylist = vars.playlist [ -1 ]
 	vars.hardqueue = vars.playlist [ -2 ]
-	vars.played.revision = vars.played.revision or 0
+	if not ok then core.reloadlibrary ( ) end
 end
 
 
@@ -154,13 +171,13 @@ vars.queue = setmetatable ( { } , {
 		if k <= vars.hardqueue.length then
 			return vars.hardqueue [ k ]
 		else
-			local softqueuelen = vars.playlist [ vars.softqueuepl ].length
+			local softqueuelen = vars.playlist [ vars.softqueueplaylist ].length
 			if softqueuelen > 0 then
 				local insoft = vars.ploffset + k - vars.hardqueue.length
 				if insoft > softqueuelen and vars.loop and ( insoft - softqueuelen ) < vars.ploffset then
 					insoft = insoft - softqueuelen
 				end
-				return vars.playlist [ vars.softqueuepl ] [ insoft ] -- This could be an item OR nil
+				return vars.playlist [ vars.softqueueplaylist ] [ insoft ] -- This could be an item OR nil
 			end
 		end
 	end ;
