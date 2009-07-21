@@ -14,12 +14,12 @@ require "core.triggers"
 module ( "lomp.player" , package.see ( lomp ) )
 
 extensions = {	
-	"ogg" ;
+	"ogg" ; "oga" ;
 	"flac" ;
-	"mp3" ;
+	"mpeg" ; "mpg" ; "mp1" ; "mp2" ; "mp3" ; "mpa" ;
 	"wav" ;
 	"wv" ;
-	"m4a" ; "m4r" ;
+	--"m4a" ; "m4r" ;
 }
 
 require "lgob.gst"

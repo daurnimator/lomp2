@@ -65,67 +65,6 @@ require "core.info"
 
 require "core.savestate"
 
-do -- Restore State
-	local ok , err = core.restorestate ( )
-	if not ok then
-		core.playlist.new ( "Library" , 0 ) -- Create Library (Just playlist 0)
-		core.playlist.new ( "Empty Playlist" , -1 ) 
-		core.playlist.new ( "Hard Queue" , -2 ) 
-		vars.softqueuepl = -1
-	end
-	vars.emptyplaylist = vars.playlist [ -1 ]
-	vars.hardqueue = vars.playlist [ -2 ]
-	vars.played.revision = vars.played.revision or 0
-end
-
-function core.checkfileaccepted ( filename )
-	local extension = strmatch ( filename , "%.?([^%./]+)$" )
-	extension = strlower ( extension )
-	
-	local accepted = false
-	for i , v in ipairs ( player.extensions ) do
-		if extension == v then accepted = true end
-	end
-	if accepted == true then 
-		for i , v in ipairs ( config.banextensions ) do
-			if strfind ( extension , v ) then return false , ( "Banned file extension (" .. extension .. "): " .. filename )  end
-		end
-	else	return false, ( "Invalid file type (" .. extension .. "): " .. filename )
-	end
-	return true
-end
-
--- Queue Stuff
-
-vars.queue = setmetatable ( { } , {
-	__index = function ( t , k )
-		if type ( k ) ~= "number" or k < 1 then return nil end
-		if k <= vars.hardqueue.length then
-			return vars.hardqueue [ k ]
-		else
-			local softqueuelen = vars.playlist [ vars.softqueuepl ].length
-			if softqueuelen > 0 then
-				local insoft = vars.ploffset + k - vars.hardqueue.length
-				if insoft > softqueuelen and vars.loop and ( insoft - softqueuelen ) < vars.ploffset then
-					insoft = insoft - softqueuelen
-				end
-				return vars.playlist [ vars.softqueuepl ] [ insoft ] -- This could be an item OR nil
-			end
-		end
-	end ;
-} )
-
-function core.setsoftqueueplaylist ( num )
-	if type ( num ) ~= "number" or not vars.playlist [ num ] then 
-		return ferror ( "'Set soft queue playlist' called with invalid playlist" , 1 ) 
-	end
-	
-	vars.softqueuepl = num
-	vars.ploffset = 0 -- Reset offset
-	
-	return num
-end
-
 -- History Stuff
 
 function core.clearhistory ( )
@@ -150,6 +89,7 @@ function core.reloadlibrary ( )
 	for i , v in ipairs ( config.library ) do
 		core.localfileio.addfolder ( v , 0 , nil , true )
 	end
+	return true
 end
 
 function core.enablelooping ( )
@@ -161,3 +101,67 @@ function core.disablelooping ( )
 	vars.loop = false
 	return true , vars.loop
 end
+
+function core.checkfileaccepted ( filename )
+	local extension = strmatch ( filename , "%.?([^%./]+)$" )
+	extension = strlower ( extension )
+	
+	local accepted = false
+	for i , v in ipairs ( player.extensions ) do
+		if extension == v then accepted = true end
+	end
+	if accepted == true then 
+		for i , v in ipairs ( config.banextensions ) do
+			if strfind ( extension , v ) then return false , ( "Banned file extension (" .. extension .. "): " .. filename )  end
+		end
+	else	return false, ( "Invalid file type (" .. extension .. "): " .. filename )
+	end
+	return true
+end
+
+function core.setsoftqueueplaylist ( num )
+	if type ( num ) ~= "number" or not vars.playlist [ num ] then 
+		return ferror ( "'Set soft queue playlist' called with invalid playlist" , 1 ) 
+	end
+	
+	vars.softqueuepl = num
+	vars.ploffset = 0 -- Reset offset
+	
+	return num
+end
+
+
+do -- Restore State
+	local ok , err = core.restorestate ( )
+	if not ok then
+		core.playlist.new ( "Library" , 0 ) -- Create Library (Just playlist 0)
+		core.playlist.new ( "Empty Playlist" , -1 ) 
+		core.playlist.new ( "Hard Queue" , -2 ) 
+		vars.softqueuepl = -1
+		core.reloadlibrary ( )
+	end
+	vars.emptyplaylist = vars.playlist [ -1 ]
+	vars.hardqueue = vars.playlist [ -2 ]
+	vars.played.revision = vars.played.revision or 0
+end
+
+
+-- Queue Stuff
+
+vars.queue = setmetatable ( { } , {
+	__index = function ( t , k )
+		if type ( k ) ~= "number" or k < 1 then return nil end
+		if k <= vars.hardqueue.length then
+			return vars.hardqueue [ k ]
+		else
+			local softqueuelen = vars.playlist [ vars.softqueuepl ].length
+			if softqueuelen > 0 then
+				local insoft = vars.ploffset + k - vars.hardqueue.length
+				if insoft > softqueuelen and vars.loop and ( insoft - softqueuelen ) < vars.ploffset then
+					insoft = insoft - softqueuelen
+				end
+				return vars.playlist [ vars.softqueuepl ] [ insoft ] -- This could be an item OR nil
+			end
+		end
+	end ;
+} )

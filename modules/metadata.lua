@@ -68,13 +68,13 @@ local function getitem ( path )
 		updatelog ( "Unknown format: " .. item.extension , 3 )
 	end
 	
-	setmetatable ( item.tags , { 
+	--[[setmetatable ( item.tags , { 
 		__index = function ( t , k )
 			if k:sub ( 1 , 1 ):match ( "%w" ) then
-				--return { "Unknown " .. k }
+				return { "Unknown " .. k }
 			end
 		end ,
-	} )
+	} )--]]
 	
 	return item
 end
@@ -83,7 +83,7 @@ local function maketagcache ( tbl )
 	return setmetatable ( tbl , {
 		__index = function ( t , k )
 			local item = getitem ( k )
-			if item then
+			if item ~= nil then
 				item.fetched = os.time ( )
 				t [ k ] = item
 				return item
@@ -121,6 +121,7 @@ function edittag ( path , edits , inherit )
 		end
 	end
 end
+
 function savecache ( )
 	local ok , err = table.save ( {  lomp = core._VERSION , major = core._MAJ , minor = core._MIN , inc = core._INC , timesaved = os.date ( ) , cache = cache } , config.tagcachefile , "" , "" )
 	if not ok then
@@ -130,6 +131,7 @@ function savecache ( )
 		return true
 	end
 end
+
 function restorecache ( )
 	local tbl , err = table.load ( config.tagcachefile )
 	if not tbl then

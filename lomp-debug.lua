@@ -26,8 +26,8 @@ function core.listpl ( )
 end
 
 function core.listentries ( pl )
-	local info = core.playlist.fetch ( pl )
-	local s = "Listing Playlist #" .. pl .. " \t(Revision: " .. info.revision .. ")\n"
+	local info , revision = core.playlist.fetch ( pl )
+	local s = "Listing Playlist #" .. pl .. " \t(Revision: " .. revision .. ")\n"
 	for i , v in ipairs ( info ) do
 		s = s .. "Entry #" .. i .. " \t(" .. v.typ .. ") \tSource: '" .. v.source .. "'\n"
 	end

@@ -98,7 +98,7 @@ function core.restorestate ( )
 			return ferror ( "Invalid state file" , 1 )
 		end
 	else
-		return ferror ( "Could not find state file: '" .. err .. "'" , 2 )
+		return ferror ( "cannot open " .. err , 2 )
 	end
 	return true
 end

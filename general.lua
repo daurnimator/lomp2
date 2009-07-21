@@ -201,7 +201,9 @@ function table.serialise ( t , prefix )
 	prefix = prefix or ""
 	local s = ""
 	
-	if type ( t ) == "table" then
+	if t == nil then
+		return "nil"
+	elseif type ( t ) == "table" then
 		local tbl = { }
 		for k , v in pairs ( t ) do
 			tbl [ #tbl + 1 ] = prefix .. '\t[' .. table.serialise ( k ) .. '] = ' .. table.serialise ( v , prefix .. "\t" )

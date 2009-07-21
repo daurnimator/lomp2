@@ -14,10 +14,10 @@ require "general"
 module ( "lomp.triggers" , package.see ( lomp ) )
 
 local callbacks = {
-	playlist_create = { function ( num , pl ) updatelog ( "Created playlist #" .. num .. ": '" .. pl.name .. "'" , 4 ) end } ;
-	playlist_delete = { function ( num , pl ) updatelog ( "Deleted playlist #" .. num .. " (" .. pl.name .. ")" , 4 ) end } ;
-	playlist_clear = { function ( num , pl ) updatelog ( "Cleared playlist #" .. num .. " (" .. pl.name .. ")" , 4 ) end } ;
-	playlist_sort = { function ( num , pl ) updatelog ( "Sorted playlist #" .. num .. " (" .. pl.name .. ")" , 4 ) end } ;
+	playlist_create = { function ( pl ) updatelog ( "Created playlist #" .. pl.index .. ": '" .. pl.name .. "'" , 4 ) end } ;
+	playlist_delete = { function ( pl ) updatelog ( "Deleted playlist #" .. pl.index .. " (" .. pl.name .. ")" , 4 ) end } ;
+	playlist_clear = { function ( pl ) updatelog ( "Cleared playlist #" .. pl.index .. " (" .. pl.name .. ")" , 4 ) end } ;
+	playlist_sort = { function ( pl ) updatelog ( "Sorted playlist #" .. pl.index .. " (" .. pl.name .. ")" , 4 ) end } ;
 	
 	item_add = { function ( num , pl , position , object ) updatelog ( "Added item to playlist #" .. num .. " (" .. pl.name .. ") position #" .. position .. " Source: " .. object.source  , 4 ) end } ;
 	item_remove = { function ( num , pl , position , object ) updatelog ( "Removed item from playlist #" .. num .. " (" .. pl.name .. ") position #" .. position .. " Source: " .. object.source  , 4 ) end } ;

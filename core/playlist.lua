@@ -23,28 +23,26 @@ function getnum ( playlistnum )
 	end	
 end
 
-local function playlistrev ( revisions , latest , earliest )
-	earliest = earliest or 0
-	
-	return setmetatable ( { } , { __index = function ( t , k )
-		for i = latest , earliest , -1 do
-			local v = revisions [ i ] [ k ]
-			if v then return v end
-		end
-	end } )
+local function playlistval ( revisions , k , latest , earliest )
+	for i = latest , earliest , -1 do
+		local r = revisions [ i ]
+		if type ( r ) ~= "table" then return nil end
+		local v = r [ k ]
+		if v ~= nil then return v end
+	end
+	return nil
 end
 
 local function collapserev ( revisions , latest , earliest )
-	local proxy = playlistrev ( revisions , latest , earliest )
+	earliest = earliest or 0
+	
 	local t , i = { } , 1
 	while true do
-		local tmp = proxy [ i ]
-		if not tmp then break end
+		local tmp = playlistval ( revisions , i , latest , earliest )
+		if tmp == nil then break end
 		t [ i ] = tmp
 		i = i + 1
 	end
-	t.length = proxy.length
-	t.name = proxy.name
 	return t
 end
 
@@ -55,9 +53,8 @@ function fetch ( num , latest , earliest )
 	earliest = earliest or 0
 	if type ( latest ) ~= "number" or type ( earliest ) ~= "number" then return false , "Bad Revision" end
 	if latest < 0 or latest > pl.revision or earliest < 0 or earliest > latest then return false , "Invalid Revision" end
-	local t = collapserev ( pl.revisions , latest , earliest )
-	t.revision = latest
-	return t
+
+	return collapserev ( pl.revisions , latest , earliest ) , latest
 end
 
 function new ( name , playlistnumber )
@@ -67,19 +64,32 @@ function new ( name , playlistnumber )
 	
 	playlistnumber = playlistnumber or ( #vars.playlist + 1 )
 	
-	local mt = { }
-	local revisions = { [ 0 ] = { name = name , length = 0 } }
-	local pl = setmetatable ( { revisions = revisions } , mt )
-	
-	mt.__index = function ( t , k ) if k == "revision" then return #pl.revisions else return playlistrev ( revisions , pl.revision , 0 ) [ k ] end end
-	mt.__newindex = function ( t , k , v )
-		print("PLAYLIST newindex",t,k,v )
-	end
-	
+	local pl = setmetatable ( { 
+			revisions = { [ 0 ] = { name = name , length = 0 } } ;
+			index = playlistnumber ;
+		} , {
+			__index = function ( t , k )
+				if k == "revision" then 
+					return #t.revisions 
+				elseif type ( _M [ k ] ) == "function" and k ~= "new" then
+					return function ( self , ... ) return _M [ k ] ( self.index , ... ) end
+				else 
+					return playlistval ( t.revisions , k , #t.revisions , 0 )
+				end 
+			end ;
+			__newindex = function ( t , k , v )
+				print ( "PLAYLIST newindex" , t , k , v )
+			end ;
+			__len = function ( t ) -- FIX: Doesn't work on tables
+				return t.length
+			end ;
+		}
+	)
+		
 	vars.playlist [ playlistnumber ] = pl
 	vars.playlist.revision = vars.playlist.revision + 1
 	
-	triggers.triggercallback ( "playlist_create" , playlistnumber , pl )
+	triggers.triggercallback ( "playlist_create" , pl )
 	
 	return playlistnumber , name
 end
@@ -95,9 +105,9 @@ function delete ( num )
 	vars.pl.revision = vars.pl.revision + 1
 	if pl == vars.queue.softqueuepl then vars.queue.softqueuepl = -1 end -- If deleted playlist was the soft queue
 	
-	triggers.triggercallback ( "playlist_delete" , num , pl )
+	triggers.triggercallback ( "playlist_delete" , pl )
 	
-	return num
+	return true
 end
 
 function clear ( num )
@@ -108,9 +118,9 @@ function clear ( num )
 	
 	pl.revisions = { [ 0 ] = { name = pl.name , length = 0 } }
 	
-	triggers.triggercallback ( "playlist_clear" , num , pl )
+	triggers.triggercallback ( "playlist_clear" , pl )
 	
-	return pl
+	return true
 end
 
 function randomise ( num )
@@ -121,7 +131,7 @@ function randomise ( num )
 	
 	pl.revisions [ #pl.revisions + 1 ] = table.randomise ( collapserev ( pl.revisions , pl.revision ) , pl.length )
 	
-	triggers.triggercallback ( "playlist_sort" , num , pl )
+	triggers.triggercallback ( "playlist_sort" , pl )
 	
 	return true
 end
@@ -134,7 +144,7 @@ function sort ( num , eq )
 
 	pl.revisions [ #pl.revisions + 1 ] = table.stablesort ( collapserev ( pl.revisions , pl.revision ) , eq )
 	
-	triggers.triggercallback ( "playlist_sort" , num , pl )
+	triggers.triggercallback ( "playlist_sort" , pl )
 	
 	return true
 end

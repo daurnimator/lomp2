@@ -27,11 +27,9 @@ history =			200
 -- Library
  -- Location of your music
  -- Seperate entries with a comma
- -- eg: library = { "/media/music" , "/media/music2" }
-library = {		"/media/windows/Documents and Settings/Daurnimator/My Documents/My Music" ,
-				--"/media/sdc1/Random Downloaded"
+ -- eg: library = { "/media/mymusic" , "/home/myself/Music" }
+library = {	
 }
-
 
 -- Server Parameters
  -- Addresss and port to bind to on the local host. 
@@ -63,7 +61,7 @@ password = 		"changeme"
  -- Seperate with commas.
  -- eg, plugins = { "myawesomeplugin" , "coolplugin1234" , }
 plugins = {		"scrobbler" ,
-			"mpd" ,
+			--"mpd" ,
 }
 
 -- Tagging
@@ -77,9 +75,9 @@ savetagedits = true
    -- //_// is a junk operator
    -- ? makes the preceding character optional
 tagpatterns = {
-	Basic = "//Artist// - //Title//" ,
-	Daurn = "//Album Artist//, //Album// ?{?//Release//}? ?(?D?i?s?c? ?//Disc//)?/[//Track//] //Artist// - //Title//" ,
-	EAC = "//Artist// - //Album// (//Year//)//_/////Track// - //Title//" , 
+	Basic = "//Artist// - //Title//" ;
+	Daurn = "//Album Artist//, //Album// ?{?//Release//}? ?(?D?i?s?c? ?//Disc//)?/[//Track//] //Artist// - //Title//" ;
+	EAC = "//Artist// - //Album// (//Year//)//_/////Track// - //Title//" ;
 }
   -- Default - must be the name of a pattern from above.
 tagpatterndefault = "EAC"
@@ -87,8 +85,7 @@ tagpatterndefault = "EAC"
 -- Pedantics
  -- File extensions to ban
   -- You can use lua patterns here. (eg, mp.* matches mp, mp2, mp3, mpd, mpz, ....)
-banextensions = {	"wvc" ,
-			"m3u" ,
+banextensions = {
 }
 
  -- When adding a folder, how do we sort? (by path)
