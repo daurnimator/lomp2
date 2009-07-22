@@ -24,8 +24,6 @@ function play ( fromoffset )
 		if not r then return false , "Nothing to play" end
 	end
 	
-	vars.queue [ 0 ].played = true
-	
 	local typ = vars.queue [ 0 ].typ
 	local source = vars.queue [ 0 ].source
 	local offset 
@@ -131,7 +129,7 @@ end
 function forward ( queueonly ) -- Moves forward one song in the queue
 	local success
 	if vars.queue [ 0 ] then
-		if vars.queue [ 0 ].played then
+		if vars.queue [ 0 ].laststarted then
 			table.insert ( vars.played , 1 , vars.queue [ 0 ] ) -- Add current to played (history)
 			vars.played.revision = vars.played.revision + 1
 		end
@@ -144,7 +142,6 @@ function forward ( queueonly ) -- Moves forward one song in the queue
 	else
 		if vars.queue [ 1 ] then
 			vars.queue [ 0 ] = vars.queue [ 1 ]
-			
 			vars.ploffset = vars.ploffset + 1
 			if vars.ploffset > vars.playlist [ vars.softqueueplaylist ].length then -- No songs left
 				if vars.loop then -- Restart soft queue

@@ -51,5 +51,5 @@ function triggercallback ( callback , ... )
 end
 
 registercallback ( "playback_startsong" , function ( )
-		vars.queue [ 0 ].played = true -- Better way to figure this out?
+		vars.queue [ 0 ].laststarted = os.time ( ) -- Better way to figure this out?
 	end , "Set Played" )
