@@ -30,7 +30,7 @@ repetition, grouping of data into tables, and naming of values within tables.
 ======	
 exports:
 	vstruct.pack(fmt, [fd], data)
-	vstruct.unpack(fmt, <fd or string>)
+	vstruct.unpack(fmt, <fd or string>, [unpacked])
 	vstruct.explode(int)
 	vstruct.implode(table)
 	vstruct.cursor(string)
@@ -40,22 +40,31 @@ exports:
 pack takes a format string and a table of data and packs the contents into a
 buffer. If the fd argument is present, it will write the data directly to it
 using standard file io methods (write and seek), and return the fd; otherwise
-it will construct and return a string.
+it will construct and return a string. In either case it also returns (as a
+second value) the number of bytes written - note that if the format involved
+seeks, this is not the same as the amount by which the write pointer moved
+or the size of the packed string.
 
 unpack takes a format string and a buffer or file to unpack from, and returns
-the unpacked data as a table.
+the unpacked data as a table. It also returns (as a second value) the number of
+bytes read - note that if the format string involved seeks, this is not the same
+as the difference between read pointer positions. If the _unpacked_ argument is
+true, it will return the unpacked data as a series of values rather than as a
+table, equivalent to using the standard Lua function unpack() on the return
+value. Note that this means it will not return the number of bytes read as an
+additional value.
 
 explode converts a bitmask into a list of booleans, and implode does the
 converse. In such lists, list[1] is the least significant bit, and list[n] the
 most significant.
 
 cursor wraps a string in something that looks, at first glance, like a file.
-This permits strings to be wrapped and passed to the struct IO functions. The
+This permits strings to be wrapped and passed to the vstruct IO functions. The
 wrapped string supports :seek, and has limited support for :read (the only
 supported calling mode is :read(num_bytes)) and :write (as :write(buffer)).
 
 compile.read takes a format string and returns a function, which can later be
-passed a file (or file-like object - see struct.cursor) to perform a read
+passed a file (or file-like object - see vstruct.cursor) to perform a read
 operation. In effect, the following code:
 	f = vstruct.compile.read(fmt)
 	d = f(fd)
@@ -216,7 +225,7 @@ mW	Bitmask.
 	Read: as uW, but explodes the result into a list of booleans, one per bit.
 	Write: implodes the input value, then writes it as uW.
 	Affected by endianness.
-	See also: struct.implode, struct.explode.
+	See also: vstruct.implode, vstruct.explode.
 
 pW	Signed fixed point rational.
 	Width is in the format "I.F"; the value before the dot is the number of
@@ -233,11 +242,12 @@ PW	Signed fixed point rational with bit-aligned subfields
 	such that I+F is not a multiple of 8 is an error.
 
 sW	String.
-	Read: reads exactly W bytes and returns them as a string.
+	Read: reads exactly W bytes and returns them as a string. If W is omitted,
+      reads until EOF.
 	Write:
-	If W is omitted, uses the string length.
-	If W is shorter than the string length, truncates the string.
-	If W is greater than the string length, null pads the string.
+	  If W is omitted, uses the string length.
+	  If W is shorter than the string length, truncates the string.
+	  If W is greater than the string length, null pads the string.
 
 uW	Unsigned integer.
 	Read: an unsigned integer of width W bytes.
