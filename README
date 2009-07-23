@@ -1,8 +1,10 @@
 LOMP - Lua Open Music Player
 By Daurnimator
 
+If you run a debain based distro, head to the bottom of this file.
+
 Dependencies:
-	Lua 5.1						http://www.lua.org/
+	Lua >5.1.3					http://www.lua.org/
 		download:				http://www.lua.org/ftp/lua-5.1.4.tar.gz
 		can be obtained via:			apt-get install lua5.1
 
@@ -15,15 +17,6 @@ Dependencies:
 		download:				http://luaforge.net/projects/luasocket/
 		can be obtained via:			apt-get install liblua5.1-socket2
 				or:			luarocks install luasocket
-	
-	Copas						http://www.keplerproject.org/copas/index.html
-		download:				http://luaforge.net/frs/?group_id=100
-		can be obtained via: 			apt-get install liblua5.1-copas0
-							luarocks install copas
-		Depends on:
-			Coxpcall			http://coxpcall.luaforge.net/
-			can be obtained via: 		apt-get install liblua5.1-coxpcall0
-					or:		luarocks install coxpcall
 	
 	LuaXMLRPC					http://www.keplerproject.org/luaxmlrpc/
 		(now included)
@@ -40,7 +33,6 @@ Dependencies:
 
 	Vstruct						http://www.funkyhorror.net/toxicfrog/projects/vstruct/
 		(now included)
-		download: 				http://www.funkyhorror.net/toxicfrog/projects/vstruct/vstruct-1.0b3.tar.bz2
 
 Optional Dependencies:
 	luarocks					http://luarocks.org/
@@ -54,7 +46,7 @@ Optional Dependencies:
 				or:			luarocks install md5
 
 ==> Systems with apt-get should be able to get most of the dependencies with:
-apt-get install lua5.1 liblua5.1-socket2 liblua5.1-copas0 liblua5.1-coxpcall0 liblua5.1-copas0 liblua5.1-xmlrpc0 liblua5.1-expat0 liblua5.1-filesystem0 liblua5.1-zip0 liblua5.1-md5-0
+apt-get install lua5.1 liblua5.1-socket2 liblua5.1-xmlrpc0 liblua5.1-expat0 liblua5.1-filesystem0 liblua5.1-zip0 liblua5.1-md5-0
 apt-get install luarocks
 luarocks install lua-iconv
 apt-get install gstreamer0.10-plugins-base libgstreamer-plugins-base0.10-dev gstreamer0.10-plugins-good gstreamer0.10-plugins-bad gstreamer0.10-plugins-ugly
