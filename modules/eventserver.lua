@@ -67,16 +67,22 @@ local versions = {
 				conn.write ( ver.codes.INVALID_PHRASE .. "\n" )
 				return
 			end
-			return  phrasefunc ( conn , session , ver , params )
+			print("t")
+			conn.write ( phrasefunc ( conn , session , ver , params ) )
 		end ;
 		phrases = {
 			SET = function ( conn , session , ver , params )
 				local key , val = params:match ( "^(%S+)%s*(.*)$" )
 				session [ key ] = val
-				conn.write ( ver.codes.SUCCESS .. "\n" )
-				return
+				return ver.codes.SUCCESS .. "\n"
 			end ;
 			CMD = function ( conn , session , ver , params )
+				
+			end ;
+			SUBSCRIBE = function ( conn , session , ver , params )
+				
+			end ;
+			GET = function ( conn , session , ver , params )
 				
 			end ;
 		} ;
@@ -96,7 +102,7 @@ function incoming ( conn , data , err )
 			local ver = versions [ version ]
 			if ver then
 				conn.write ( ver.codes.SUCCESS .. "\n" )
-				local session = { version = version }
+				session = { version = version }
 				connections [ conn ] = session
 			else 
 				updatelog ( "Client tried to connect with unsupported protocol" , 4 )
@@ -111,15 +117,12 @@ function incoming ( conn , data , err )
 end
 
 function initiate ( host , port )
-	mylistener = {
-		incoming = incoming ;
-		disconnection = function ( conn , err )
-			if err then
-				return ferror ( "Server could not be started: " .. err , 1 )
-			end
-		end ;
-	}
-	server.addserver ( mylistener , port , host , "*l" )
+	server.addserver ( {
+			incoming = incoming ;
+			disconnect = function ( conn , err )
+				connections [ conn ] = nil
+			end ;
+		} , port , host , "*l" )
 	updatelog ( "Server started; bound to '" .. host .. "', port #" .. port , 4 )
 end
 

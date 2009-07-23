@@ -19,9 +19,8 @@ local tsort = table.sort
 local strlen , strlower , strupper , strfind , strgmatch , strformat , strgsub , strsub , strmatch = string.len , string.lower , string.upper , string.find , string.gmatch , string.format ,  string.gsub , string.sub , string.match
 
 pcall ( require , "luarocks.require" ) -- Activates luarocks if available.
-require "socket"
 require "socket.url"
-require "copas"
+local server = require "server"
 require "mime" -- For base64 decoding of authorisation
 require "lfs"
 
@@ -114,7 +113,7 @@ end
 local function httperrorpage ( status )
 	return "<html><head><title>HTTP Code " .. status .. "</title></head><body><h1>HTTP Code " .. status .. "</h1><p>" .. httpcodes [ status ] .. "</p><hr><i>Generated on " .. os.date ( ) .." by " .. versionstring .. " </i></body></html>"
 end
-local function httpsend ( skt , requestdetails , responsedetails )
+local function httpsend ( conn , requestdetails , responsedetails )
 	local status , body = responsedetails.status , responsedetails.body
 	
 	if type ( status ) ~= "number" or status < 100 or status > 599 then error ( "Invalid http code" ) end
@@ -191,17 +190,13 @@ local function httpsend ( skt , requestdetails , responsedetails )
 	message = message .. "\r\n" -- Signal end of header(s)
 	message = message .. body
 	
-	local bytessent , err = copas.send ( skt , message )
+	conn.write ( message )
 	
-	if not bytessent then
-		print ( err , requestdetails.body , message )
-	else
-		-- Apache Log Format
-		apachelog = apachelog .. strformat ( '%s - - [%s] "GET %s HTTP/%s.%s" %s %s "%s" "%s"' , requestdetails.peer , os.date ( "!%m/%b/%Y:%H:%M:%S GMT" ) , requestdetails.Path , requestdetails.Major , requestdetails.Minor , status , bytessent , ( requestdetails.headers [ "referer" ] or "-" ) , ( requestdetails.headers[ "agent" ] or "-" ) ) .. "\n"
-		--print ( "Apache Style Log: " .. apachelog )
-	end
+	-- Apache Log Format
+	apachelog = apachelog .. strformat ( '%s - - [%s] "GET %s HTTP/%s.%s" %s %s "%s" "%s"' , requestdetails.peer , os.date ( "!%m/%b/%Y:%H:%M:%S GMT" ) , requestdetails.Path , requestdetails.Major , requestdetails.Minor , status , #message , ( requestdetails.headers [ "referer" ] or "-" ) , ( requestdetails.headers[ "agent" ] or "-" ) ) .. "\n"
+	--print ( "Apache Style Log: " .. apachelog )
 		
-	return status , reasonphrase , bytessent
+	return status , reasonphrase
 end
 local function execute ( name , parameters )
 	-- Executes a function, given a string
@@ -492,89 +487,93 @@ local function jsonserver ( skt , requestdetails )
 		httpsend ( skt , requestdetails , { status = 400 , headers = hdr } )
 	end
 end
-local function httpserver ( skt )
-	while true do -- Keep doing it until connection is closed.
-		-- Retrive HTTP header
-		local found , chunk , code , request , rsize = false , 0 , false , "" , 0
-		while not found do
-			if chunk < 25 then
-				local data , err = copas.receive ( skt )
-				if err == "closed" then return end
-				if rsize <= 1 and data == "\r\n" then -- skip blank lines @ start
-				elseif data then
-					request = request .. data .. "\r\n"
-					
-					local length = strlen ( data )
-					if length < 1 then found = true end
-					rsize = rsize + length
-				else
-					return false
+local conns = { }
+local function httpserver ( conn , data , err )
+	if not data then return end
+	local session = conns [ conn ]
+	if not session then
+		if data == "\r" then return end
+		
+		session = { request = {  } , body = { } , gotrequest = false }
+		session.Method , session.Path , session.Major , session.Minor = strmatch ( data , "([A-Z]+) ([^ ]+) HTTP/(%d).(%d)" )
+		if not session.Method then conn.close ( ) return end
+		session.Method = strupper ( session.Method )
+		conns [ conn ] = session
+	elseif not session.gotrequest then -- Retrive HTTP header
+		local requestlines = #session.request
+		if requestlines > 25 then -- max of 25 lines, more and request could be a DOS Attack
+			conn.close ( )
+		end
+		if #data >= 1 then 
+			session.request [ requestlines + 1 ] = data
+		else
+			session.gotrequest = true
+			
+			local request = table.concat ( session.request , "\r\n" )
+			session.request = request
+			
+			local file , querystring = strmatch ( session.Path , "([^%?]+)%??(.*)$" ) 	-- HTTP Reserved characters: !*'();:@&=+$,/?%#[]
+																	-- HTTP Unreserved characters: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~
+																	-- Lua reserved pattern characters: ^$()%.[]*+-?
+																	-- Intersection of http and lua reserved: *+$?%[]
+																	-- %!%*%'%(%)%;%:%@%&%=%+%$%,%/%?%%%#%[%]
+			session.file = socket.url.unescape ( file )
+			local queryvars = { }
+			if querystring then
+				for k, v in strgmatch( querystring , "(print(request)[^=]+)=([^&]+)&?" ) do --"([%w%-%%%_%.%~]+)=([%w%%%-%_%.%~]+)&?") do
+					queryvars [ socket.url.unescape ( k ) ] = socket.url.unescape ( v )
 				end
-				chunk = chunk + 1
-			else -- max of 25 lines, more and request could be a DOS Attack
-				return false
 			end
+			
+			local headers = { } for k , v in strgmatch ( request , "\r\n([^:]+): ([^\r]+)" ) do headers [ strlower ( k ) ] = v end
+			if not headers [ "host" ] then headers [ "host" ] = "default" end
+			
+			session.querystring , session.queryvars , session.headers , session.peer = querystring , queryvars , headers , conn.socket ( ):getpeername ( )
+
+			if headers [ "content-length" ] then session.needbody = true end
 		end
-		--print( request )
+	elseif session.needbody then
+		local bodylen = tonumber ( session.headers [ "content-length" ] )
 		
-		local _ , _ , Method , Path , Major , Minor = strfind ( request , "([A-Z]+) ([^ ]+) HTTP/(%d).(%d)" )
-		Method = strupper ( Method )
-		if not Major then return false end -- Not HTTP
-		local file , querystring = strmatch ( Path , "([^%?]+)%??(.*)$" ) 	-- HTTP Reserved characters: !*'();:@&=+$,/?%#[]
-																-- HTTP Unreserved characters: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~
-																-- Lua reserved pattern characters: ^$()%.[]*+-?
-																-- Intersection of http and lua reserved: *+$?%[]
-																-- %!%*%'%(%)%;%:%@%&%=%+%$%,%/%?%%%#%[%]
-		file = socket.url.unescape ( file )
-		local queryvars = { }
-		if querystring then
-			for k, v in strgmatch( querystring , "([^=]+)=([^&]+)&?" ) do --"([%w%-%%%_%.%~]+)=([%w%%%-%_%.%~]+)&?") do
-				queryvars [ socket.url.unescape ( k ) ] = socket.url.unescape ( v )
-			end
-		end
-		local headers = { } for k , v in strgmatch ( request , "\r\n([^:]+): ([^\r\n]+)" ) do headers [ strlower ( k ) ] = v end
-		if not headers [ "host" ] then headers [ "host" ] = "default" end
+		session.body [ #session.body + 1 ] = data
+		local body = table.concat ( session.body )
+		if # ( body ) < bodylen then return end
+		session.body = body
 		
-		local requestdetails = { Method = Method , Path = Path , Major = Major , Minor = Minor , file = file , querystring = querystring , queryvars = queryvars , headers = headers , peer = skt:getpeername ( ) }
-		
-		if headers [ "content-length" ] then requestdetails.body = copas.receive ( skt , headers [ "content-length" ] ) end
-		
-		if Method == "POST" then
-			if file == "/LOMP" and headers [ "content-type" ] == "text/xml" then -- This is an xmlrpc command for lomp
-				xmlrpcserver ( skt , requestdetails )
-			elseif file == "/JSON" then
-				jsonserver ( skt , requestdetails )
+		if session.Method == "POST" then
+			if session.file == "/LOMP" and session.headers [ "content-type" ] == "text/xml" then -- This is an xmlrpc command for lomp
+				xmlrpcserver ( conn , session )
+			elseif session.file == "/JSON" then
+				jsonserver ( conn , session )
 			else
-				webserver ( skt , requestdetails )
+				webserver ( conn , session )
 			end
-		elseif Method == "GET" or Method == "HEAD" then
-			if file == "/BasicCMD" then
-				basiccmdserver ( skt , requestdetails )
-			elseif file == "/JSON" then
-				jsonserver ( skt , requestdetails )
+		elseif session.Method == "GET" or session.Method == "HEAD" then
+			if session.file == "/BasicCMD" then
+				basiccmdserver ( conn , session )
+			elseif session.file == "/JSON" then
+				jsonserver ( conn , session )
 			else
-				webserver ( skt , requestdetails )
+				webserver ( conn , session )
 			end
-		elseif Method == "TRACE" then -- Send back request as body
-			httpsend ( skt , requestdetails , 200 , { [ 'content-type'] = "message/http" } , request )
+		elseif session.Method == "TRACE" then -- Send back request as body
+			httpsend ( conn , session , 200 , { [ 'content-type'] = "message/http" } , session.request )
 		--elseif Method == "PUT" or Method == "DELETE" or Method == "OPTIONS" then	
 		else
-			httpsend ( skt , requestdetails , { status = 501 , headers = { Allow = "GET, POST, HEAD" } } )
+			session.httpsend ( conn , session , { status = 501 , headers = { Allow = "GET, POST, HEAD" } } )
 		end
-		
-		break
-	end
-end
-function initiate ( host , port )
-	local srv, err = socket.bind ( host , port , 0.5 )
-	if srv then
-		copas.addserver ( srv , httpserver )
-		updatelog ( "Server started; bound to '" .. host .. "', port #" .. port , 4 ) 
-		return true
-	else
-		return ferror ( "Server could not be started: " .. err , 1 )
 	end
 end
 
+function initiate ( host , port )
+	server.addserver ( {
+			incoming = httpserver ;
+			disconnect = function ( conn , err )
+				conns [ conn ] = nil
+			end ;
+		} , port , host , "*l" )
+	updatelog ( "Server started; bound to '" .. host .. "', port #" .. port , 4 )
+end
+
 initiate ( config.address , config.port )
-addstep ( copas.step )
+addstep ( server.step )
