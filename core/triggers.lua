@@ -19,13 +19,13 @@ local callbacks = {
 	softqueueplaylist = { } ; -- ( softqueueplaylist)
 	rpt = { } ; -- ( repeat )
 	
-	playlist_create = { function ( pl ) updatelog ( "Created playlist #" .. pl.index .. ": '" .. pl.name .. "'" , 4 ) end } ;
-	playlist_delete = { function ( pl ) updatelog ( "Deleted playlist #" .. pl.index .. " (" .. pl.name .. ")" , 4 ) end } ;
-	playlist_clear = { function ( pl ) updatelog ( "Cleared playlist #" .. pl.index .. " (" .. pl.name .. ")" , 4 ) end } ;
-	playlist_sort = { function ( pl ) updatelog ( "Sorted playlist #" .. pl.index .. " (" .. pl.name .. ")" , 4 ) end } ;
+	playlist_create = { function ( plnum ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Created playlist #" .. pl.index .. ": '" .. pl.name .. "'" , 4 ) end } ;
+	playlist_delete = { function ( plnum ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Deleted playlist #" .. pl.index .. " (" .. pl.name .. ")" , 4 ) end } ;
+	playlist_clear = { function ( plnum ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Cleared playlist #" .. pl.index .. " (" .. pl.name .. ")" , 4 ) end } ;
+	playlist_sort = { function ( plnum ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Sorted playlist #" .. pl.index .. " (" .. pl.name .. ")" , 4 ) end } ;
 	
-	item_add = { function ( num , pl , position , object ) updatelog ( "Added item to playlist #" .. num .. " (" .. pl.name .. ") position #" .. position .. " Source: " .. object.source  , 4 ) end } ;
-	item_remove = { function ( num , pl , position , object ) updatelog ( "Removed item from playlist #" .. num .. " (" .. pl.name .. ") position #" .. position .. " Source: " .. object.source  , 4 ) end } ;
+	item_add = { function ( plnum , position , object ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Added item to playlist #" .. num .. " (" .. pl.name .. ") position #" .. position .. " Source: " .. object.source  , 4 ) end } ;
+	item_remove = { function ( plnum , position , object ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Removed item from playlist #" .. num .. " (" .. pl.name .. ") position #" .. position .. " Source: " .. object.source  , 4 ) end } ;
 	
 	playback_stop = { } ; -- ( type , source , offset )
 	playback_pause = { } ; -- ( offset )

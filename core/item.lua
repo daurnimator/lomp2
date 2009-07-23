@@ -37,18 +37,23 @@ function additem ( object , playlistnum , position )
 	local pl = core.playlist.getplaylist ( playlistnum )
 	if not pl then return ferror ( "'Add Item' called with invalid playlist" , 1 ) end
 	local pllength = pl.length
-	if position and type ( position ) ~= "number" then return ferror ( "'Add Item' called with invalid position" , 1 ) else position = position or ( pllength + 1 ) end
+	
+	if position and type ( position ) ~= "number" then
+		return ferror ( "'Add Item' called with invalid position" , 1 ) 
+	else
+		position = position or ( pllength + 1 )
+	end
 
 	local newrev = { length = pllength + 1 }
 	
 	for i = pllength , position , -1 do
 		newrev [ i + 1 ] = pl [ i ]
 	end
-	newrev [ pllength + 1 ] = object
+	newrev [ position ] = object
 		
 	pl.revisions [ #pl.revisions + 1 ] = newrev
 	
-	triggers.triggercallback ( "item_add" , playlistnum , pl , position , object )
+	triggers.triggercallback ( "item_add" , playlistnum , position , object )
 	
 	return position
 end
@@ -70,7 +75,7 @@ function removeitem ( playlistnum , position )
 	
 	pl.revisions [ #pl.revisions + 1 ] = newrev
 	
-	triggers.triggercallback ( "item_remove" , playlistnum , pl , position , object )
+	triggers.triggercallback ( "item_remove" , playlistnum , position , object )
 
 	return true
 end

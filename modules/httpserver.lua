@@ -11,9 +11,9 @@
 
 require "general"
 
-module ( "lomp.server" , package.see ( lomp ) )
+module ( "httpserver" , package.see ( lomp ) )
 
-local versionstring = "Lomp Server 0.0.1" --core._NAME .. ' ' .. core._VERSION
+local versionstring = "Lomp HTTP Server 0.0.1" --core._NAME .. ' ' .. core._VERSION
 
 local tsort = table.sort
 local strlen , strlower , strupper , strfind , strgmatch , strformat , strgsub , strsub , strmatch = string.len , string.lower , string.upper , string.find , string.gmatch , string.format ,  string.gsub , string.sub , string.match
@@ -24,8 +24,6 @@ require "socket.url"
 require "copas"
 require "mime" -- For base64 decoding of authorisation
 require "lfs"
-
-server = { }
 
 local apachelog = ""
 
@@ -494,7 +492,7 @@ local function jsonserver ( skt , requestdetails )
 		httpsend ( skt , requestdetails , { status = 400 , headers = hdr } )
 	end
 end
-local function lompserver ( skt )
+local function httpserver ( skt )
 	while true do -- Keep doing it until connection is closed.
 		-- Retrive HTTP header
 		local found , chunk , code , request , rsize = false , 0 , false , "" , 0
@@ -567,28 +565,16 @@ local function lompserver ( skt )
 		break
 	end
 end
-function server.initiate ( host , port )
-	local srv, err = socket.bind ( host , port , 100 )
-	if srv then 
-		--[[copas.addserver( server , function echoHandler ( skt )
-			while true do
-				local data = copas.receive( skt )
-				if data == "quit" then
-					break
-				end
-				if data then 
-					print(data)
-					copas.send(skt, data .. "\r\n")
-				end
-			end
-		end ) --]] -- Echo Handler
-		copas.addserver ( srv , function ( skt ) return lompserver ( skt ) end )
+function initiate ( host , port )
+	local srv, err = socket.bind ( host , port , 5 )
+	if srv then
+		copas.addserver ( srv , httpserver )
 		updatelog ( "Server started; bound to '" .. host .. "', port #" .. port , 4 ) 
 		return true
 	else
-		return ferror ( "Server could not be started: " .. err , 0 )
+		return ferror ( "Server could not be started: " .. err , 1 )
 	end
 end
 
-server.initiate ( config.address , config.port )
+initiate ( config.address , config.port )
 addstep ( copas.step )

@@ -107,38 +107,45 @@ function packn ( skip , _ , ... )
 end
 
 -- Randomise a table
-function table.randomise ( tbl , n )
+function table.randomise ( tbl , n , newtable )
 	n = n or #tbl
+	
+	local new
+	if newtable then new = { }
+	else new = tbl end
+	
 	for i = 1 , n do
 		local j = math.random ( i , n )
-		tbl [ i ] , tbl [ j ] = tbl [ j ] , tbl [ i ]
+		new [ i ] , tbl [ j ] = tbl [ j ] , tbl [ i ]
 	end
-	return tbl
+	return new
 end
 
 -- Sort a table stabily
  -- a is table to sort
- -- func is a function to run on each element after it's sorted.
-function table.stablesort ( a , equalitycheck , func )
+ -- returns sorted table.
+function table.stablesort ( a , equalitycheck , newtable )
 	equalitycheck = equalitycheck or function ( e1 , e2 ) if e1 < e2 then return true else return false end end
 	func = func or function ( ) end
 	
 	local n = #a
+	
 	local index = { }
 	for i = 1 , n do index [ i ] = i end
 
-	local function stable_lt ( i , j )
-		local ai , aj = a [ i ], a [ j ]
-		if equalitycheck ( ai , aj ) then return true end
-		if equalitycheck ( aj , ai ) then return false end
-		return i < j
-	end
-	table.sort ( index , stable_lt )
+	table.sort ( index , function ( i , j )
+			local ai , aj = a [ i ] , a [ j ]
+			if equalitycheck ( ai , aj ) then return true end
+			if equalitycheck ( aj , ai ) then return false end
+			return i < j
+		end
+	)
 
 	for i = 1 , n do index [ i ] = a [ index [ i ] ] end
-	for i = 1 , n do 
-		a [ i ] = index [ i ] 
-		func ( a [ i ] )
+	
+	if newtable then a = { } end
+	for i = 1 , n do
+		a [ i ] = index [ i ]
 	end
 end
 

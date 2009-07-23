@@ -24,17 +24,19 @@ function getplaylist ( playlistnum )
 end
 
 function getnum ( playlist )
-	
 	return playlist.index
 end
 
 local function playlistval ( revisions , k , latest , earliest )
+	if type ( k ) == "number" and k > playlistval ( revision , "length" , latest , 0 ) then return nil end
+	
 	for i = latest , earliest , -1 do
 		local r = revisions [ i ]
 		if type ( r ) ~= "table" then return nil end
 		local v = r [ k ]
 		if v ~= nil then return v end
 	end
+	
 	return nil
 end
 
@@ -48,6 +50,7 @@ local function collapserev ( revisions , latest , earliest )
 		t [ i ] = tmp
 		i = i + 1
 	end
+	
 	return t
 end
 
@@ -94,7 +97,7 @@ function new ( name , playlistnumber )
 	vars.playlist [ playlistnumber ] = pl
 	vars.playlist.revision = vars.playlist.revision + 1
 	
-	triggers.triggercallback ( "playlist_create" , pl )
+	triggers.triggercallback ( "playlist_create" , playlistnumber )
 	
 	return playlistnumber , name
 end
@@ -110,7 +113,7 @@ function delete ( num )
 	vars.pl.revision = vars.pl.revision + 1
 	if pl == vars.queue.softqueueplaylist then vars.queue.softqueueplaylist = -1 end -- If deleted playlist was the soft queue
 	
-	triggers.triggercallback ( "playlist_delete" , pl )
+	triggers.triggercallback ( "playlist_delete" , num )
 	
 	return true
 end
@@ -121,9 +124,20 @@ function clear ( num )
 		return ferror ( "'Clear playlist' called with invalid playlist" , 1 ) 
 	end
 	
-	pl.revisions = { [ 0 ] = { name = pl.name , length = 0 } }
+	pl.revisions [ pl.revision + 1 ] = { length = 0 }
 	
-	triggers.triggercallback ( "playlist_clear" , pl )
+	triggers.triggercallback ( "playlist_clear" , num )
+	
+	return true
+end
+
+function rename ( num , newname )
+	local pl = getplaylist ( num )
+	if not pl then
+		return ferror ( "'Rename playlist' called with invalid playlist" , 1 ) 
+	end
+	
+	pl.revisions [ pl.revision + 1 ] = { name = newname }
 	
 	return true
 end
@@ -134,9 +148,9 @@ function randomise ( num )
 		return ferror ( "'Randomise playlist' called with invalid playlist" , 1 ) 
 	end
 	
-	pl.revisions [ #pl.revisions + 1 ] = table.randomise ( collapserev ( pl.revisions , pl.revision ) , pl.length )
+	pl.revisions [ pl.revision + 1 ] = table.randomise ( collapserev ( pl.revisions , pl.revision ) , pl.length , true )
 	
-	triggers.triggercallback ( "playlist_sort" , pl )
+	triggers.triggercallback ( "playlist_sort" , num )
 	
 	return true
 end
@@ -147,9 +161,9 @@ function sort ( num , eq )
 		return ferror ( "'Sort playlist' called with invalid playlist" , 1 )
 	end
 
-	pl.revisions [ #pl.revisions + 1 ] = table.stablesort ( collapserev ( pl.revisions , pl.revision ) , eq )
+	pl.revisions [ pl.revision + 1 ] = table.stablesort ( collapserev ( pl.revisions , pl.revision ) , eq , true )
 	
-	triggers.triggercallback ( "playlist_sort" , pl )
+	triggers.triggercallback ( "playlist_sort" , num )
 	
 	return true
 end
