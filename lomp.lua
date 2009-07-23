@@ -92,7 +92,7 @@ require "lomp-core"
 
 require "modules.metadata"
 require "modules.albumart"
---require "modules.httpserver"
+require "modules.httpserver"
 require "modules.eventserver"
 require "modules.filter"
 

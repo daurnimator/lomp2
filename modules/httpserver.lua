@@ -566,7 +566,7 @@ local function httpserver ( skt )
 	end
 end
 function initiate ( host , port )
-	local srv, err = socket.bind ( host , port , 5 )
+	local srv, err = socket.bind ( host , port , 0.5 )
 	if srv then
 		copas.addserver ( srv , httpserver )
 		updatelog ( "Server started; bound to '" .. host .. "', port #" .. port , 4 ) 

@@ -28,7 +28,7 @@ function getnum ( playlist )
 end
 
 local function playlistval ( revisions , k , latest , earliest )
-	if type ( k ) == "number" and k > playlistval ( revision , "length" , latest , 0 ) then return nil end
+	if type ( k ) == "number" and k > playlistval ( revisions , "length" , latest , 0 ) then return nil end
 	
 	for i = latest , earliest , -1 do
 		local r = revisions [ i ]
