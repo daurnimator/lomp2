@@ -22,8 +22,6 @@ local osdate , ostime = os.date , os.time
 local ioopen = io.open
 local pcall , unpack , require , loadfile , assert , pairs , ipairs , setfenv , tonumber , tostring , type = pcall , unpack , require , loadfile , assert , pairs , ipairs , setfenv , tonumber , tostring , type
 
-local print = print 
-
 module ( "httpserver" )
 
 _NAME = "Lomp HTTP Server"
@@ -34,8 +32,8 @@ local versionstring =  _NAME .. " " .. _VERSION --core._NAME .. ' ' .. core._VER
 pcall ( require , "luarocks.require" ) -- Activates luarocks if available.
 local url = require "socket.url"
 local server = require "server"
-require "mime" -- For base64 decoding of authorisation
-require "lfs"
+local mime = require "mime" -- For base64 decoding of authorisation
+local lfs = require "lfs"
 
 setfenv ( loadfile ( dir .. "config" ) , _M )  ( ) -- Load config
 
@@ -291,7 +289,7 @@ local function xmlrpcserver ( skt , requestdetails )
 			--print(result,table.serialise(result))
 		end
 		local body = xmlrpc.srvEncode ( result , not ok )
-		print(body)
+		--print(body)
 		
 		httpsend ( skt , requestdetails , { status = 200 , headers = { [ 'content-length' ] = "text/xml" } , body = body } )
 			
@@ -508,14 +506,14 @@ local function jsonserver ( skt , requestdetails )
 	end
 end
 local conns = { }
-local function httpserver ( conn , data , err )
+local function httpserver ( conn , data, err )
 	if not data then return end
 	local session = conns [ conn ]
 	if not session then
 		if data == "\r" then return end
 		
 		session = { request = {  } , body = { } , gotrequest = false }
-		session.Method , session.Path , session.Major , session.Minor = strmatch ( data , "([A-Z]+) ([^ ]+) HTTP/(%d).(%d)" )
+		session.Method , session.Path , session.Major , session.Minor = strmatch ( data , "(%u+)%s+(%S+)%sHTTP/(%d).(%d)" )
 		if not session.Method then conn.close ( ) return end
 		session.Method = strupper ( session.Method )
 		conns [ conn ] = session
@@ -524,7 +522,7 @@ local function httpserver ( conn , data , err )
 		if requestlines > 25 then -- max of 25 lines, more and request could be a DOS Attack
 			conn.close ( )
 		end
-		if #data >= 1 then 
+		if #data >= 1 and data ~= "\r" then 
 			session.request [ requestlines + 1 ] = data
 		else
 			session.gotrequest = true
@@ -540,7 +538,7 @@ local function httpserver ( conn , data , err )
 			session.file = url.unescape ( file )
 			local queryvars = { }
 			if querystring then
-				for k, v in strgmatch( querystring , "(print(request)[^=]+)=([^&]+)&?" ) do --"([%w%-%%%_%.%~]+)=([%w%%%-%_%.%~]+)&?") do
+				for k, v in strgmatch( querystring , "([^=]+)=([^&]+)&?" ) do --"([%w%-%%%_%.%~]+)=([%w%%%-%_%.%~]+)&?") do
 					queryvars [ url.unescape ( k ) ] = url.unescape ( v )
 				end
 			end
@@ -549,7 +547,7 @@ local function httpserver ( conn , data , err )
 			if not headers [ "host" ] then headers [ "host" ] = "default" end
 			
 			session.querystring , session.queryvars , session.headers , session.peer = querystring , queryvars , headers , conn.socket ( ):getpeername ( )
-
+			
 			if headers [ "content-length" ] then session.needbody = true end
 		end
 	elseif session.needbody then
@@ -559,7 +557,10 @@ local function httpserver ( conn , data , err )
 		local body = tblconcat ( session.body )
 		if # ( body ) < bodylen then return end
 		session.body = body
-		
+		session.needbody = false
+	end
+	
+	if session and session.gotrequest and not session.needbody then	
 		if session.Method == "POST" then
 			if session.file == "/LOMP" and session.headers [ "content-type" ] == "text/xml" then -- This is an xmlrpc command for lomp
 				xmlrpcserver ( conn , session )
