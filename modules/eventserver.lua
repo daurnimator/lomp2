@@ -16,6 +16,7 @@ module ( "eventserver" , package.see ( lomp ) )
 pcall ( require , "luarocks.require" ) -- Activates luarocks if available.
 require "socket"
 local server = require "server"
+require "Json"
 
 --[[
 Protocol details:
@@ -29,7 +30,12 @@ A client sends "phrases", they take the form: <PHRASE> <param_1> <param_2> <para
 When client connects, it should first send: LOMP <version> <client>\n
   where <version> is an integer and <client> is a string not containing \n
 
-  
+Supported Phrases:
+SET <key> <val>
+CMD <command> <json array of parameters>
+SUBSCRIBE <event>
+GET <variable>
+
 Example session: (C = client , S=server)
 
 C: LOMP 1
@@ -44,10 +50,24 @@ C: SUBSCRIBE loop
 ( Subscribe to the "loop" event )
 S: 0
 ( Success )
-S: EVENT loop 1 4 true
-( Event "loop" has fired, one parameter ( "true" ) (which is 4 characters long) )
+S: EVENT loop 6 [true]
+( Event "loop" has fired, 6 character long (json) param array: is an array with true as the only element )
 
 ]]
+
+local function packobject ( ... )
+	local vararg = { ... }
+	local vararglen = select ( "#" , ... )
+	for i = 1 , vararglen do
+		local var = vararg [ i ]
+		if var == nil then var = Json.Null end
+		vararg [ 1 ] = var
+	end
+	
+	local encoded = Json.Encode ( vararg )
+	
+	return #encoded , encoded
+end
 
 local versions = {
 	{ -- 1
@@ -55,6 +75,7 @@ local versions = {
 			SUCCESS = 0 ;
 			BAD_FORMAT = 1 ;
 			INVALID_PHRASE = 2 ;
+			ERROR = 3 ;
 		} ;
 		func = function ( conn , session , ver , line )
 			local phrase , params = line:match ( "^(%u+)%s*(.*)$" )
@@ -67,23 +88,28 @@ local versions = {
 				conn.write ( ver.codes.INVALID_PHRASE .. "\n" )
 				return
 			end
-			print("t")
-			conn.write ( phrasefunc ( conn , session , ver , params ) )
+			conn.write ( phrasefunc ( conn , session , ver , params ) .. "\n" )
 		end ;
 		phrases = {
 			SET = function ( conn , session , ver , params )
 				local key , val = params:match ( "^(%S+)%s*(.*)$" )
-				session [ key ] = val
-				return ver.codes.SUCCESS .. "\n"
+				session [ key ] = tonumber ( val ) or val
+				return ver.codes.SUCCESS
 			end ;
 			CMD = function ( conn , session , ver , params )
-				
+				local func , args = params:match ( "^(%S+)%s*(.*)$" )
+				local args = Json.Decode ( args )
 			end ;
 			SUBSCRIBE = function ( conn , session , ver , params )
 				
 			end ;
 			GET = function ( conn , session , ver , params )
-				
+				local ok , results = var ( params )
+				if ok then
+					return table.concat ( { 0 , packobject ( results ) } , " " )
+				else
+					return ver.codes.ERROR
+				end
 			end ;
 		} ;
 	} ;
