@@ -198,7 +198,7 @@ local function httpsend ( conn , requestdetails , responsedetails )
 		
 	return status , reasonphrase
 end
-local function execute ( name , parameters )
+local function execute ( name , ... )
 	-- Executes a function, given a string
 	-- Example of string: core.playback.play
 	if type ( name ) ~= "string" then return false end
@@ -209,7 +209,7 @@ local function execute ( name , parameters )
 		else return ok , { ... } end
 	end
 	
-	return interpret ( cmd ( name , unpack ( parameters ) ) )
+	return interpret ( cmd ( name , ... ) )
 end
 local function getvar ( name )
 	-- Executes a function, given a string
