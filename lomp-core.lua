@@ -31,26 +31,29 @@ local triggeronchange = {
 	softqueueplaylist = true ;
 }
 
-vars = setmetatable ( { 
-		init= t ;
-		playlist = setmetatable ( {
-				revision = 0 ;
-			} , { __newindex = function ( t , k , v ) if type ( k ) == "number" then rawset ( t , k , v ) elseif k == "revision" then rawset ( t , k , v ) end end } ) ;
-		played = { 
-			revision = 0
-		} ;
-		loop = false ; -- Loop soft playlist?
-		rpt = true ; -- When end of soft playlist reached, go back to start of soft playlist?
-		ploffset = 0 ;
-	} , {
+local varsindex = {
+	init= t ;
+	playlist = setmetatable ( {
+			revision = 0 ;
+		} , { __newindex = function ( t , k , v ) if type ( k ) == "number" then rawset ( t , k , v ) elseif k == "revision" then rawset ( t , k , v ) end end } ) ;
+	played = { 
+		revision = 0
+	} ;
+	loop = false ; -- Loop soft playlist?
+	rpt = true ; -- When end of soft playlist reached, go back to start of soft playlist?
+	ploffset = 0 ;
+}
+vars = setmetatable ( { } , {
+		__index = varsindex ;
 		__newindex = function ( t , k , v )
 			local val = vars [ k ]
-			rawset ( t , k , v )
+			rawset ( varsindex , k , v )
 			if triggeronchange [ k ] then
-				triggers.triggercallback ( k , val )
+				triggers.triggercallback ( k , v )
 			end
 		end ;
-} )
+	}
+)
 
 function core.quit ( )
 	player.stop ( )

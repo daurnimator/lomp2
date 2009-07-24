@@ -31,20 +31,39 @@ local callbacks = {
 	playback_pause = { } ; -- ( offset )
 	playback_unpause = { } ; -- ( )
 	playback_startsong = { } ; -- ( type , source )
+	playback_seek = { }
 	
 	player_abouttofinish = { } ;
 	player_finished = { } ;
 }
+for k , v in pairs ( callbacks ) do
+	setmetatable ( v , { __mode = "k" } )
+end
 
 function registercallback ( callback , func , name )
-	local pos = #callbacks [ callback ] + 1
-	callbacks [ callback ] [ pos ] = func
-	callbacks [ callback ] [ name ] = pos
+	local t = callbacks [ callback ]
+	local pos = #t + 1
+	t [ pos ] = func
+	t [ name ] = pos
 	return pos
 end
-function deregistercallback ( callback , name )
-	table.remove ( callbacks [ callback ] , callbacks [ callback ] [ name ] )
-	callbacks [ callback ] [ name ] = nil
+function deregistercallback ( callback , id )
+	local t = callbacks [ callback ]
+	if not t then return ferror ( "Deregister callback called with invalid callback" , 1 ) end
+	
+	local pos
+	if type ( id ) == "string" then
+		pos = t [ id ]
+	elseif type ( id ) == "number" then
+		pos = id
+	end
+	if not pos then
+		return ferror ( "Deregister callback called with invalid position/name" , 1 )
+	end
+	
+	table.remove ( t , pos )
+	
+	return true
 end
 function triggercallback ( callback , ... )
 	for i , v in ipairs ( callbacks [ callback ] ) do v ( ... ) end

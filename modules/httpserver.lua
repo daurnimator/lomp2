@@ -204,7 +204,12 @@ local function execute ( name , parameters )
 	if type ( name ) ~= "string" then return false end
 	if parameters and type ( parameters ) ~= "table" then return false end
 	
-	return cmd ( name , parameters )
+	local function interpret ( ok , ... )
+		if not ok then return false , ( ... )
+		else return ok , { ... } end
+	end
+	
+	return interpret ( cmd ( name , parameters ) )
 end
 local function getvar ( name )
 	-- Executes a function, given a string

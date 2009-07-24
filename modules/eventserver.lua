@@ -55,22 +55,30 @@ S: EVENT loop 6 [true]
 
 ]]
 
-local function packobject ( ... )
+local function packobject ( session , ... )
 	local vararg = { ... }
 	local vararglen = select ( "#" , ... )
 	for i = 1 , vararglen do
 		local var = vararg [ i ]
 		if var == nil then var = Json.Null end
-		vararg [ 1 ] = var
+		vararg [ i ] = var
 	end
 	
-	local encoded = Json.Encode ( vararg )
+	local encoded 
+	if session.vars.dataencoding == "json" then
+		encoded = Json.Encode ( vararg )
+	else
+		error ( "invalid data encoding" )
+	end
 	
 	return #encoded , encoded
 end
 
 local versions = {
 	{ -- 1
+		init = function ( )
+			return { version = 1 ; subscriptions = { } ; vars = { dataencoding = "json" } }
+		end ;
 		codes = {
 			SUCCESS = 0 ;
 			BAD_FORMAT = 1 ;
@@ -93,20 +101,58 @@ local versions = {
 		phrases = {
 			SET = function ( conn , session , ver , params )
 				local key , val = params:match ( "^(%S+)%s*(.*)$" )
-				session [ key ] = tonumber ( val ) or val
+				session.vars [ key ] = tonumber ( val ) or val
 				return ver.codes.SUCCESS
 			end ;
 			CMD = function ( conn , session , ver , params )
 				local func , args = params:match ( "^(%S+)%s*(.*)$" )
-				local args = Json.Decode ( args )
+				if args ~= "" then
+					args = Json.Decode ( args )
+				else
+					args = nil
+				end
+				
+				local function interpret ( ok , ... )
+					if not ok then return ver.codes.ERROR
+					else return table.concat ( { ver.codes.SUCCESS , packobject ( session , ... ) } , " " ) end
+				end
+				return interpret ( cmd ( func , args ) )
 			end ;
 			SUBSCRIBE = function ( conn , session , ver , params )
-				
+				local callbackname = params:match ( "^(%S+)" )
+				local pos = triggers.registercallback ( callbackname , function ( ... )
+						local result = { "EVENT" , callbackname , packobject ( session , ... ) }
+						result [ #result + 1 ] = "\n"
+						conn.write ( table.concat ( result , " " ) )
+					end , "Event Client Subscription" )
+				if pos then
+					local subs = session.subscriptions
+					local scbn = subs [ callbackname ] or { }
+					local sessionpos = #scbn + 1
+					scbn [ sessionpos ] = pos
+					subs [ callbackname ] = scbn
+					
+					return ver.codes.SUCCESS .. " " .. sessionpos
+				else
+					return ver.codes.ERROR
+				end
+			end ;
+			UNSUBSCRIBE = function ( conn , session , ver , params )
+				local callbackname , sessionpos = params:match ( "^(%S+)%s*(%d+)" )
+				if not callbackname or not sessionpos then return ver.codes.BAD_FORMAT end
+				sessionpos = tonumber ( sessionpos )
+				local scbn = session.subscriptions [ callbackname ]
+				if scbn and scbn [ sessionpos ] and triggers.deregistercallback ( callbackname , scbn [ sessionpos ] ) then
+					scbn [ sessionpos ] = nil
+					return ver.codes.SUCCESS
+				else
+					return ver.codes.ERROR
+				end
 			end ;
 			GET = function ( conn , session , ver , params )
 				local ok , results = var ( params )
 				if ok then
-					return table.concat ( { 0 , packobject ( results ) } , " " )
+					return table.concat ( { ver.codes.OK , packobject ( ver , results ) } , " " )
 				else
 					return ver.codes.ERROR
 				end
@@ -128,7 +174,7 @@ function incoming ( conn , data , err )
 			local ver = versions [ version ]
 			if ver then
 				conn.write ( ver.codes.SUCCESS .. "\n" )
-				session = { version = version }
+				session = ver.init ( )
 				connections [ conn ] = session
 			else 
 				updatelog ( "Client tried to connect with unsupported protocol" , 4 )

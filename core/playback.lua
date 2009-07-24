@@ -194,8 +194,11 @@ function seek ( offset , relative , percent )
 	
 	player.seek ( offset , relative , percent )
 	
-	vars.queue [ 0 ].offset = player.getposition ( )
-	
+	local newoffset = player.getposition ( )
+	vars.queue [ 0 ].offset = newoffset
+
+	triggers.triggercallback ( "playback_seek" , newoffset )	
+
 	return true
 end
 

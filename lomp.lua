@@ -170,11 +170,7 @@ function cmd ( cmd , params )
 		elseif not func then -- Make sure function was found, func already has to be a function or nil, so we only need to exclude the nil case
 			return false , "Not a function"
 		else
-			local function interpret ( ok , err , ... )
-				if not ok then return false , err
-				else return ok , { err , ... } end
-			end
-			return interpret ( pcall ( func , unpack ( params or { } ) ) )
+			return pcall ( func , unpack ( params or { } ) )
 		end                     
 	end
 end
