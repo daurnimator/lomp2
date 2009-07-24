@@ -158,7 +158,7 @@ local function buildMetatableGet ( ref )
 	}
 end
 
-function cmd ( cmd , params )
+function cmd ( cmd , ... )
 	local fn , fail = loadstring ( "return " .. cmd )
 	if fail then -- Check for compilation errors (eg, syntax)
 		return false , fail
@@ -170,7 +170,7 @@ function cmd ( cmd , params )
 		elseif not func then -- Make sure function was found, func already has to be a function or nil, so we only need to exclude the nil case
 			return false , "Not a function"
 		else
-			return pcall ( func , unpack ( params or { } ) )
+			return pcall ( func , ... )
 		end                     
 	end
 end

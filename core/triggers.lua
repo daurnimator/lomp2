@@ -31,7 +31,7 @@ local callbacks = {
 	playback_pause = { } ; -- ( offset )
 	playback_unpause = { } ; -- ( )
 	playback_startsong = { } ; -- ( type , source )
-	playback_seek = { }
+	playback_seek = { } ;
 	
 	player_abouttofinish = { } ;
 	player_finished = { } ;

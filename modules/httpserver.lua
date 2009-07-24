@@ -209,7 +209,7 @@ local function execute ( name , parameters )
 		else return ok , { ... } end
 	end
 	
-	return interpret ( cmd ( name , parameters ) )
+	return interpret ( cmd ( name , unpack ( parameters ) ) )
 end
 local function getvar ( name )
 	-- Executes a function, given a string
@@ -263,13 +263,13 @@ local function xmlrpcserver ( skt , requestdetails )
 		list_params = list_params [ 1 ] -- KLUDGE: I don't know why it needs this, but it does -- maybe its so you can have multiple methodnames?? but then wtf is the previous cmd...
 		
 		local function depack ( t , i , j )
+			if not t then return end
 			i = i or 1
 			if ( j and i > j ) or ( not j and t [ tostring ( i ) ] == nil ) then return end 
 			return t [ tostring ( i ) ] , depack ( t , i + 1 , j )
 		end
-		list_params = { depack ( list_params or { } ) }
 		
-		local ok , result = execute ( method_name , list_params )
+		local ok , result = execute ( method_name , depack ( list_params ) )
 
 		if ok then
 			--result = table.serialise ( result ) -- MASSIVE HACK, makes it hard for non-lua xmlrpc clients - not really xmlrpc any more.
@@ -342,7 +342,7 @@ local function basiccmdserver ( skt , requestdetails )
 					return 500 , doc
 				end
 			end
-			local status , doc = makeresponse ( execute ( cmd , params ) )
+			local status , doc = makeresponse ( execute ( cmd , unpack ( params ) ) )
 			local code , str , msg , bytessent = httpsend ( skt , requestdetails , { status = status , body = doc } )
 			return true
 		end
@@ -457,7 +457,7 @@ local function jsonserver ( skt , requestdetails )
 			local code = 200
 			for i , v in ipairs ( o ) do
 				if v.cmd then
-					t [ i ] = { execute ( v.cmd , v.params ) }
+					t [ i ] = { execute ( v.cmd , unpack ( v.params ) ) }
 				else -- Not a command?
 					code = 206
 					t [ i ] = { false , "Provide a function" }

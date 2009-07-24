@@ -30,10 +30,11 @@ A client sends "phrases", they take the form: <PHRASE> <param_1> <param_2> <para
 When client connects, it should first send: LOMP <version> <client>\n
   where <version> is an integer and <client> is a string not containing \n
 
-Supported Phrases:
+Supported Client Phrases:
 SET <key> <val>
 CMD <command> <json array of parameters>
 SUBSCRIBE <event>
+UNSUBSCRIBE <event>
 GET <variable>
 
 Example session: (C = client , S=server)
@@ -84,6 +85,7 @@ local versions = {
 			BAD_FORMAT = 1 ;
 			INVALID_PHRASE = 2 ;
 			ERROR = 3 ;
+			ALREADY_SUBSCRIBED = 4 ;
 		} ;
 		func = function ( conn , session , ver , line )
 			local phrase , params = line:match ( "^(%u+)%s*(.*)$" )
@@ -109,41 +111,39 @@ local versions = {
 				if args ~= "" then
 					args = Json.Decode ( args )
 				else
-					args = nil
+					args = { }
 				end
 				
 				local function interpret ( ok , ... )
 					if not ok then return ver.codes.ERROR
 					else return table.concat ( { ver.codes.SUCCESS , packobject ( session , ... ) } , " " ) end
 				end
-				return interpret ( cmd ( func , args ) )
+				return interpret ( cmd ( func , unpack ( args ) ) )
 			end ;
 			SUBSCRIBE = function ( conn , session , ver , params )
 				local callbackname = params:match ( "^(%S+)" )
+				local subs = session.subscriptions
+				if subs [ callbackname ] then return ver.codes.ALREADY_SUBSCRIBED end
 				local pos = triggers.registercallback ( callbackname , function ( ... )
 						local result = { "EVENT" , callbackname , packobject ( session , ... ) }
 						result [ #result + 1 ] = "\n"
 						conn.write ( table.concat ( result , " " ) )
 					end , "Event Client Subscription" )
 				if pos then
-					local subs = session.subscriptions
-					local scbn = subs [ callbackname ] or { }
-					local sessionpos = #scbn + 1
-					scbn [ sessionpos ] = pos
-					subs [ callbackname ] = scbn
-					
-					return ver.codes.SUCCESS .. " " .. sessionpos
+					subs [ callbackname ] = pos					
+					return ver.codes.SUCCESS
 				else
 					return ver.codes.ERROR
 				end
 			end ;
 			UNSUBSCRIBE = function ( conn , session , ver , params )
-				local callbackname , sessionpos = params:match ( "^(%S+)%s*(%d+)" )
-				if not callbackname or not sessionpos then return ver.codes.BAD_FORMAT end
+				local callbackname  = params:match ( "^(%S+)" )
+				if not callbackname then return ver.codes.BAD_FORMAT end
 				sessionpos = tonumber ( sessionpos )
-				local scbn = session.subscriptions [ callbackname ]
-				if scbn and scbn [ sessionpos ] and triggers.deregistercallback ( callbackname , scbn [ sessionpos ] ) then
-					scbn [ sessionpos ] = nil
+				
+				local subs = session.subscriptions
+				if subs [ callbackname ] and triggers.deregistercallback ( callbackname , subs [ callbackname ] ) then
+					subs [ callbackname ] = nil
 					return ver.codes.SUCCESS
 				else
 					return ver.codes.ERROR
