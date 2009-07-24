@@ -24,7 +24,7 @@ end
 
 function cmd ( method_name , params , address , port , headers )
 	address = address or "127.0.0.1"
-	port = port or 5667
+	port = port or 5666
 	headers = headers or { }
 	
 	local method_call = xmlrpc.clEncode ( method_name, params )

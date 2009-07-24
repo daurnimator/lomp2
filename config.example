@@ -60,8 +60,10 @@ password = 		"changeme"
  -- Additional plugins to use
  -- Seperate with commas.
  -- eg, plugins = { "myawesomeplugin" , "coolplugin1234" , }
-plugins = {		"scrobbler" ,
-			--"mpd" ,
+plugins = {
+	"httpserver" ;
+	"scrobbler" ;
+	--"mpd" ;
 }
 
 -- Tagging

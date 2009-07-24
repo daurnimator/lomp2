@@ -198,5 +198,5 @@ function initiate ( host , port )
 	updatelog ( "Server started; bound to '" .. host .. "', port #" .. port , 4 )
 end
 
-initiate ( config.address , config.port + 1 )
+initiate ( config.address , config.port )
 addstep ( server.step )

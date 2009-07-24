@@ -1,6 +1,8 @@
 LOMP - Lua Open Music Player
 By Daurnimator
 
+Before running, you'll need to create a config file (called config in the lomp directory). See config.example.
+
 If you run a debain based distro, head to the bottom of this file.
 
 Dependencies:

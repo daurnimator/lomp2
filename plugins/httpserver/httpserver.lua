@@ -11,24 +11,39 @@
 
 require "general"
 
-module ( "httpserver" , package.see ( lomp ) )
+local dir = dir -- Grab vars needed
+local updatelog , ferror = updatelog , ferror
 
-local versionstring = "Lomp HTTP Server 0.0.1" --core._NAME .. ' ' .. core._VERSION
+local lomp = lomp
 
-local tsort = table.sort
+local tblsort , tblconcat = table.sort , table.concat
 local strlen , strlower , strupper , strfind , strgmatch , strformat , strgsub , strsub , strmatch = string.len , string.lower , string.upper , string.find , string.gmatch , string.format ,  string.gsub , string.sub , string.match
+local osdate , ostime = os.date , os.time
+local ioopen = io.open
+local pcall , unpack , require , loadfile , assert , pairs , ipairs , setfenv , tonumber , tostring , type = pcall , unpack , require , loadfile , assert , pairs , ipairs , setfenv , tonumber , tostring , type
+
+local print = print 
+
+module ( "httpserver" )
+
+_NAME = "Lomp HTTP Server"
+_VERSION = "0.0.1"
+
+local versionstring =  _NAME .. " " .. _VERSION --core._NAME .. ' ' .. core._VERSION
 
 pcall ( require , "luarocks.require" ) -- Activates luarocks if available.
-require "socket.url"
+local url = require "socket.url"
 local server = require "server"
 require "mime" -- For base64 decoding of authorisation
 require "lfs"
+
+setfenv ( loadfile ( dir .. "config" ) , _M )  ( ) -- Load config
 
 local apachelog = ""
 
 local mimetypes = { }
 do -- Load mime types
-	local f = io.open ( "/etc/mime.types" , "r" )
+	local f = ioopen ( "/etc/mime.types" , "r" )
 	if f then -- On a unix based system, and mime types file available.
 		while true do
 			local line = f:read ( )
@@ -108,10 +123,10 @@ local httpcodes = {
 	
 local function httpdate ( time )
 	--eg, "Sun, 10 Apr 2005 20:27:03 GMT"
-	return os.date ( "!%a, %d %b %Y %H:%M:%S GMT" , time )
+	return osdate ( "!%a, %d %b %Y %H:%M:%S GMT" , time )
 end
 local function httperrorpage ( status )
-	return "<html><head><title>HTTP Code " .. status .. "</title></head><body><h1>HTTP Code " .. status .. "</h1><p>" .. httpcodes [ status ] .. "</p><hr><i>Generated on " .. os.date ( ) .." by " .. versionstring .. " </i></body></html>"
+	return "<html><head><title>HTTP Code " .. status .. "</title></head><body><h1>HTTP Code " .. status .. "</h1><p>" .. httpcodes [ status ] .. "</p><hr><i>Generated on " .. osdate ( ) .." by " .. versionstring .. " </i></body></html>"
 end
 local function httpsend ( conn , requestdetails , responsedetails )
 	local status , body = responsedetails.status , responsedetails.body
@@ -193,7 +208,7 @@ local function httpsend ( conn , requestdetails , responsedetails )
 	conn.write ( message )
 	
 	-- Apache Log Format
-	apachelog = apachelog .. strformat ( '%s - - [%s] "GET %s HTTP/%s.%s" %s %s "%s" "%s"' , requestdetails.peer , os.date ( "!%m/%b/%Y:%H:%M:%S GMT" ) , requestdetails.Path , requestdetails.Major , requestdetails.Minor , status , #message , ( requestdetails.headers [ "referer" ] or "-" ) , ( requestdetails.headers[ "agent" ] or "-" ) ) .. "\n"
+	apachelog = apachelog .. strformat ( '%s - - [%s] "GET %s HTTP/%s.%s" %s %s "%s" "%s"' , requestdetails.peer , osdate ( "!%m/%b/%Y:%H:%M:%S GMT" ) , requestdetails.Path , requestdetails.Major , requestdetails.Minor , status , #message , ( requestdetails.headers [ "referer" ] or "-" ) , ( requestdetails.headers[ "agent" ] or "-" ) ) .. "\n"
 	--print ( "Apache Style Log: " .. apachelog )
 		
 	return status , reasonphrase
@@ -209,14 +224,14 @@ local function execute ( name , ... )
 		else return ok , { ... } end
 	end
 	
-	return interpret ( cmd ( name , ... ) )
+	return interpret ( lomp.cmd ( name , ... ) )
 end
 local function getvar ( name )
 	-- Executes a function, given a string
 	-- Example of string: core.playback.play
 	if type ( name ) ~= "string" then return false end
 	
-	local ok , results = var ( name )
+	local ok , results = lomp.var ( name )
 	if ok then 
 		return results
 	else
@@ -249,7 +264,7 @@ local function auth ( headers )
 end
 
 local function xmlrpcserver ( skt , requestdetails )
-	require "xmlrpc"
+	local xmlrpc = require "xmlrpc"
 	local authorised , typ = auth ( requestdetails.headers )
 	if not authorised then
 		if typ == "basic" then
@@ -273,7 +288,7 @@ local function xmlrpcserver ( skt , requestdetails )
 
 		if ok then
 			--result = table.serialise ( result ) -- MASSIVE HACK, makes it hard for non-lua xmlrpc clients - not really xmlrpc any more.
-			print(result,table.serialise(result))
+			--print(result,table.serialise(result))
 		end
 		local body = xmlrpc.srvEncode ( result , not ok )
 		print(body)
@@ -369,7 +384,7 @@ local function webserver ( skt , requestdetails )
 				hdr [ "location" ] = sfile .. "/"
 			elseif attributes.mode == "file" then -- Its a file: serve it up!			
 				local f , filecontents
-				f , err = io.open ( path , "rb" )
+				f , err = ioopen ( path , "rb" )
 				if f then
 					local offset 
 					local length
@@ -405,11 +420,11 @@ local function webserver ( skt , requestdetails )
 					hdr [ "last-modified" ] = httpdate ( attributes.modification )
 					local mimemajor , mimeminor = strmatch ( hdr [ "content-type" ] , "([^/]+)/(.+)") 
 					if mimemajor == "image" then
-						hdr [ "expires" ] = httpdate ( os.time ( ) + 86400 ) -- 1 day in the future
+						hdr [ "expires" ] = httpdate ( ostime ( ) + 86400 ) -- 1 day in the future
 					elseif mimeminor == "css" then
-						hdr [ "expires" ] = httpdate ( os.time ( ) + 86400 ) -- 1 day in the future
+						hdr [ "expires" ] = httpdate ( ostime ( ) + 86400 ) -- 1 day in the future
 					else
-						hdr [ "expires" ] = httpdate ( os.time ( ) + 30 ) -- 30 seconds in the future
+						hdr [ "expires" ] = httpdate ( ostime ( ) + 30 ) -- 30 seconds in the future
 					end
 				end
 			end
@@ -429,7 +444,7 @@ local function webserver ( skt , requestdetails )
 						t [ #t + 1 ] = entry
 					end
 				end
-				tsort ( t )
+				tblsort ( t )
 				if sfile ~= "/" then doc = doc .. "<li><a href='" .. ".." .. "'>" .. ".." .. "</a></li>" end
 				for i , v in ipairs ( t ) do
 					doc = doc .. "<li><a href='" .. sfile .. v .. "'>" .. v .. "</a></li>"
@@ -447,7 +462,7 @@ local function webserver ( skt , requestdetails )
 		return true
 end
 local function jsonserver ( skt , requestdetails )
-	require "Json"
+	local Json = require "Json"
 	--print ( "Json cmd received: " , requestdetails.body )
 	local hdr = { ["content-type"] = "application/json" }
 	if requestdetails.Method == "POST" then
@@ -514,7 +529,7 @@ local function httpserver ( conn , data , err )
 		else
 			session.gotrequest = true
 			
-			local request = table.concat ( session.request , "\r\n" )
+			local request = tblconcat ( session.request , "\r\n" )
 			session.request = request
 			
 			local file , querystring = strmatch ( session.Path , "([^%?]+)%??(.*)$" ) 	-- HTTP Reserved characters: !*'();:@&=+$,/?%#[]
@@ -522,11 +537,11 @@ local function httpserver ( conn , data , err )
 																	-- Lua reserved pattern characters: ^$()%.[]*+-?
 																	-- Intersection of http and lua reserved: *+$?%[]
 																	-- %!%*%'%(%)%;%:%@%&%=%+%$%,%/%?%%%#%[%]
-			session.file = socket.url.unescape ( file )
+			session.file = url.unescape ( file )
 			local queryvars = { }
 			if querystring then
 				for k, v in strgmatch( querystring , "(print(request)[^=]+)=([^&]+)&?" ) do --"([%w%-%%%_%.%~]+)=([%w%%%-%_%.%~]+)&?") do
-					queryvars [ socket.url.unescape ( k ) ] = socket.url.unescape ( v )
+					queryvars [ url.unescape ( k ) ] = url.unescape ( v )
 				end
 			end
 			
@@ -541,7 +556,7 @@ local function httpserver ( conn , data , err )
 		local bodylen = tonumber ( session.headers [ "content-length" ] )
 		
 		session.body [ #session.body + 1 ] = data
-		local body = table.concat ( session.body )
+		local body = tblconcat ( session.body )
 		if # ( body ) < bodylen then return end
 		session.body = body
 		
@@ -580,5 +595,7 @@ function initiate ( host , port )
 	updatelog ( "Server started; bound to '" .. host .. "', port #" .. port , 4 )
 end
 
-initiate ( config.address , config.port )
-addstep ( server.step )
+initiate ( address , port )
+lomp.addstep ( server.step )
+
+return _NAME , _VERSION

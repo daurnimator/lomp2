@@ -23,7 +23,7 @@ end
 
 function c ( cmds , address , port , headers )
 	address = address or "127.0.0.1"
-	port = port or 5667
+	port = port or 5666
 	headers = headers or { }
 	
 	local method_call = Json.Encode ( cmds )

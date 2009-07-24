@@ -14,7 +14,7 @@ local updatelog , ferror = updatelog , ferror
 
 local lomp = lomp
 
-local pcall , require , loadfile , ipairs = pcall , require , loadfile , ipairs
+local pcall , require , loadfile , ipairs , assert , setfenv = pcall , require , loadfile , ipairs , assert , setfenv
 local strfind = string.find
 local tblinsert , tblremove , tblconcat = table.insert , table.remove , table.concat
 local osdate , ostime = os.date , os.time
@@ -33,7 +33,7 @@ local http = require "socket.http"
 local url = require "socket.url"
 require "md5" 
 
-loadfile ( dir .. "config" ) ( ) -- Load config
+setfenv ( loadfile ( dir .. "config" ) , _M ) ( ) -- Load config
 
 local clientid = "tst"
 local clientver = "1.0"
