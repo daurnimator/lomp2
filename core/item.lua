@@ -53,7 +53,7 @@ function additem ( object , playlistnum , position )
 		
 	pl.revisions [ #pl.revisions + 1 ] = newrev
 	
-	triggers.triggercallback ( "item_add" , playlistnum , position , object )
+	triggers.fire ( "item_add" , playlistnum , position , object )
 	
 	return position
 end
@@ -75,7 +75,7 @@ function removeitem ( playlistnum , position )
 	
 	pl.revisions [ #pl.revisions + 1 ] = newrev
 	
-	triggers.triggercallback ( "item_remove" , playlistnum , position , object )
+	triggers.fire ( "item_remove" , playlistnum , position , object )
 
 	return true
 end

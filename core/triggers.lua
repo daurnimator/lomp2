@@ -36,18 +36,22 @@ local callbacks = {
 	player_abouttofinish = { } ;
 	player_finished = { } ;
 }
+
+list = { }
+
 for k , v in pairs ( callbacks ) do
 	setmetatable ( v , { __mode = "k" } )
+	list [ #list + 1 ] = k
 end
 
-function registercallback ( callback , func , name )
+function register ( callback , func , name )
 	local t = callbacks [ callback ]
 	local pos = #t + 1
 	t [ pos ] = func
 	t [ name ] = pos
 	return pos
 end
-function deregistercallback ( callback , id )
+function unregister ( callback , id )
 	local t = callbacks [ callback ]
 	if not t then return ferror ( "Deregister callback called with invalid callback" , 1 ) end
 	
@@ -65,10 +69,10 @@ function deregistercallback ( callback , id )
 	
 	return true
 end
-function triggercallback ( callback , ... )
+function fire ( callback , ... )
 	for i , v in ipairs ( callbacks [ callback ] ) do v ( ... ) end
 end
 
-registercallback ( "playback_startsong" , function ( )
+register ( "playback_startsong" , function ( )
 		vars.queue [ 0 ].laststarted = os.time ( ) -- Better way to figure this out?
 	end , "Set Played" )

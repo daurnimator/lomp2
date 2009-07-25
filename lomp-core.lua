@@ -24,6 +24,8 @@ core = {
 	_INC = 1 ,
 }
 
+require "core.triggers"
+
 local triggeronchange = { 
 	loop = true ;
 	rpt = true ;
@@ -49,7 +51,7 @@ vars = setmetatable ( { } , {
 			local val = vars [ k ]
 			rawset ( varsindex , k , v )
 			if triggeronchange [ k ] then
-				triggers.triggercallback ( k , v )
+				triggers.fire ( k , v )
 			end
 		end ;
 	}
@@ -75,7 +77,6 @@ end
 core._VERSION = core._MAJ .. "." .. core._MIN .. "." .. core._INC 
 core._PROGRAM = _NAME .. " " .. core._VERSION
 
-require "core.triggers"
 require "core.playback"
 require "core.playlist"
 require "core.item"

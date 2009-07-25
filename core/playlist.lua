@@ -13,7 +13,7 @@ require "general"
 
 module ( "lomp.core.playlist" , package.see ( lomp ) )
 
-require "core.triggers"
+require "core.3s"
 
 function getplaylist ( playlistnum )
 	if type ( playlistnum ) ~= "number" or not vars.playlist [ playlistnum ] then
@@ -97,7 +97,7 @@ function new ( name , playlistnumber )
 	vars.playlist [ playlistnumber ] = pl
 	vars.playlist.revision = vars.playlist.revision + 1
 	
-	triggers.triggercallback ( "playlist_create" , playlistnumber )
+	triggers.fire ( "playlist_create" , playlistnumber )
 	
 	return playlistnumber , name
 end
@@ -113,7 +113,7 @@ function delete ( num )
 	vars.pl.revision = vars.pl.revision + 1
 	if pl == vars.queue.softqueueplaylist then vars.queue.softqueueplaylist = -1 end -- If deleted playlist was the soft queue
 	
-	triggers.triggercallback ( "playlist_delete" , num )
+	triggers.fire ( "playlist_delete" , num )
 	
 	return true
 end
@@ -126,7 +126,7 @@ function clear ( num )
 	
 	pl.revisions [ pl.revision + 1 ] = { length = 0 }
 	
-	triggers.triggercallback ( "playlist_clear" , num )
+	triggers.fire ( "playlist_clear" , num )
 	
 	return true
 end
@@ -150,7 +150,7 @@ function randomise ( num )
 	
 	pl.revisions [ pl.revision + 1 ] = table.randomise ( collapserev ( pl.revisions , pl.revision ) , pl.length , true )
 	
-	triggers.triggercallback ( "playlist_sort" , num )
+	triggers.fire ( "playlist_sort" , num )
 	
 	return true
 end
@@ -163,7 +163,7 @@ function sort ( num , eq )
 
 	pl.revisions [ pl.revision + 1 ] = table.stablesort ( collapserev ( pl.revisions , pl.revision ) , eq , true )
 	
-	triggers.triggercallback ( "playlist_sort" , num )
+	triggers.fire ( "playlist_sort" , num )
 	
 	return true
 end

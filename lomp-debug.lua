@@ -132,7 +132,7 @@ end
 	end
 end--]] p = print
 
-triggers.registercallback ( "playback_startsong" , function ( )
+triggers.register ( "playback_startsong" , function ( )
 		-- Print new song stats
 		local t = vars.queue [ 0 ]
 		print( "--------------------Now playing file: ", t.filename )

@@ -31,7 +31,7 @@ pcall ( require , "luarocks.require" ) -- Activates luarocks if available.
 
 local http = require "socket.http"
 local url = require "socket.url"
-require "md5" 
+local md5 = require "md5" 
 
 setfenv ( loadfile ( dir .. "config" ) , _M ) ( ) -- Load config
 
@@ -168,9 +168,9 @@ function addtosubmissions ( typ , source )
 end
 
 function enablescrobbler ( )
-	lomp.triggers.registercallback ( "playback_startsong" , nowplaying , "Scrobbler Now-Playing" )
-	lomp.triggers.registercallback ( "playback_startsong" , addtosubmissions , "Scrobbler Add Song To Submit Queue" )
-	lomp.triggers.registercallback ( "playback_stop" , function ( typ , source , stopoffset ) 
+	lomp.triggers.register ( "playback_startsong" , nowplaying , "Scrobbler Now-Playing" )
+	lomp.triggers.register ( "playback_startsong" , addtosubmissions , "Scrobbler Add Song To Submit Queue" )
+	lomp.triggers.register ( "playback_stop" , function ( typ , source , stopoffset ) 
 		local d = lomp.metadata.getdetails ( source )
 		if stopoffset > 240 
 		or ( d and d.length and ( stopoffset / d.length ) > 0.5 ) then
@@ -183,9 +183,9 @@ function enablescrobbler ( )
 	enabled = true
 end
 function disablescrobbler ( )
-	lomp.triggers.deregistercallback ( "playback_startsong" , "Scrobbler Now-Playing" )
-	lomp.triggers.deregistercallback ( "playback_startsong" , "Scrobbler Add Song To Submit Queue" )
-	lomp.triggers.deregistercallback ( "playback_stop" , "Scrobbler Submissions" )
+	lomp.triggers.unregister ( "playback_startsong" , "Scrobbler Now-Playing" )
+	lomp.triggers.unregister ( "playback_startsong" , "Scrobbler Add Song To Submit Queue" )
+	lomp.triggers.unregister ( "playback_stop" , "Scrobbler Submissions" )
 	
 	enabled = false
 end

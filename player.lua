@@ -136,5 +136,5 @@ bus:connect ( "message" , function ( ... ) print ("statechange" , ... ) end )
 
 pipeline:connect ( "about-to-finish" , function ( )
 		updatelog ( "About to finish song" , 5 )
-		triggers.triggercallback ( "player_abouttofinish" )
+		triggers.fire ( "player_abouttofinish" )
 	end )

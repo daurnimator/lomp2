@@ -115,6 +115,7 @@ local versions = {
 				end
 				
 				local function interpret ( ok , ... )
+					print(ok,...)
 					if not ok then return ver.codes.ERROR
 					else return table.concat ( { ver.codes.SUCCESS , packobject ( session , ... ) } , " " ) end
 				end
@@ -124,7 +125,7 @@ local versions = {
 				local callbackname = params:match ( "^(%S+)" )
 				local subs = session.subscriptions
 				if subs [ callbackname ] then return ver.codes.ALREADY_SUBSCRIBED end
-				local pos = triggers.registercallback ( callbackname , function ( ... )
+				local pos = triggers.register ( callbackname , function ( ... )
 						local result = { "EVENT" , callbackname , packobject ( session , ... ) }
 						result [ #result + 1 ] = "\n"
 						conn.write ( table.concat ( result , " " ) )
@@ -142,7 +143,7 @@ local versions = {
 				sessionpos = tonumber ( sessionpos )
 				
 				local subs = session.subscriptions
-				if subs [ callbackname ] and triggers.deregistercallback ( callbackname , subs [ callbackname ] ) then
+				if subs [ callbackname ] and triggers.unregister ( callbackname , subs [ callbackname ] ) then
 					subs [ callbackname ] = nil
 					return ver.codes.SUCCESS
 				else

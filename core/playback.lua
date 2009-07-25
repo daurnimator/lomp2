@@ -37,7 +37,7 @@ function play ( fromoffset )
 	state = "playing"
 	vars.queue [ 0 ].laststarted = os.time ( )
 	
-	triggers.triggercallback ( "playback_startsong" , typ , source )
+	triggers.fire ( "playback_startsong" , typ , source )
 	
 	return true
 end
@@ -52,7 +52,7 @@ function stop ( )
 		local newstate = player.stop ( )
 		if newstate == "stopped" then
 			if state ~= "stopped" then
-				triggers.triggercallback ( "playback_stop" , item.typ , item.source , offset )
+				triggers.fire ( "playback_stop" , item.typ , item.source , offset )
 			end
 			state = "stopped"
 			return true
@@ -71,7 +71,7 @@ function pause ( )
 	
 	if item and player.pause ( ) then
 		state = "paused"
-		triggers.triggercallback ( "playback_pause" , offset )
+		triggers.fire ( "playback_pause" , offset )
 		return true
 	else
 		return false
@@ -83,7 +83,7 @@ function unpause ( )
 	
 	if item and player.unpause ( ) then
 		state = "playing"
-		triggers.triggercallback ( "playback_unpause" )
+		triggers.fire ( "playback_unpause" )
 		return true
 	else
 		return false
@@ -164,7 +164,7 @@ function forward ( queueonly ) -- Moves forward one song in the queue
 			else
 				success = player.play ( typ , source ) 
 			end
-			triggers.triggercallback ( "playback_startsong" , typ , source )
+			triggers.fire ( "playback_startsong" , typ , source )
 		end
 	else
 		stop ( ) -- Stop if in non-playing state (eg, paused)
@@ -197,10 +197,10 @@ function seek ( offset , relative , percent )
 	local newoffset = player.getposition ( )
 	vars.queue [ 0 ].offset = newoffset
 
-	triggers.triggercallback ( "playback_seek" , newoffset )	
+	triggers.fire ( "playback_seek" , newoffset )	
 
 	return true
 end
 
-triggers.registercallback ( "player_abouttofinish" , function ( ) forward ( true ) end , "queuenextsong" )
+triggers.register ( "player_abouttofinish" , function ( ) forward ( true ) end , "queuenextsong" )
 
