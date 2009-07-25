@@ -13,7 +13,7 @@ require "general"
 
 module ( "lomp.core.playlist" , package.see ( lomp ) )
 
-require "core.3s"
+require "core.triggers"
 
 function getplaylist ( playlistnum )
 	if type ( playlistnum ) ~= "number" or not vars.playlist [ playlistnum ] then

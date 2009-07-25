@@ -14,9 +14,8 @@ require "general"
 module ( "eventserver" , package.see ( lomp ) )
 
 pcall ( require , "luarocks.require" ) -- Activates luarocks if available.
-require "socket"
 local server = require "server"
-require "Json"
+local Json = require "Json"
 
 --[[
 Protocol details:
