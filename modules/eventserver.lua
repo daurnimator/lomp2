@@ -4,7 +4,7 @@
 
 	This program is free software: you can redistribute it and/or modify it under the terms of version 3 of the GNU General Public License as published by the Free Software Foundation.
 
-	This program is distributed in the hope that it will be useful,	but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+	This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
 	You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ]]
@@ -50,7 +50,7 @@ C: SUBSCRIBE loop
 ( Subscribe to the "loop" event )
 S: 0
 ( Success )
-S: EVENT loop 6 [true]
+S: -1 loop 6 [true]
 ( Event "loop" has fired, 6 character long (json) param array: is an array with true as the only element )
 
 ]]
@@ -80,6 +80,7 @@ local versions = {
 			return { version = 1 ; subscriptions = { } ; vars = { dataencoding = "json" } }
 		end ;
 		codes = {
+			EVENT = -1 ;
 			SUCCESS = 0 ;
 			BAD_FORMAT = 1 ;
 			INVALID_PHRASE = 2 ;
@@ -108,7 +109,8 @@ local versions = {
 			CMD = function ( conn , session , ver , params )
 				local func , args = params:match ( "^(%S+)%s*(.*)$" )
 				if args ~= "" then
-					args = Json.Decode ( args )
+					local ok , args = pcall ( Json.Decode , args )
+					if not ok then return ver.codes.BAD_FORMAT end
 				else
 					args = { }
 				end
@@ -124,7 +126,7 @@ local versions = {
 				local subs = session.subscriptions
 				if subs [ callbackname ] then return ver.codes.ALREADY_SUBSCRIBED end
 				local pos = triggers.register ( callbackname , function ( ... )
-						local result = { "EVENT" , callbackname , packobject ( session , ... ) }
+						local result = { ver.codes.EVENT , callbackname , packobject ( session , ... ) }
 						result [ #result + 1 ] = "\n"
 						conn.write ( table.concat ( result , " " ) )
 					end , "Event Client Subscription" )
