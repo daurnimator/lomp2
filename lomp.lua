@@ -103,12 +103,16 @@ for i , v in ipairs ( config.plugins ) do
 	dir = "plugins/" .. v .. "/"
 	local plugin , err = loadfile ( dir .. v .. ".lua" )
 	if not plugin then
-		ferror ( err , 2 )
+		ferror ( "Could not load plugin '" .. v .. "' : " .. err , 1 )
 	else
-		setfenv ( plugin , getfenv ( 1 ) )
 		local name , version = v , ""
-		name , version = plugin ( )
-		updatelog ( "Loaded plugin: '" .. name .. "' Version " .. version , 3 )
+		setfenv ( plugin , getfenv ( 1 ) )
+		ok , name , version = pcall ( plugin )
+		if ok then
+			updatelog ( "Loaded plugin: '" .. name .. "' Version " .. version , 3 )
+		else
+			ferror ( "Could not load plugin '" .. v .. "': " .. ( name or "" ) , 1 )
+		end
 	end
 end
 updatelog ( "All Plugins Loaded" , 3 )

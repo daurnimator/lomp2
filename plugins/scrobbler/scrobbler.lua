@@ -85,8 +85,7 @@ function nowplaying ( typ , songpath )
 		if not w then return ferror ( "Last.fm Handshake error: " .. err , 1 ) end
 	end
 	
-	--local songpath = lomp.vars.queue [ 0 ].source
-	local songdetails = lomp.tags.getdetails ( songpath )
+	local songdetails = lomp.metadata.getdetails ( songpath )
 	
 	local artistname = url.escape ( tblconcat ( songdetails.tags.artist , ", " ) )
 	local trackname = url.escape ( tblconcat ( songdetails.tags.title , ", " ) )

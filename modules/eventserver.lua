@@ -195,7 +195,7 @@ function initiate ( host , port )
 				connections [ conn ] = nil
 			end ;
 		} , port , host , "*l" )
-	updatelog ( "Server started; bound to '" .. host .. "', port #" .. port , 4 )
+	updatelog ( "LOMP Event Server started; bound to '" .. host .. "', port #" .. port , 4 )
 end
 
 initiate ( config.address , config.port )

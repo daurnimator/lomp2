@@ -41,19 +41,6 @@ address =		"*"
  -- Port must be an integer number in the range [0..64K).  If port is 0, the system automatically chooses an ephemeral port. 
   -- Default to 5667
 port = 			5667
- 
- -- Authorisation
-  -- Enable Auth? (Only http basic authentication at this point in time. Passwords will sent in plain text.)
-   -- As a secure alternative, run LOMP over some secure tunnel.
-   -- Defaults to false
-authorisation =	false
-   -- Username
-    -- Defaults to "lompuser"
-username = 		"lompuser"
-   -- Password
-    -- If not given, authorisation is turned off.
-password = 		"changeme"
-
 
 
 -- Plugins

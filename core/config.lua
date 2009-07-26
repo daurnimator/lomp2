@@ -65,31 +65,6 @@ if type ( library ) ~= "table" then
 	library = { }
 end
 
--- Server Parameters
-if type ( address ) ~= "string" then
-	warn ( 'Invalid or no server binding address defined, using "*"')
-	address = "*"
-end
-
-if type ( port ) ~= "number" or port < 0 or port > 65536  then
-	warn ( 'Invalid or no server port defined, using 5667' )
-	port = 5667
-end
-if type ( authorisation ) ~= "boolean" then
-	authorisation = false 
-else -- If authorisation is enabled:
-	if type ( username ) ~= "string" then
-		warn ( 'Invalid or no server username defined, using "lompuser"' )
-		username = "lompuser"
-	end
-	if type ( password ) ~= "string" then 
-		warn ( 'Invalid or no server password defined, disabling authorisation' )
-		password = nil
-		authorisation = false
-	end
-end
-
-
 -- Other/Misc Parameters
 
 if type ( plugins ) ~= "table" then

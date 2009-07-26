@@ -1,2 +1,20 @@
-address = "*"
-port = 5666
+-- Addresss to bind to on the local host. 
+ -- Can be an IP address or a host name. 
+ -- If address is '*', the system binds to all local interfaces using the INADDR_ANY constant.
+ -- Default to "*"
+address =			"*"
+
+-- Port must be an integer number in the range [0..64K).  If port is 0, the system automatically chooses an ephemeral port. 
+ -- Default to 5666
+port = 			5666
+ 
+-- Authorisation
+ -- Enable Auth? (Only http basic authentication at this point in time. Passwords will sent in plain text.)
+  -- Defaults to false
+authorisation =		false
+  -- Username
+   -- Defaults to "lompuser"
+username = 		"lompuser"
+  -- Password
+   -- If not given, authorisation is turned off.
+password = 		"changeme"

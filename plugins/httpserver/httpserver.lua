@@ -25,7 +25,7 @@ local pcall , unpack , require , loadfile , assert , pairs , ipairs , setfenv , 
 module ( "httpserver" )
 
 _NAME = "Lomp HTTP Server"
-_VERSION = "0.0.1"
+_VERSION = "0.1"
 
 local versionstring =  _NAME .. " " .. _VERSION --core._NAME .. ' ' .. core._VERSION
 
@@ -35,7 +35,38 @@ local server = require "server"
 local mime = require "mime" -- For base64 decoding of authorisation
 local lfs = require "lfs"
 
-setfenv ( loadfile ( dir .. "config" ) , _M )  ( ) -- Load config
+function loadconfig ( )
+	local httpconfig = { }
+	setfenv ( loadfile ( dir .. "config" ) , httpconfig )  ( ) -- Load config
+
+	if type ( httpconfig.address ) ~= "string" then
+		updatelog ( 'Invalid or no httpserver binding address defined, using "*"' , 2)
+		address = "*"
+	end
+
+	if type ( httpconfig.port ) ~= "number" or httpconfig.port < 0 or httpconfig.port > 65536  then
+		updatelog ( 'Invalid or no httpserver port defined, using 5667' , 2 )
+		httpconfig.port = 5666
+	end
+	if httpconfig.authorisation ~= true then
+		httpconfig.authorisation = false
+		updatelog ( 'HTTP authorisation disabled' , 2 )
+	else -- If authorisation is enabled:
+		if type ( httpconfig.username ) ~= "string" then
+			updatelog ( 'Invalid or no httpserver username defined, using "lompuser"' , 2 )
+			httpconfig.username = "lompuser"
+		end
+		if type ( httpconfig.password ) ~= "string" then 
+			updatelog ( 'Invalid or no httpserver password defined, disabling authorisation' , 2 )
+			httpconfig.password = nil
+			httpconfig.authorisation = false
+		end
+	end
+	
+	return httpconfig
+end
+
+local httpconfig = loadconfig ( )
 
 local apachelog = ""
 
@@ -243,7 +274,6 @@ local function auth ( headers )
 			local _ , _ , AuthType , AuthString = strfind ( headers [ "authorization" ] , "([^ ]+)% +(.+)" )
 			if strlower ( AuthType )  == "basic" then -- If they are trying Basic Authentication:
 				local _ , _ , user , pass = strfind ( mime.unb64 ( AuthString ) , "([^:]+):(.+)" ) -- Decrypt username:password ( Sent in base64 )
-				--print(AuthType,AuthString,user,password,config.username,config.password)
 				-- Check credentials:
 				if user == config.username and pass == config.password then
 					return true
@@ -593,10 +623,10 @@ function initiate ( host , port )
 				conns [ conn ] = nil
 			end ;
 		} , port , host , "*l" )
-	updatelog ( "Server started; bound to '" .. host .. "', port #" .. port , 4 )
+	updatelog ( "HTTP Server started; bound to '" .. host .. "', port #" .. port , 4 )
 end
 
-initiate ( address , port )
+initiate ( httpconfig.address , httpconfig.port )
 lomp.addstep ( server.step )
 
 return _NAME , _VERSION
