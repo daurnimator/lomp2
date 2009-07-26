@@ -1,9 +1,9 @@
 -- This is the config file for LOMP.
 
 -- Verbosity of lomp
- -- Ranges from 0 to 5
+ -- Ranges from 0 ( Fatal Errors only) to 5 (Debug)
  -- Default to 2
-verbosity = 		5
+verbosity = 		4
 
 -- Location of log file
  -- Default to ~/.lomp/lomp.log

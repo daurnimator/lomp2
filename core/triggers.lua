@@ -14,6 +14,8 @@ require "general"
 module ( "lomp.triggers" , package.see ( lomp ) )
 
 local callbacks = {
+	quit = { function ( ) updatelog ( "Quiting" , 4 ) end } ;
+
 	loop = { } ; -- ( loop )
 	ploffset = { } ; -- ( ploffset )
 	softqueueplaylist = { } ; -- ( softqueueplaylist)

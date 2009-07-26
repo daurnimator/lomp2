@@ -114,7 +114,6 @@ local versions = {
 				end
 				
 				local function interpret ( ok , ... )
-					print(ok,...)
 					if not ok then return ver.codes.ERROR
 					else return table.concat ( { ver.codes.SUCCESS , packobject ( session , ... ) } , " " ) end
 				end

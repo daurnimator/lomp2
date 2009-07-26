@@ -60,15 +60,14 @@ vars = setmetatable ( { } , {
 function core.quit ( )
 	player.stop ( )
 	
+	triggers.fire ( "quit" , newoffset )	
+	
 	if metadata.savecache then
 		local ok , err = metadata.savecache ( )
 	end
 	if core.savestate then 
 		local ok , err = core.savestate ( )
 	end
-	
-	
-	updatelog ( "Quiting by request" , 4 )
 	
 	quit = true
 	return true

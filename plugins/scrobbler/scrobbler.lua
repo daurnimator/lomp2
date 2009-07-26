@@ -87,11 +87,11 @@ function nowplaying ( typ , songpath )
 	
 	local songdetails = lomp.metadata.getdetails ( songpath )
 	
-	local artistname = url.escape ( tblconcat ( songdetails.tags.artist , ", " ) )
-	local trackname = url.escape ( tblconcat ( songdetails.tags.title , ", " ) )
-	local album = url.escape ( tblconcat ( songdetails.tags.album , ", " ) )
-	local length = url.escape ( songdetails.length or "" )
-	local tracknumber = url.escape ( tblconcat ( songdetails.tags.tracknumber , " , " ) )
+	local artistname = url.escape ( tblconcat ( songdetails.tags.artist or { "Unknown Artist" } , ", " ) )
+	local trackname = url.escape ( tblconcat ( songdetails.tags.title or { "Unknown Title" } , ", " ) )
+	local album = url.escape ( tblconcat ( songdetails.tags.album or { "Unknown Album" } , ", " ) )
+	local length = url.escape ( songdetails.length )
+	local tracknumber = url.escape ( tblconcat ( songdetails.tags.tracknumber or { 00 } , " , " ) )
 	local musicbrainzid = ""
 	
 	local rbody = "s=" .. sessionid .. "&a=" .. artistname .. "&t=" .. trackname .. "&b=" .. album .. "&l=" .. length .. "&n=" .. tracknumber .. "&m=" .. musicbrainzid
@@ -153,14 +153,14 @@ function addtosubmissions ( typ , source )
 	local d = lomp.metadata.getdetails ( source )
 	if not d.length or d.length <= 30 then return false end -- Has to be > 30 seconds in length to submit
 	local t = { }
-	t.artist = url.escape ( tblconcat ( d.tags.artist , ", " ) )
-	t.title = url.escape ( tblconcat ( d.tags.title , ", " ) )
+	t.artist = url.escape ( tblconcat ( d.tags.artist or { "Unknown Artist" } , ", " ) )
+	t.title = url.escape ( tblconcat ( d.tags.title or { "Unknown Title" } , ", " ) )
 	t.starttime = ostime ( )
 	if typ == "file" then t.source = "P" elseif typ == "stream" then t.source "R" else t.source = "P" end
 	t.rating = "" -- TODO: Should check track rating and maybe give "L" ....
-	t.length = url.escape ( d.length or "" )
-	t.album = url.escape ( tblconcat ( d.tags.album , ", " ) )
-	t.tracknumber = url.escape ( tblconcat ( d.tags.tracknumber , ", " ) )
+	t.length = url.escape ( d.length )
+	t.album = url.escape ( tblconcat ( d.tags.album or { "Unknown Album" } , ", " ) )
+	t.tracknumber = url.escape ( tblconcat ( d.tags.tracknumber or { 00 } , ", " ) )
 	t.musicbrainz = ""
 	tblinsert ( submissionsqueue , t )
 	return true
