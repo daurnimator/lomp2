@@ -109,8 +109,9 @@ local versions = {
 			CMD = function ( conn , session , ver , params )
 				local func , args = params:match ( "^(%S+)%s*(.*)$" )
 				if args ~= "" then
-					local ok , args = pcall ( Json.Decode , args )
-					if not ok then return ver.codes.BAD_FORMAT end
+					local ok
+					ok , args = pcall ( Json.Decode , args )
+					if not ok or type ( args ) ~= "table" then return ver.codes.BAD_FORMAT end
 				else
 					args = { }
 				end

@@ -21,13 +21,13 @@ local callbacks = {
 	softqueueplaylist = { } ; -- ( softqueueplaylist)
 	rpt = { } ; -- ( repeat )
 	
-	playlist_create = { function ( plnum ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Created playlist #" .. pl.index .. ": '" .. pl.name .. "'" , 4 ) end } ;
-	playlist_delete = { function ( plnum ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Deleted playlist #" .. pl.index .. " (" .. pl.name .. ")" , 4 ) end } ;
-	playlist_clear = { function ( plnum ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Cleared playlist #" .. pl.index .. " (" .. pl.name .. ")" , 4 ) end } ;
-	playlist_sort = { function ( plnum ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Sorted playlist #" .. pl.index .. " (" .. pl.name .. ")" , 4 ) end } ;
+	playlist_create = { { func = function ( plnum ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Created playlist #" .. pl.index .. ": '" .. pl.name .. "'" , 4 ) end } } ;
+	playlist_delete = { { func = function ( plnum ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Deleted playlist #" .. pl.index .. " (" .. pl.name .. ")" , 4 ) end } } ;
+	playlist_clear = { { func = function ( plnum ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Cleared playlist #" .. pl.index .. " (" .. pl.name .. ")" , 4 ) end } } ;
+	playlist_sort = { { func = function ( plnum ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Sorted playlist #" .. pl.index .. " (" .. pl.name .. ")" , 4 ) end } } ;
 	
-	item_add = { function ( plnum , position , object ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Added item to playlist #" .. plnum .. " (" .. pl.name .. ") position #" .. position .. " Source: " .. object.source  , 4 ) end } ;
-	item_remove = { function ( plnum , position , object ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Removed item from playlist #" .. plnum .. " (" .. pl.name .. ") position #" .. position .. " Source: " .. object.source  , 4 ) end } ;
+	item_add = { { func = function ( plnum , position , object ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Added item to playlist #" .. plnum .. " (" .. pl.name .. ") position #" .. position .. " Source: " .. object.source  , 4 ) end } } ;
+	item_remove = { { func = function ( plnum , position , object ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Removed item from playlist #" .. plnum .. " (" .. pl.name .. ") position #" .. position .. " Source: " .. object.source  , 4 ) end } } ;
 	
 	playback_stop = { } ; -- ( type , source , offset )
 	playback_pause = { } ; -- ( offset )
@@ -46,10 +46,10 @@ for k , v in pairs ( callbacks ) do
 	list [ #list + 1 ] = k
 end
 
-function register ( callback , func , name )
+function register ( callback , func , name , instant )
 	local t = callbacks [ callback ]
 	local pos = #t + 1
-	t [ pos ] = func
+	t [ pos ] = { func = func , instant = instant , name = name }
 	t [ name ] = pos
 	return pos
 end
@@ -71,10 +71,26 @@ function unregister ( callback , id )
 	
 	return true
 end
+
+local queue = { }
+
 function fire ( callback , ... )
-	for i , v in ipairs ( callbacks [ callback ] ) do v ( ... ) end
+	for i , v in ipairs ( callbacks [ callback ] ) do
+		if v.instant then
+			v.func ( ... )
+		else
+			queue [ #queue + 1 ] = { v.func , ... }
+		end
+	end
 end
+
+addstep ( function ( ) for i , v in ipairs ( queue ) do 
+			pcall ( unpack ( v ) )
+			queue [ i ] = nil
+		end 
+	end
+)
 
 register ( "playback_startsong" , function ( )
 		vars.queue [ 0 ].laststarted = os.time ( ) -- Better way to figure this out?
-	end , "Set Played" )
+	end , "Set Played" , true )

@@ -139,6 +139,7 @@ triggers.register ( "playback_startsong" , function ( )
 		for k , v in pairs ( t ) do
 			print ( "", k , v )
 		end
+		print ( "" , "length" , t.length )
 		print ( "==== Tags:" )
 		for tag , val in pairs ( t.tags ) do
 			for i , v in ipairs ( val ) do

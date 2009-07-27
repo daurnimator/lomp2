@@ -202,5 +202,4 @@ function seek ( offset , relative , percent )
 	return true
 end
 
-triggers.register ( "player_abouttofinish" , function ( ) forward ( true ) end , "queuenextsong" )
-
+triggers.register ( "player_abouttofinish" , function ( ) forward ( true ) end , "queuenextsong" , true )
