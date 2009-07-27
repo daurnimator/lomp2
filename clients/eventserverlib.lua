@@ -68,6 +68,15 @@ local function receive ( ob )
 	end
 end
 
+codes = { 
+	[ -1 ] = "EVENT" ;
+	[ 0 ] = "SUCCESS" ;
+	"BAD_FORMAT" ;
+	"INVALID_PHRASE" ;
+	"ERROR" ;
+	"ALREADY_SUBSCRIBED" ;
+} ;
+		
 function connect ( address , port )
 	local ob , err = socket.connect ( address , port )
 	if not ob then return false , err end
