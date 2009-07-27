@@ -35,7 +35,7 @@ local callbacks = {
 	playback_startsong = { } ; -- ( type , source )
 	playback_seek = { } ;
 	
-	player_abouttofinish = { } ;
+	player_abouttofinish = { { func = function ( ) updatelog ( "About to finish song" , 5 ) end } } ;
 	player_finished = { } ;
 }
 

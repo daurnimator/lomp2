@@ -22,6 +22,8 @@ local function basiccmd ( cmd , ... )
 	for i = 1 , select ( "#" , ... ) do
 		local a = args [ i ]
 		if a == nil then args [ i ] = Json.null
+		elseif a == "false" then args [ i ] = false
+		elseif a == "true" then args [ i ] = true
 		elseif tonumber ( a ) then args [ i ] = tonumber ( a )
 		end
 	end

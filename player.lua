@@ -135,6 +135,5 @@ bus:connect ( "message::eof" , function ( )
 bus:connect ( "message" , function ( ... ) print ("statechange" , ... ) end )
 
 pipeline:connect ( "about-to-finish" , function ( )
-		updatelog ( "About to finish song" , 5 )
 		triggers.fire ( "player_abouttofinish" )
 	end )
