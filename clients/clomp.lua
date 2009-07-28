@@ -96,7 +96,7 @@ translate = {
 		local t , maxlen = { } , 0
 		if select ( "#" , ... ) == 0 then
 			for k , v in pairs ( translate ) do
-				local params , helptxt = v [ 1 ] , v [ 2 ]
+				local params , helptxt = v.params , v.help
 				if ( #k + #params ) > maxlen then maxlen = #k + #params end
 				t [ #t + 1 ] = { k , params , helptxt }
 			end
