@@ -46,40 +46,18 @@ end end
 
 local translate
 translate = {
-	play = function ( )
-		return basiccmd ( "core.playback.play" ) , "" , "Start playing"
-	end ;
-	togglepause = function ( )
-		return basiccmd ( "core.playback.togglepause" ) , "" , "Toggles between paused and playing"
-	end ;
-	pause = function ( )
-		return basiccmd ( "core.playback.pause" ) , "" , "Pause"
-	end ;
-	unpause = function ( )
-		return basiccmd ( "core.playback.unpause" ) , "" , "Start playing again if in paused state"
-	end ;
-	next = function ( )
-		return basiccmd ( "core.playback.forward" ) , "" , "Play the next song in the queue"
-	end ;
-	previous = function ( ... )
-		return basiccmd ( "core.playback.backward" ) , "" , "Play the last song that was played, the current song is placed in the hardqueue"
-	end ;
-	seek = function ( ... )
-		return basiccmd ( "core.playback.seek" ) , "<offset> [<relative?> [<percent?>]]" , "Seeks the current song to the given offset, if relative is true, the offset is from the current position, if percent is true, the offset is given as a percentage of the current song's length"
-	end ;
-	stop = function ( ... )
-		return basiccmd ( "core.playback.stop" ) , "" , "Stops the current song"
-	end ;
-	addfile = function ( ... )
-		return basiccmd ( "core.localfileio.addfile" ) , " <path> <playlist> [<position>]" , "add the song at the path given (on the server) to the playlist specified, in the position given (position defaults to the end of the playlist)"
-	end ;
-	addfolder = function ( ... )
-		return basiccmd ( "core.localfileio.addfolder" ) , " <path> <playlist> [<position> [<recurse>]]" , "add a folder to a playlist starting at given position, recursing to given number of levels, or true for infinite (default is no recursion)"
-	end ;
-	quit = function ( ... )
-		return basiccmd ( "core.quit" ) , "" , "makes the server quit"
-	end ;
-	manual = function ( ) return function ( )
+	play = { basiccmd ( "core.playback.play" ) , "" , "Start playing" } ;
+	togglepause = { basiccmd ( "core.playback.togglepause" ) , "" , "Toggles between paused and playing" } ;
+	pause = { basiccmd ( "core.playback.pause" ) , "" , "Pause" } ;
+	unpause = { basiccmd ( "core.playback.unpause" ) , "" , "Start playing again if in paused state" } ;
+	next = { basiccmd ( "core.playback.forward" ) , "" , "Play the next song in the queue" } ;
+	previous = { basiccmd ( "core.playback.backward" ) , "" , "Play the last song that was played, the current song is placed in the hardqueue" } ;
+	seek = { basiccmd ( "core.playback.seek" ) , "<offset> [<relative?> [<percent?>]]" , "Seeks the current song to the given offset, if relative is true, the offset is from the current position, if percent is true, the offset is given as a percentage of the current song's length" } ;
+	stop = { basiccmd ( "core.playback.stop" ) , "" , "Stops the current song" } ;
+	addfile = { basiccmd ( "core.localfileio.addfile" ) , " <path> <playlist> [<position>]" , "add the song at the path given (on the server) to the playlist specified, in the position given (position defaults to the end of the playlist)" } ;
+	addfolder = { basiccmd ( "core.localfileio.addfolder" ) , " <path> <playlist> [<position> [<recurse>]]" , "add a folder to a playlist starting at given position, recursing to given number of levels, or true for infinite (default is no recursion)" } ;
+	quit = { basiccmd ( "core.quit" ) , "" , "makes the server quit" } ;
+	manual = { function ( )
 		local waiting
 		while true do
 			if not waiting then
@@ -105,12 +83,12 @@ translate = {
 				print ( code , str , data )
 			end
 		end
-	end , "" , "opens a telnet like session with the server" end;
-	help = function ( ) return function ( ... )
+	end , "" , "opens a telnet like session with the server" } ;
+	help = { function ( ... )
 		local t , maxlen = { } , 0
 		if select ( "#" , ... ) == 0 then
 			for k , v in pairs ( translate ) do
-				local func , params , helptxt = v ( )
+				local params , helptxt = v [ 2 ] , v [ 3 ]
 				if ( #k + #params ) > maxlen then maxlen = #k + #params end
 				t [ #t + 1 ] = { k , params , helptxt }
 			end
@@ -119,7 +97,7 @@ translate = {
 			for i , v in ipairs ( { ... } ) do
 				local f = translate [ v ]
 				if f then
-					local func , params , helptxt = f ( )
+					local params , helptxt = f [ 2 ] , f [ 3 ]
 					if ( #v + #params ) > maxlen then maxlen = #v + #params end
 					t [ #t + 1 ] = { v , params , helptxt }
 				end
@@ -130,12 +108,12 @@ translate = {
 		for k , v in ipairs ( t ) do
 			io.write ( v [ 1 ] , " " , v [ 2 ] , string.rep ( " " , maxlen - ( #v [ 1 ] + #v [ 2 ] ) ) , " : " , v [ 3 ] , "\n" )
 		end
-	end , "" , "displays help" end ;
+	end , "" , "displays help" } ;
 }
 
 local ret = translate [ arg [ 1 ] ]
 if ret then
-	ret ( ) ( select ( 2 , ... ) )
+	ret [ 1 ] ( select ( 2 , ... ) )
 	print ( )
 	os.exit ( 0 )
 else
