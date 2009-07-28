@@ -15,7 +15,7 @@ module ( "lomp.core.info" , package.see ( lomp ) )
 
 function getplaylistinfo ( num )
 	local pl = core.playlist.getplaylist ( num )
-	if not pl then return false end
+	if not pl then return ferror ( "getplaylistinfo called with invalid playlistt" ) end
 	return { revision = pl.revision , items = pl.length , index = num , name = pl.name }
 end
 

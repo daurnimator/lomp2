@@ -17,7 +17,7 @@ require "core.triggers"
 
 function getplaylist ( playlistnum )
 	if type ( playlistnum ) ~= "number" or not vars.playlist [ playlistnum ] then
-		return false
+		return ferror ( "getplaylist called with invalid playlist" , 3 )
 	else
 		return vars.playlist [ playlistnum ]
 	end	
@@ -56,11 +56,11 @@ end
 
 function fetch ( num , latest , earliest )
 	local pl = getplaylist ( num )
-	if not pl then return false , "Invalid playlist" end
+	if not pl then return ferror ( "Fetch called with invalid playlist" , 3 ) end
 	latest = latest or pl.revision
 	earliest = earliest or 0
-	if type ( latest ) ~= "number" or type ( earliest ) ~= "number" then return false , "Bad Revision" end
-	if latest < 0 or latest > pl.revision or earliest < 0 or earliest > latest then return false , "Invalid Revision" end
+	if type ( latest ) ~= "number" or type ( earliest ) ~= "number" then return ferror ( "Fetch called with bad revision" , 3 ) end
+	if latest < 0 or latest > pl.revision or earliest < 0 or earliest > latest then return ferror ( "Fetch called with invalid revision" , 3 ) end
 
 	return collapserev ( pl.revisions , latest , earliest ) , latest
 end

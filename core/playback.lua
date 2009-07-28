@@ -74,7 +74,7 @@ function pause ( )
 		triggers.fire ( "playback_pause" , offset )
 		return true
 	else
-		return false
+		return false , "Could not pause"
 	end
 end
 
@@ -86,7 +86,7 @@ function unpause ( )
 		triggers.fire ( "playback_unpause" )
 		return true
 	else
-		return false
+		return false , "Could not unpause"
 	end
 end
 
@@ -107,12 +107,12 @@ function goto ( songnum )
 		return true
 	elseif songnum > 0 then
 		for i = 1 , songnum do
-			if not forward ( ) then return false end
+			if not forward ( ) then return false , "Not enough songs" end
 		end
 		return true
 	elseif songnum < 0 then
 		for i = 1 , -songnum do
-			if not select ( 2 , backward ( ) ) then return false end
+			if not select ( 2 , backward ( ) ) then return false , "Not enough songs to go back to" end
 		end
 		return true
 	end
@@ -127,7 +127,7 @@ function next ( )
 end
 
 function forward ( queueonly ) -- Moves forward one song in the queue
-	local success
+	local success , err
 	if vars.queue [ 0 ] then
 		if vars.queue [ 0 ].laststarted then
 			table.insert ( vars.played , 1 , vars.queue [ 0 ] ) -- Add current to played (history)
@@ -152,7 +152,8 @@ function forward ( queueonly ) -- Moves forward one song in the queue
 			end
 			success = true -- More songs left
 		else
-			success = false -- No more songs.
+			success = false
+			err = "No more songs."
 		end
 	end
 	if state == "playing" then
@@ -160,16 +161,16 @@ function forward ( queueonly ) -- Moves forward one song in the queue
 			local item = vars.queue [ 0 ]
 			local typ , source = item.typ , item.source 
 			if queueonly then
-				success = player.queuesong ( typ , source )
+				success , err = player.queuesong ( typ , source )
 			else
-				success = player.play ( typ , source ) 
+				success , err = player.play ( typ , source ) 
 			end
 			triggers.fire ( "playback_startsong" , typ , source )
 		end
 	else
 		stop ( ) -- Stop if in non-playing state (eg, paused)
 	end
-	return success
+	return success , err
 end
 
 function backward ( ) -- Moves back one song from the history
@@ -183,8 +184,8 @@ function backward ( ) -- Moves back one song from the history
 		table.remove ( vars.played , 1 ) -- Shifts all elements down
 		vars.played.revision = vars.played.revision + 1
 		return true , true
-	else -- Nothing in history.
-		return true , false
+	else -- Nothing left in history.
+		return false , "No played songs left"
 	end
 end
 

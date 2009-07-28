@@ -48,12 +48,11 @@ function filter ( int , out , func )
 	if not func then return false end
 	
 	local infunc = inmap [ int.type ]
-	if not infunc then return false end
+	if not infunc then return ferror ( "Filter called with invalid in type" , 3 ) end
 	local intbl = infunc ( int )
-	if not intbl then return false end
 	
 	local outfunc = outmap [ out.type ]
-	if not outfunc then return false end
+	if not outfunc then return ferror ( "Filter called with invalid out type" , 3 ) end
 	
 	return outfunc ( reduce ( intbl , func ) )
 end

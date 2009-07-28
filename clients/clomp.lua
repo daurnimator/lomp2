@@ -139,7 +139,6 @@ if ret then
 	print ( )
 	os.exit ( 0 )
 else
-	print ( "Invalid command, see: '" , arg [ 0 ]  .. " help'" )
-	print ( )
+	io.write ( "Invalid command, see: '" , arg [ 0 ]  , " help'" , "\n\n" )
 	os.exit ( 1 )
 end
