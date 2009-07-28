@@ -47,6 +47,11 @@ end end
 
 local translate
 translate = {
+	setplaylist = 	{ func = basiccmd ( "core.setsoftqueueplaylist" ) , params = "<playlist>" , help = "sets which playlist is the soft queue" } ;
+	loop = 		{ func = basiccmd ( "core.loop" ) , params = "<loop?>" , help = "enables/disables looping the soft queue" } ;
+	["repeat"] = 	{ func = basiccmd ( "core.repeat" ) , params = "<repeat?>" , help = "enables/disables repeating the soft queue playlist" } ;
+	reloadlibrary = 	{ func = basiccmd ( "core.reloadlibrary" ) , params = "" , help = "reloads the library (with directories set in config file)" } ;
+	quit = 		{ func = basiccmd ( "core.quit" ) , params = "" , help = "makes the server quit" } ;
 	play = 		{ func = basiccmd ( "core.playback.play" ) , params = "" , help = "Start playing" } ;
 	togglepause = 	{ func = basiccmd ( "core.playback.togglepause" ) , params = "" , help = "Toggles between paused and playing" } ;
 	pause = 		{ func = basiccmd ( "core.playback.pause" ) , params = "" , help = "Pause" } ;
@@ -57,7 +62,9 @@ translate = {
 	stop = 		{ func = basiccmd ( "core.playback.stop" ) , params = "" , help = "Stops the current song" } ;
 	addfile = 		{ func = basiccmd ( "core.localfileio.addfile" ) , params = " <path> <playlist> [<position>]" , help = "add the song at the path given (on the server) to the playlist specified, in the position given (position defaults to the end of the playlist)" } ;
 	addfolder = 	{ func = basiccmd ( "core.localfileio.addfolder" ) , params = " <path> <playlist> [<position> [<recurse>]]" , help = "add a folder to a playlist starting at given position, recursing to given number of levels, or true for infinite (default is no recursion)" } ;
-	quit = 		{ func = basiccmd ( "core.quit" ) , params = "" , help = "makes the server quit" } ;
+	setvolume =  	{ func = basiccmd ( "player.setvolume" ) , params = "<volume>" , help = "set the volume of the player (volume is between 0% and 1000%)" } ;
+	mute =  		{ func = basiccmd ( "player.mute" ) , params = "" , help = "mute the player" } ;
+	unmute =  	{ func = basiccmd ( "player.unmute" ) , params = "" , help = "unmute the player" } ;
 	manual = 	{ func = function ( )
 		local waiting
 		while true do

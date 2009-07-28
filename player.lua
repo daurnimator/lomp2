@@ -103,7 +103,7 @@ end
 
 function setvolume ( vol )
 	if type ( vol ) ~= "number" or vol < 0 or vol > 1000 then
-		return false
+		return false , "Unavailable volume level"
 	end
 	pipeline:set ( "volume" , vol/100 )
 	return true , ( vol > 100 ) -- If vol is over 100, distortion is likely

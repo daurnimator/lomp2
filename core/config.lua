@@ -25,6 +25,7 @@ config = {
 
 -- Load config
 local compiledchunk = loadfile ( "config" ) -- path from pwd
+if not compiledchunk then fail ( "Could not find config file" ) end
 setfenv ( compiledchunk , config )
 
 module ( "config" )

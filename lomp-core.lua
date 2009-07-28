@@ -111,16 +111,16 @@ function core.reloadlibrary ( )
 	return true
 end
 
-function core.enablelooping ( )
-	local loop = true
-	vars.loop = loop
-	return true , loop
+function core.loop ( bool )
+	if type ( bool ) ~= "boolean" then return ferror ( "Loop called with invalid argument" ) end
+	vars.loop = bool
+	return true
 end
 
-function core.disablelooping ( )
-	local loop = false
-	vars.loop = loop
-	return true , loop
+core["repeat"] = function ( bool )
+	if type ( bool ) ~= "boolean" then return ferror ( "Repeat called with invalid argument" ) end
+	vars.rpt = bool
+	return true
 end
 
 function core.checkfileaccepted ( filename )
