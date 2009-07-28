@@ -20,7 +20,7 @@ local tblsort , tblconcat = table.sort , table.concat
 local strlen , strlower , strupper , strfind , strgmatch , strformat , strgsub , strsub , strmatch = string.len , string.lower , string.upper , string.find , string.gmatch , string.format ,  string.gsub , string.sub , string.match
 local osdate , ostime = os.date , os.time
 local ioopen = io.open
-local pcall , unpack , require , loadfile , assert , pairs , ipairs , setfenv , tonumber , tostring , type = pcall , unpack , require , loadfile , assert , pairs , ipairs , setfenv , tonumber , tostring , type
+local pcall , unpack , require , loadfile , assert , pairs , ipairs , setfenv , setmetatable , tonumber , tostring , type = pcall , unpack , require , loadfile , assert , pairs , ipairs , setfenv , setmetatable , tonumber , tostring , type
 
 module ( "httpserver" )
 
@@ -68,19 +68,21 @@ end
 
 local httpconfig = loadconfig ( )
 
-local apachelog = ""
-
-local mimetypes = { }
+local mimetypes = setmetatable ( { } , { __index = function ( ) return "application/octet-stream" end } )
 do -- Load mime types
 	local f = ioopen ( "/etc/mime.types" , "r" )
 	if f then -- On a unix based system, and mime types file available.
 		while true do
 			local line = f:read ( )
-			if not line then break end
-			local _ , _ , typ , name = strfind ( line , "^(.*)\t+([^\t]+)$" )
-			if typ then
-				for e in strgmatch ( name , "([^%s]+)" ) do
-					mimetypes [ e ] = typ
+			if not line then break
+			elseif line:sub ( 1 , 1 ) == "#" then
+				-- Is a comment
+			else
+				local typ , name = strmatch ( line , "^(%S+)%s+(.+)$" )
+				if typ then
+					for e in strgmatch ( name , "%S+" ) do
+						mimetypes [ e ] = typ
+					end
 				end
 			end
 		end
@@ -96,11 +98,12 @@ do -- Load mime types
 		mimetypes [ "png" ] = "image/png"
 	end
 end
+
 local function pathtomime ( path )
 	local mimetyp
 	local _ , _ , extension = strfind ( path , "%.([^%./]+)$" ) 
 	if extension then
-		mimetyp = mimetypes [ extension ] or "application/octet-stream" 
+		mimetyp = mimetypes [ extension ] 
 	else
 		mimetyp = "text/plain"
 	end
@@ -157,7 +160,9 @@ end
 local function httperrorpage ( status )
 	return "<html><head><title>HTTP Code " .. status .. "</title></head><body><h1>HTTP Code " .. status .. "</h1><p>" .. httpcodes [ status ] .. "</p><hr><i>Generated on " .. osdate ( ) .." by " .. versionstring .. " </i></body></html>"
 end
-local function httpsend ( conn , requestdetails , responsedetails )
+local conns = { }
+
+local function httpsend ( conn , session , responsedetails )
 	local status , body = responsedetails.status , responsedetails.body
 	
 	if type ( status ) ~= "number" or status < 100 or status > 599 then error ( "Invalid http code" ) end
@@ -167,16 +172,16 @@ local function httpsend ( conn , requestdetails , responsedetails )
 		sheaders [ strlower ( k ) ] = v
 	end
 
-	if requestdetails.Method == "HEAD" then body = "" end
+	if session.Method == "HEAD" then body = "" end
 	do -- Zlib
 		local ok , zlib = pcall ( require , 'zlib' )
 		if ok and type ( zlib ) == "table" then 
 			if strlen ( body ) > 32 then
-				local acceptencoding = ( requestdetails.headers [ "accept-encoding" ] or "" ):lower ( )
+				local acceptencoding = ( session.headers [ "accept-encoding" ] or "" ):lower ( )
 				if ( strfind ( acceptencoding , "gzip" ) or strfind ( acceptencoding , "[^%w]*[^%w]" ) ) then
 					local zbody = zlib.compress( body , 9, nil, 15 + 16 )
 					if zbody:len ( ) < body:len() then
-						local vary = ( requestdetails.headers [ 'vary' ] or 'accept-encoding' ):lower ( )
+						local vary = ( session.headers [ 'vary' ] or 'accept-encoding' ):lower ( )
 						if strfind ( vary , '[^%w]accept-encoding[^%w]' ) then
 							vary = vary .. ',' .. 'accept-encoding'
 						end
@@ -196,7 +201,7 @@ local function httpsend ( conn , requestdetails , responsedetails )
 			local bodymd5 = md5.sumhexa ( body )
 			sheaders [ "content-md5" ] = bodymd5
 			if strlen ( body ) > 0 then -- ETag (md5 of body)
-				local etag = requestdetails.headers [ "etag" ]
+				local etag = session.headers [ "etag" ]
 				if not etag then 
 					sheaders [ "etag" ] = bodymd5
 				end
@@ -207,9 +212,9 @@ local function httpsend ( conn , requestdetails , responsedetails )
 	end
 	do -- If modified...
 		if status >= 200 and status < 300 then
-			local modifiedSince = requestdetails.headers [ 'if-modified-since' ] or 0
+			local modifiedSince = session.headers [ 'if-modified-since' ] or 0
 			local lastModified = sheaders [ 'last-modified' ] or 1
-			local noneMatch = requestdetails.headers [ 'if-none-match' ] or 0
+			local noneMatch = session.headers [ 'if-none-match' ] or 0
 			local etag = sheaders [ 'etag' ] or 1
 			
 			if modifiedSince == lastModified or noneMatch == etag then
@@ -219,27 +224,30 @@ local function httpsend ( conn , requestdetails , responsedetails )
 		end
 	end
 
-	local message = "HTTP/1.1 " .. status .. " " .. httpcodes [ status ] .. "\r\n" 
+	local message = { "HTTP/1.1 " .. status .. " " .. httpcodes [ status ] }
+	local msgcount = 1
+	
 	sheaders [ "date" ] = httpdate ( )
 	sheaders [ "server" ] = versionstring
 	sheaders [ "content-type" ] = sheaders [ "content-type" ] or "text/html"
 	sheaders [ "content-length" ] = strlen ( body )
 	
 	for k,v in pairs ( sheaders ) do
-		message = message .. k .. ": " .. v .. "\r\n"
+		msgcount = msgcount + 1
+		message [ msgcount ] = k .. ": " .. v
 	end
 	
-	message = message .. "Connection: close\r\n" -- Multiple HTTP commands not allowed, tell client to close connection
+	message [ msgcount + 1 ] = "" -- Signal end of header(s)
+	message [ msgcount + 2 ] = body
 	
-	message = message .. "\r\n" -- Signal end of header(s)
-	message = message .. body
-	
-	conn.write ( message )
+	conn.write ( tblconcat ( message , "\r\n" ) )
 	
 	-- Apache Log Format
-	apachelog = apachelog .. strformat ( '%s - - [%s] "GET %s HTTP/%s.%s" %s %s "%s" "%s"' , requestdetails.peer , osdate ( "!%m/%b/%Y:%H:%M:%S GMT" ) , requestdetails.Path , requestdetails.Major , requestdetails.Minor , status , #message , ( requestdetails.headers [ "referer" ] or "-" ) , ( requestdetails.headers[ "agent" ] or "-" ) ) .. "\n"
-	--print ( "Apache Style Log: " .. apachelog )
-		
+	local apachelog = strformat ( '%s - - [%s] "GET %s HTTP/%s.%s" %s %s "%s" "%s"' , session.peer , osdate ( "!%m/%b/%Y:%H:%M:%S GMT" ) , session.Path , session.Major , session.Minor , status , #message , ( session.headers [ "referer" ] or "-" ) , ( session.headers [ "agent" ] or "-" ) )
+	updatelog ( "HTTP Server: " .. apachelog , 5 )
+
+	conns [ conn ] = nil -- Reset connection
+	
 	return status , reasonphrase
 end
 local function execute ( name , ... )
@@ -268,14 +276,14 @@ local function getvar ( name )
 	end
 end
 local function auth ( headers )
-	if config.authorisation then
+	if httpconfig.authorisation then
 		local preferred = "basic" -- Preferred method is basic auth (Only thing currently supported)
 		if headers [ "authorization" ] then -- If using http authorization
 			local _ , _ , AuthType , AuthString = strfind ( headers [ "authorization" ] , "([^ ]+)% +(.+)" )
 			if strlower ( AuthType )  == "basic" then -- If they are trying Basic Authentication:
 				local _ , _ , user , pass = strfind ( mime.unb64 ( AuthString ) , "([^:]+):(.+)" ) -- Decrypt username:password ( Sent in base64 )
 				-- Check credentials:
-				if user == config.username and pass == config.password then
+				if user == httpconfig.username and pass == httpconfig.password then
 					return true
 				else -- Credentials incorrect
 					return false , preferred 
@@ -291,18 +299,18 @@ local function auth ( headers )
 	end
 end
 
-local function xmlrpcserver ( skt , requestdetails )
+local function xmlrpcserver ( skt , session )
 	local xmlrpc = require "xmlrpc"
-	local authorised , typ = auth ( requestdetails.headers )
+	local authorised , typ = auth ( session.headers )
 	if not authorised then
 		if typ == "basic" then
 			-- Send a xml fault document
 			updatelog ( "Unauthorised login blocked." , 3 )
-			httpsend ( skt , requestdetails , { status = 401 , headers = { [ 'WWW-Authenticate' ] = 'Basic realm="' .. versionstring .. '"' ; [ 'content-length' ] = "text/xml" } , body = xmlrpc.srvEncode ( { faultCode = 401 , faultString = httpcodes [ 401 ] } , true ) } )
+			httpsend ( skt , session , { status = 401 , headers = { [ 'WWW-Authenticate' ] = 'Basic realm="' .. versionstring .. '"' ; [ 'content-length' ] = "text/xml" } , body = xmlrpc.srvEncode ( { faultCode = 401 , faultString = httpcodes [ 401 ] } , true ) } )
 			return false
 		end
 	else -- Authorised
-		local method_name , list_params = xmlrpc.srvDecode ( requestdetails.body )
+		local method_name , list_params = xmlrpc.srvDecode ( session.body )
 		list_params = list_params [ 1 ] -- KLUDGE: I don't know why it needs this, but it does -- maybe its so you can have multiple methodnames?? but then wtf is the previous cmd...
 		
 		local function depack ( t , i , j )
@@ -321,29 +329,29 @@ local function xmlrpcserver ( skt , requestdetails )
 		local body = xmlrpc.srvEncode ( result , not ok )
 		--print(body)
 		
-		httpsend ( skt , requestdetails , { status = 200 , headers = { [ 'content-length' ] = "text/xml" } , body = body } )
+		httpsend ( skt , session , { status = 200 , headers = { [ 'content-length' ] = "text/xml" } , body = body } )
 			
 		return true
 	end
 end
-local function basiccmdserver ( skt , requestdetails )
+local function basiccmdserver ( skt , session )
 	-- Execute action based on GET string.
-	local authorised , typ = auth ( requestdetails.headers )
+	local authorised , typ = auth ( session.headers )
 	if not authorised then
 		if typ == "basic" then
 			-- Send an xml fault document
 			updatelog ( "Unauthorised login blocked." , 3 )
-			httpsend ( skt , requestdetails , { status = 401 , headers = { ['WWW-Authenticate'] = 'Basic realm=" ' .. versionstring .. '"' } } )
+			httpsend ( skt , session , { status = 401 , headers = { ['WWW-Authenticate'] = 'Basic realm=" ' .. versionstring .. '"' } } )
 			return false
 		end		
 	else
-		local cmd = requestdetails.queryvars [ "cmd" ]
+		local cmd = session.queryvars [ "cmd" ]
 		
 		local i = 1
 		local params = { }
 		while true do
-			if requestdetails.queryvars [ tostring ( i ) ] then
-				local v = requestdetails.queryvars [ tostring ( i ) ]
+			if session.queryvars [ tostring ( i ) ] then
+				local v = session.queryvars [ tostring ( i ) ]
 				local t = v:sub ( 1 , 1 )
 				local s = v:sub ( 2 , -1 )
 				if t == "s" then
@@ -357,7 +365,7 @@ local function basiccmdserver ( skt , requestdetails )
 				elseif t == "b" then
 					params [ i ] = true
 				else
-					httpsend ( skt , requestdetails , { status = 400 } )
+					httpsend ( skt , session , { status = 400 } )
 					return false
 				end
 			else break
@@ -386,20 +394,20 @@ local function basiccmdserver ( skt , requestdetails )
 				end
 			end
 			local status , doc = makeresponse ( execute ( cmd , unpack ( params ) ) )
-			local code , str , msg , bytessent = httpsend ( skt , requestdetails , { status = status , body = doc } )
+			local code , str , msg , bytessent = httpsend ( skt , session , { status = status , body = doc } )
 			return true
 		end
 	end
 end
-local function webserver ( skt , requestdetails )
+local function webserver ( skt , session )
 		local code , doc , hdr = nil , nil , { }
 		local publicdir = "."
 		local allowdirectorylistings = true
 		
 		local defaultfiles = { "index.html" , "index.htm" }
 			
-		--local sfile = strgsub ( requestdetails.file , "/%.[^/]*" , "" ) -- Strip out ".." and "." of file request
-		local sfile = requestdetails.file 
+		--local sfile = strgsub ( session.file , "/%.[^/]*" , "" ) -- Strip out ".." and "." of file request
+		local sfile = session.file 
 		
 		local path = publicdir .. sfile -- Prefix with public dir path
 		
@@ -417,9 +425,9 @@ local function webserver ( skt , requestdetails )
 					local offset 
 					local length
 					
-					--print ( "Range: ", requestdetails.headers [ "range" ] )
+					--print ( "Range: ", session.headers [ "range" ] )
 					--[[do
-						local s , e , r_A , r_B = strfind ( requestdetails.headers [ "range" ] , "(%d*)%s*-%s*(%d*)" )	
+						local s , e , r_A , r_B = strfind ( session.headers [ "range" ] , "(%d*)%s*-%s*(%d*)" )	
 						if s and e then
 							r_A = tonumber (r_A)
 							r_B = tonumber (r_B)
@@ -485,16 +493,16 @@ local function webserver ( skt , requestdetails )
 		if not code then -- If still around at this point: couldn't access file or forbidden to list the directory
 			code = 403		
 		end
-		local code , str , bytessent = httpsend ( skt , requestdetails , { status = ( code or 404 ) , headers = hdr , body = doc } )
+		local code , str , bytessent = httpsend ( skt , session , { status = ( code or 404 ) , headers = hdr , body = doc } )
 		
 		return true
 end
-local function jsonserver ( skt , requestdetails )
+local function jsonserver ( skt , session )
 	local Json = require "Json"
-	--print ( "Json cmd received: " , requestdetails.body )
+	--print ( "Json cmd received: " , session.body )
 	local hdr = { ["content-type"] = "application/json" }
-	if requestdetails.Method == "POST" then
-		local o = Json.Decode ( requestdetails.body )
+	if session.Method == "POST" then
+		local o = Json.Decode ( session.body )
 		if type ( o ) == "table" then
 			local t = { }
 			local code = 200
@@ -507,16 +515,16 @@ local function jsonserver ( skt , requestdetails )
 				end
 			end
 			--print ( "Json reply: " , Json.Encode ( t ) )
-			httpsend ( skt , requestdetails , { status = code , headers = hdr , body = Json.Encode ( t ) } )
+			httpsend ( skt , session , { status = code , headers = hdr , body = Json.Encode ( t ) } )
 
 		else -- Json decoding failed
-			httpsend ( skt , requestdetails , { status = 400 , headers = hdr , body = Json.Encode ( { false , "Could not decode Json" } ) } )
+			httpsend ( skt , session , { status = 400 , headers = hdr , body = Json.Encode ( { false , "Could not decode Json" } ) } )
 		end
-	elseif requestdetails.Method == "GET" then 
+	elseif session.Method == "GET" then 
 		local t = { }
 		local i = 1
 		while true do
-			local v = requestdetails.queryvars [ tostring ( i ) ]
+			local v = session.queryvars [ tostring ( i ) ]
 			if not v then break end
 			local result , err = getvar ( v )
 			if err then
@@ -529,13 +537,13 @@ local function jsonserver ( skt , requestdetails )
 			i = i + 1
 		end
 		--print ( "Json reply: " , Json.Encode ( t ) )
-		httpsend ( skt , requestdetails , { status = 200 , headers = hdr , body = Json.Encode ( t ) } )
+		httpsend ( skt , session , { status = 200 , headers = hdr , body = Json.Encode ( t ) } )
 	else
 		-- Unsupported json method
-		httpsend ( skt , requestdetails , { status = 400 , headers = hdr } )
+		httpsend ( skt , session , { status = 400 , headers = hdr } )
 	end
 end
-local conns = { }
+
 local function httpserver ( conn , data, err )
 	if not data then return end
 	local session = conns [ conn ]
@@ -552,7 +560,7 @@ local function httpserver ( conn , data, err )
 		if requestlines > 25 then -- max of 25 lines, more and request could be a DOS Attack
 			conn.close ( )
 		end
-		if #data >= 1 and data ~= "\r" then 
+		if #data >= 1 then 
 			session.request [ requestlines + 1 ] = data
 		else
 			session.gotrequest = true
