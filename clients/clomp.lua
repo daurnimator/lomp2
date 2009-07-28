@@ -31,11 +31,20 @@ local function basiccmd ( cmd ) return function ( ... )
 	local encoded = Json.Encode ( args )
 	client:send ( table.concat ( { "CMD" , cmd , encoded } , " " ) )
 	while true do
-		local code , str , data =  client:receive ( )
-		if code == nil then
+		local code , str , data = client:receive ( )
+		if code == false then
+			print ( "Error in lomp client: " .. str )
+		elseif code == nil then
 		elseif code == 0 then 
 			if data [ 1 ] then
-				print ( table.serialise ( data ) )
+				print ( "Result:" )
+				for i , v in ipairs ( data ) do
+					if type ( v ) == "table" then
+						print ( table.serialise ( v ) )
+					else
+						print ( v )
+					end
+				end
 			else
 				print ( "Error in lomp server: " .. data [ 2 ] )
 			end
