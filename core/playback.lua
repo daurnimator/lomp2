@@ -17,7 +17,7 @@ require "player"
 
 state = "stopped"
 
-function play ( fromoffset )
+function play ( fromoffset, offsetispercent )
 	if state ~= "stopped" then stop ( ) end -- Remove eventually??
 	if not vars.queue [ 0 ] then 
 		local r = forward ( ) 
@@ -33,7 +33,7 @@ function play ( fromoffset )
 		offset = fromoffset
 	end
 	
-	player.play ( typ , source , offset )
+	player.play ( typ , source , offset , offsetispercent )
 	state = "playing"
 	vars.queue [ 0 ].laststarted = os.time ( )
 	

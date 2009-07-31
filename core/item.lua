@@ -80,7 +80,7 @@ function removeitem ( playlistnum , position )
 	return true
 end
 
-function copytoplaylist ( newplnum , newpos , oldplnum , oldpos )
+function copytoplaylist ( oldplnum , oldpos , newplnum , newpos )
 	local newpl = core.playlist.getplaylist ( newplnum )
 	if not newpl then return ferror ( "'Copy to playlist' called with invalid new playlist" , 1 ) end
 	local oldpl = core.playlist.getplaylist ( oldplnum )
@@ -88,9 +88,10 @@ function copytoplaylist ( newplnum , newpos , oldplnum , oldpos )
 	if not oldpl [ pos ] then
 		return ferror ( "'Copy to playlist' called with invalid old item position" , 1 ) 
 	end
-	if newpos and type ( newpos ) ~= "number" then
+	if newpos and ( type ( newpos ) ~= "number" or newpos > ( newpl.length + 1 ) ) then
 		return ferror ( "'Copy to playlist' called with invalid new position" , 1 ) 
-	else newpos = newpos or ( newpl.length + 1 ) -- If new position is not given, add to end of playlist.
+	else 
+		newpos = newpos or ( newpl.length + 1 ) -- If new position is not given, add to end of playlist.
 	end
 
 	additem ( copyitem ( oldpl [ oldpos ] ) , newpos , newplnum , newpos )
@@ -98,7 +99,7 @@ function copytoplaylist ( newplnum , newpos , oldplnum , oldpos )
 	return newpos
 end
 
-function movetoplaylist ( newplnum , newpos , oldplnum , oldpos )
+function movetoplaylist ( oldplnum , oldpos , newplnum , newpos )
 	local newpl = core.playlist.getplaylist ( newplnum )
 	if not newpl then return ferror ( "'Move to playlist' called with invalid new playlist" , 1 ) end
 	local oldpl = core.playlist.getplaylist ( oldplnum )
@@ -109,10 +110,14 @@ function movetoplaylist ( newplnum , newpos , oldplnum , oldpos )
 		return ferror ( "'Move to playlist' called with invalid old item position" , 1 ) 
 	end
 	
-	if newpos and type ( newpos ) ~= "number" then return ferror ( "'Move to playlist' called with invalid new position" , 1 ) else newpos = newpos or ( newpl.length + 1 ) end
+	if newpos and ( type ( newpos ) ~= "number" or newpos > ( newpl.length + 1 ) or ( newpl == oldpl and newpos > newpl.length ) ) then 
+		return ferror ( "'Move to playlist' called with invalid new position" , 1 ) 
+	else 
+		newpos = newpos or ( newpl.length + 1 ) -- If new position is not given, add to end of playlist.
+	end
 	
-	additem ( object , newplnum , newpos )
 	removeitem ( oldplnum , oldpos )
+	additem ( object , newplnum , newpos )
 	
 	return newpos
 end

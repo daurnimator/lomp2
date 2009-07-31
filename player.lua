@@ -38,7 +38,7 @@ function queuesong ( typ , source )
 	return true
 end
 
-function play ( typ , source , offset )
+function play ( typ , source , offset , offsetispercent )
 	if not typ or not source then return false end
 	
 	pipeline:set_state ( gst.STATE_READY )
@@ -49,7 +49,7 @@ function play ( typ , source , offset )
 	pipeline:set_state ( gst.STATE_PLAYING )
 	pipeline:get_state ( -1 )
 	
-	if offset then seek ( offset ) end
+	if offset then seek ( offset , false , offsetispercent ) end
 	return true
 end
 

@@ -32,7 +32,7 @@ local function send ( ob , data )
 end
 local function receive ( ob )
 	local client = getmetatable ( ob ).client
-	if not client then error ( "Client not connected" ) end
+	if not client then return false , "Client not connected" end
 	
 	local line , err = client:receive ( "*l" )
 	if not line then
