@@ -9,9 +9,15 @@
 	You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ]]
 
-require "core.triggers"
+require "general"
+
+local require = require
 
 module ( "lomp.player" , package.see ( lomp ) )
+
+require "core.triggers"
+
+local gst = require "lgob.gst"
 
 extensions = {	
 	"ogg" ; "oga" ;
@@ -21,8 +27,6 @@ extensions = {
 	"wv" ;
 	--"m4a" ; "m4r" ;
 }
-
-require "lgob.gst"
 
 local pipeline = gst.ElementFactory.make ( "playbin2" , "player" )
 local bus = pipeline:get_bus ( )

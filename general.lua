@@ -9,6 +9,12 @@
 	You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ]]
 
+local assert , error , getmetatable , ipairs , pairs , rawget , setmetatable , tostring , type = assert , error , getmetatable , ipairs , pairs , rawget , setmetatable , tostring , type
+local tblconcat = table.concat
+local strformat = string.format
+local random , randomseed = math.random , math.randomseed
+local ostime = os.time
+
 package.path = package.path .. ";/usr/share/lua/5.1/?.lua;/usr/share/lua/5.1/?/init.lua;/usr/lib/lua/5.1/?.lua;/usr/lib/lua/5.1/?/init.lua;./libs/?.lua;./libs/?/init.lua;"
 package.cpath = package.cpath .. ";/usr/lib/lua/5.1/?.so;/usr/lib/lua/5.1/loadall.so;./libs/?.so"
 
@@ -16,7 +22,7 @@ pcall ( require , "luarocks.require" ) -- Activates luarocks if available.
 require "iconv"
 
 -- Set math randomseed
-math.randomseed ( os.time ( ) )
+randomseed ( ostime ( ) )
 
 do
 	local rawpairs = pairs
@@ -49,14 +55,14 @@ function string.explode ( str , seperator , plain )
 	if seperator == "" then return false end
 	local t , nexti = { } , 1
 	local pos = 1
-	for st , sp in function ( ) return string.find ( str , seperator , pos , plain ) end do
+	for st , sp in function ( ) return str:find ( seperator , pos , plain ) end do
 		if pos ~= st then
-			t [ nexti ] = string.sub ( str , pos , st - 1 ) -- Attach chars left of current divider
+			t [ nexti ] = str:sub ( pos , st - 1 ) -- Attach chars left of current divider
 			nexti = nexti + 1
 		end
 		pos = sp + 1 -- Jump past current divider
 	end
-	t [ nexti ] = string.sub ( str , pos ) -- Attach chars right of last divider
+	t [ nexti ] = str:sub ( pos ) -- Attach chars right of last divider
 	return t
 end
 
@@ -85,7 +91,7 @@ end
  -- newtbl is the table that will have tbl appended to it
 function table.append ( newtbl , tbl )
 	for i , v in ipairs ( tbl ) do
-		newtbl[#newtbl+1] = v
+		newtbl [ #newtbl + 1 ] = v
 	end
 end
 
@@ -115,7 +121,7 @@ function table.randomise ( tbl , n , newtable )
 	else new = tbl end
 	
 	for i = 1 , n do
-		local j = math.random ( i , n )
+		local j = random ( i , n )
 		new [ i ] , tbl [ j ] = tbl [ j ] , tbl [ i ]
 	end
 	return new
@@ -126,7 +132,6 @@ end
  -- returns sorted table.
 function table.stablesort ( a , equalitycheck , newtable )
 	equalitycheck = equalitycheck or function ( e1 , e2 ) if e1 < e2 then return true else return false end end
-	func = func or function ( ) end
 	
 	local n = #a
 	
@@ -215,13 +220,13 @@ function table.serialise ( t , prefix )
 		for k , v in pairs ( t ) do
 			tbl [ #tbl + 1 ] = prefix .. '\t[' .. table.serialise ( k ) .. '] = ' .. table.serialise ( v , prefix .. "\t" )
 		end
-		return '{\n' .. table.concat ( tbl , ";\n" ) .. "\n" .. prefix .. '}'
+		return '{\n' .. tblconcat ( tbl , ";\n" ) .. "\n" .. prefix .. '}'
 	elseif type ( t ) == "number" then
 		return t
 	elseif type ( t ) == "boolean" then
 		return tostring ( t )
 	--elseif type ( t ) == "string" then
 	else -- All other formats (including string and userdata)
-		return string.format ( '%q' , tostring ( t ) )
+		return strformat ( '%q' , tostring ( t ) )
 	end
 end

@@ -11,6 +11,9 @@
 
 require "general"
 
+local ipairs , pairs , require , setmetatable , type , unpack = ipairs , pairs , require , setmetatable , type , unpack
+local osdate , ostime = os.date , os.time
+
 module ( "lomp.metadata" , package.see ( lomp ) )
 
 require "SaveToTable"
@@ -54,11 +57,11 @@ end
 local function getitem ( path )
 	local item = { 
 		path = path ;
-		filename = string.match ( path , "([^/]+)$" ) ;
+		filename = path:match ( "([^/]+)$" ) ;
 		tags = { } ;
 		extra = { } ;
 	}
-	item.extension = string.lower ( string.match ( item.filename , "%.([^%./]+)$" ) )
+	item.extension = item.filename:match ( "%.([^%./]+)$" ):lower ( )
 
 	local f = exttodec [ item.extension ]
 	if f then
@@ -84,7 +87,7 @@ local function maketagcache ( tbl )
 		__index = function ( t , k )
 			local item = getitem ( k )
 			if item ~= nil then
-				item.fetched = os.time ( )
+				item.fetched = ostime ( )
 				t [ k ] = item
 				return item
 			end
@@ -123,7 +126,7 @@ function edittag ( path , edits , inherit )
 end
 
 function savecache ( )
-	local ok , err = table.save ( {  lomp = core._VERSION , major = core._MAJ , minor = core._MIN , inc = core._INC , timesaved = os.date ( ) , cache = cache } , config.tagcachefile , "" , "" )
+	local ok , err = table.save ( {  lomp = core._VERSION , major = core._MAJ , minor = core._MIN , inc = core._INC , timesaved = osdate ( ) , cache = cache } , config.tagcachefile , "" , "" )
 	if not ok then
 		return ferror ( err , 2 )
 	else

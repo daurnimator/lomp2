@@ -12,11 +12,14 @@
 require "general"
 require "player"
 
+local ipairs , rawset , setmetatable , type , require = ipairs , rawset , setmetatable , type , require
+local ostime = os.time
 local strfind , strmatch , strlower = string.find , string.match , string.lower
+local tblremove = table.remove
 
 module ( "lomp" , package.seeall )
 
-local t = os.time ( )
+local t = ostime ( )
 core = { 
 	_NAME = "LOMP" , 
 	_MAJ = 0 ,
@@ -94,7 +97,7 @@ end
 function core.removefromhistory ( pos )
 	if pos > #vars.played then return ferror ( "Invalid history item." , 1 ) end
 	
-	table.remove ( vars.played , pos )
+	tblremove ( vars.played , pos )
 	
 	vars.played.revision = vars.played.revision + 1
 	return true

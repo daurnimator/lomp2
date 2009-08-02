@@ -11,6 +11,9 @@
 
 require "general"
 
+local require , setmetatable , tostring , type = require , setmetatable , tostring , type
+local tblrandomise , tblstablesort = table.randomise , table.stablesort
+
 module ( "lomp.core.playlist" , package.see ( lomp ) )
 
 require "core.triggers"
@@ -86,7 +89,10 @@ function new ( name , playlistnumber )
 				end 
 			end ;
 			__newindex = function ( t , k , v )
-				print ( "PLAYLIST newindex" , t , k , v )
+				updatelog ( "PLAYLIST newindex\t" .. k .. v , 2 )
+				if k == "newrevision" and type ( v ) == "table" then
+					revisions [ #revisions + 1 ] = v
+				end
 			end ;
 			__len = function ( t ) -- FIX: Doesn't work on tables
 				return t.length
@@ -124,7 +130,7 @@ function clear ( num )
 		return ferror ( "'Clear playlist' called with invalid playlist" , 1 ) 
 	end
 	
-	pl.revisions [ pl.revision + 1 ] = { length = 0 }
+	pl.newrevision = { length = 0 }
 	
 	triggers.fire ( "playlist_clear" , num )
 	
@@ -137,7 +143,7 @@ function rename ( num , newname )
 		return ferror ( "'Rename playlist' called with invalid playlist" , 1 ) 
 	end
 	
-	pl.revisions [ pl.revision + 1 ] = { name = newname }
+	pl.newrevision = { name = newname }
 	
 	return true
 end
@@ -148,7 +154,7 @@ function randomise ( num )
 		return ferror ( "'Randomise playlist' called with invalid playlist" , 1 ) 
 	end
 	
-	pl.revisions [ pl.revision + 1 ] = table.randomise ( collapserev ( pl.revisions , pl.revision ) , pl.length , true )
+	pl.newrevision = tblrandomise ( collapserev ( pl.revisions , pl.revision ) , pl.length , true )
 	
 	triggers.fire ( "playlist_sort" , num )
 	
@@ -161,7 +167,7 @@ function sort ( num , eq )
 		return ferror ( "'Sort playlist' called with invalid playlist" , 1 )
 	end
 
-	pl.revisions [ pl.revision + 1 ] = table.stablesort ( collapserev ( pl.revisions , pl.revision ) , eq , true )
+	pl.newrevision = tblstablesort ( collapserev ( pl.revisions , pl.revision ) , eq , true )
 	
 	triggers.fire ( "playlist_sort" , num )
 	

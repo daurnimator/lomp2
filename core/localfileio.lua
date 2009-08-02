@@ -11,16 +11,20 @@
 
 require "general"
 
+local ipairs , pcall , require , type = ipairs , pcall , require , type
+local tblsort = table.sort
+
 module ( "lomp.core.localfileio" , package.see ( lomp ) )
 
 pcall ( require , "luarocks.require" ) -- Activates luarocks if available.
-require "lfs"
+
+local lfs = require "lfs"
 
 function addfile ( path , pl , pos )
 	-- Check path exists
 	if type ( path ) ~= "string" then return ferror ( "'Add file' called with invalid path" , 1 ) end
 	
-	local filename = string.match ( path , "([^/]+)$" )
+	local filename = path:match ( "([^/]+)$" )
 	local a , err = core.checkfileaccepted ( filename )
 	if a then
 		local o = core.item.create ( "file" , path )
@@ -33,14 +37,14 @@ end
 function addfolder ( path , pl , pos , recurse )
 	if recurse then
 		if type ( recurse ) ~= "number" then
-			recurse = math.huge -- near infinite recursion
+			recurse = 500 -- Max 500 level deep recursion
 		end
 	else
 		recurse = 0
 	end
 	-- Check path exists
 	if type ( path ) ~= "string" then return ferror ( "'Add folder' called with invalid path" , 1 ) end
-	if string.sub ( path , -1) == "/" then path = string.sub ( path , 1 , ( string.len( path ) - 1 ) ) end -- Remove trailing slash if needed
+	if string.sub ( path , -1) == "/" then path = path:sub ( 1 , ( #path - 1 ) ) end -- Remove trailing slash if needed
 	
 	if type ( pl ) ~= "number" or not vars.playlist [ pl ] then return ferror ( "'Add folder' called with invalid playlist" , 1 ) end
 	if type ( pos ) ~= "number" then pos = nil end
@@ -63,7 +67,7 @@ function addfolder ( path , pl , pos , recurse )
 			if recurse > 0 then addfolder ( fullpath , pl , true , recurse - 1 ) end
 		end
 	end
-	if config.sortcaseinsensitive then table.sort ( dircontents , function ( a , b ) if string.lower ( a ) < string.lower ( b ) then return true end end ) end-- Put in alphabetical order of path (case insensitive) 
+	if config.sortcaseinsensitive then tblsort ( dircontents , function ( a , b ) if a:lower ( ) < b:lower ( ) then return true end end ) end-- Put in alphabetical order of path (case insensitive) 
 	local firstpos = nil
 	for i , v in ipairs ( dircontents ) do
 		local o = core.item.create ( "file" , v )

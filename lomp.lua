@@ -15,22 +15,28 @@ if _VERSION ~= "Lua 5.1" then --TODO: Override?
 	error ( "This program needs lua 5.1 to work." )
 end
 
-module ( "lomp" , package.seeall )
+require "general"
+
+local getfenv , getmetatable , ipairs , loadstring , loadfile , newproxy , pairs , pcall , require , setmetatable , setfenv , tostring , type = getfenv , getmetatable , ipairs , loadstring , loadfile , newproxy , pairs , pcall , require , setmetatable , setfenv , tostring , type
+local osdate , osexit , ostime = os.date , os.exit , os.time
+local iotype , ioopen , iowrite , iostderr = io.type , io.open , io.write , io.stderr
+
+module ( "lomp" )
 
 quit = false
 
 do 
-	log = ""
+	local log = ""
 
 	-- Output Loading Annoucement
-	local str = "LOMP Loading " .. os.date ( "%c" ) .. "\n"
-	print ( "\n" .. str )
+	local str = "LOMP Loading " .. osdate ( "%c" ) .. "\n"
+	iowrite ( "\n" , str , "\n" )
 
 	-- Load Configuration
 	require "core.config"
 	
 	-- Log File Stuff
-	local file , err = io.open ( config.logfile , "w+" )
+	local file , err = ioopen ( config.logfile , "w+" )
 	if err then error ( "Could not open/create log file: '" .. err .. "'\n" ) end
 	file:write ( str .. log .. "\n")
 	file:flush ( )
@@ -40,35 +46,36 @@ do
 end
 
 local function openlogfile ( )
-	local logfilehandle , err = io.open ( config.logfile , "a+" )
+	local logfilehandle , err = ioopen ( config.logfile , "a+" )
 	if err then error ( data .. "Could not open log file: '" .. err .. "'\n" ) end
 	logfilehandle:setvbuf ( "no" )
 	return logfilehandle
 end
 local logfilehandle = openlogfile ( )
+
+local levels = {
+	[ 0 ] = "Fatal error: \t" ;
+	"NonFatal error: " ;
+	"Warning: \t" ;
+	"Message: \t" ;
+	"Confirmation: \t" ;
+	"Debug: \t\t" ;
+}
+
 function updatelog ( data , level )
-	data = tostring ( data )
 	if not level then level = 2 end
 	
-	if level == 0 then data = "Fatal error: \t\t" .. data
-	elseif level == 1 then data = "NonFatal error: \t" .. data 
-	elseif level == 2 then data = "Warning: \t\t" .. data
-	elseif level == 3 then data = "Message: \t\t" .. data
-	elseif level == 4 then data = "Confirmation: \t\t" .. data
-	elseif level == 5 then data = "Debug: \t\t\t" .. data
-	end
+	local datatbl = { ostime ( ) .. ": " , levels [ level ] , tostring ( data ) }
 	
-	data = os.time ( ) .. ": \t" .. data
-	if level <= config.verbosity then io.stderr:write ( data .. "\n" ) end
-	if not io.type ( logfilehandle ) or io.type ( logfilehandle ) == "closed" then
+	if level <= config.verbosity then iostderr:write ( table.concat ( datatbl , "\t" ) , "\n" ) end
+	if not iotype ( logfilehandle ) or iotype ( logfilehandle ) == "closed" then
 		logfilehandle = openlogfile ( )
 	end
-	data = data .. "\n"
 	
 	logfilehandle:seek ( "end" )
-	logfilehandle:write ( data )
+	logfilehandle:write ( data , "\n" )
 	
-	if level == 0 then os.exit ( 1 ) end
+	if level == 0 then osexit ( 1 ) end
 	
 	return true
 end
@@ -77,8 +84,6 @@ function ferror ( data , level )
 	updatelog ( data , level )
 	return false , data
 end
-
-require "general"
 
 local steps = { }
 function addstep ( func )
@@ -95,19 +100,19 @@ require "modules.albumart"
 require "modules.eventserver"
 require "modules.filter"
 
-pcall ( require , "luarocks.require" ) -- Activates luarocks if available.
-
 -- Plugin Time!
 updatelog ( "Loading plugins." , 3 )
 for i , v in ipairs ( config.plugins ) do
-	dir = "plugins/" .. v .. "/"
+	local dir = "plugins/" .. v .. "/"
 	local plugin , err = loadfile ( dir .. v .. ".lua" )
 	if not plugin then
 		ferror ( "Could not load plugin '" .. v .. "' : " .. err , 1 )
 	else
-		local name , version = v , ""
-		setfenv ( plugin , getfenv ( 1 ) )
+		setfenv ( plugin , setmetatable ( { dir = dir } , { __index = getfenv ( 1 ) } ) )
+		
+		local name , version , ok = v , ""
 		ok , name , version = pcall ( plugin )
+		
 		if ok then
 			updatelog ( "Loaded plugin: '" .. name .. "' Version " .. version , 3 )
 		else
@@ -117,47 +122,54 @@ for i , v in ipairs ( config.plugins ) do
 end
 updatelog ( "All Plugins Loaded" , 3 )
 
--- Function/Variable finders.
+ -- Function/Variable finders.
 local function buildMetatableCall ( ref )
 	return { 
-	__index = function ( t , k )
-		if type ( ref [ k ] ) == "table" then
-			local val = newproxy ( true ) -- Undocumented lua function
-			for k , v in pairs ( buildMetatableCall ( ref [ k ] ) ) do
-				getmetatable ( val ) [ k ] = v
+		__index = function ( t , k )
+			local newref = ref [ k ]
+			if type ( newref ) == "table" then
+				local val = newproxy ( true ) -- Undocumented lua function
+				local mt = getmetatable ( val )
+				for k , v in pairs ( buildMetatableCall ( newref ) ) do
+					mt [ k ] = v
+				end
+				return val
+			elseif type ( newref ) == "function" then
+				return newref
+			else
+				return nil
 			end
-			return val
-		elseif type ( ref [ k ] ) == "function" then
-			return ref [ k ]
-		else
-			return nil
-		end
-	end , }
+		end , 
+	}
 end
+
 local function buildMetatableGet ( ref )
 	return {
 		__index = function ( t , k )
-			if type ( ref [ k ] ) == "table" then
+			local newref = ref [ k ]
+			if type ( newref ) == "table" then
 				local val = newproxy ( true ) -- Undocumented lua function
-				for k , v in pairs ( buildMetatableGet ( ref [ k ] ) ) do
-					getmetatable ( val ) [ k ] = v
+				local mt = getmetatable ( val )
+				for k , v in pairs ( buildMetatableGet ( newref ) ) do
+					mt [ k ] = v
 				end
 				return val
-			elseif type ( ref [ k ] ) == "function" then
-				return string.dump ( ref [ k ] )
+			elseif type ( newref ) == "function" then
+				--return string.dump ( newref )
+				return nil
 			else
-				return ref [ k ]
+				return newref
 			end
-		end , 
+		end ;
 		__len = function ( )
 			return #ref
-		end ,
+		end ;
 		__pairs = function ( t )
 			return pairs ( ref )
-		end ,
+		end ;
 		__type = function ( t )
-			return "table"
-		end ,
+			return type ( ref )
+		end ;
 	}
 end
 
@@ -166,7 +178,7 @@ function cmd ( cmd , ... )
 	if fail then -- Check for compilation errors (eg, syntax)
 		return false , fail
 	else
-		setfenv ( fn , setmetatable ( { } , buildMetatableCall( _M ) ) )
+		setfenv ( fn , setmetatable ( { } , buildMetatableCall ( _M ) ) )
 		local ok , func = pcall ( fn )
 		if not ok then -- Check for no errors while finding function
 			return false , func
@@ -198,7 +210,7 @@ end
 require "lomp-debug" -- TODO: remove debug
 
 -- Initialisation finished.
-updatelog ( "LOMP Loaded " .. os.date ( "%c" ) , 3 )
+updatelog ( "LOMP Loaded " .. osdate ( "%c" ) , 3 )
 
 local i = 1
 while not quit do

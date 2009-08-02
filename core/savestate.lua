@@ -11,20 +11,28 @@
 
 require "general"
 
+local loadstring , setfenv , tostring , tonumber , type = loadstring , setfenv , tostring , tonumber , type
+local tblconcat = table.concat
+local ioopen = io.open
+local osdate = os.date
+local strfind , strformat = string.find , string.format
+
 module ( "lomp" , package.seeall )
 
 -- Safe string
 local function ss ( s )
-	return string.format ( '%q' , s )
+	return strformat ( '%q' , s )
 end
 
 function core.savestate ( )
-	local s = core._NAME .. "\t" .. core._VERSION .. " State File.\tCreated: " .. os.date ( ) .. "\n\n"
-		.. "local cpn , cic = core.playlist.new , core.item.create\n"
-		.. "vars.rpt = " .. tostring ( vars.rpt ) .. ";\n"
-		.. "vars.loop = " .. tostring ( vars.loop ) .. ";\n"
-		.. "vars.softqueueplaylist = " .. vars.softqueueplaylist .. ";\n"
-		.. "vars.ploffset = " .. vars.ploffset .. ";\n"
+	local s = { 
+		core._NAME .. "\t" .. core._VERSION .. " State File.\tCreated: " .. osdate ( ) .. "\n" ;
+		"local cpn , cic = core.playlist.new , core.item.create" ;
+		"vars.rpt = " .. tostring ( vars.rpt ) .. ";" ;
+		"vars.loop = " .. tostring ( vars.loop ) .. ";" ;
+		"vars.softqueueplaylist = " .. vars.softqueueplaylist .. ";" ;
+		"vars.ploffset = " .. vars.ploffset .. ";" ;
+	}
 	
 	local current = vars.queue [ 0 ]
 	if current then core.item.additem ( current , core.playlist.getnum ( vars.hardqueue ) , 1 ) end -- If currently playing a song, add to start of hardqueue so its first up
@@ -34,35 +42,37 @@ function core.savestate ( )
 	while true do
 		local pl = vars.playlist [ i ]
 		if not pl then break end
-		s = s .. "cpn(" .. ss ( pl.name ) .. "," .. i .. ")\n" -- Name in this line does nothing
-			.. "vars.playlist[" .. i .. "].revisions[1]={length=" .. pl.length .. ";\n"
+		s [ #s + 1 ] = "cpn(" .. ss ( pl.name ) .. "," .. i .. ")" -- Name in this line does nothing
+		s [ #s + 1 ] = "vars.playlist[" .. i .. "].revisions[1]={length=" .. pl.length .. ";"
 		local j = 1
 		while true do
 			local item = pl [ j ]
 			if not item then break end
-			s = s .. "\tcic(" .. ss ( item.typ ) .. "," .. ss ( item.source ) .. ");\n"
+			s [ #s + 1 ] = "\tcic(" .. ss ( item.typ ) .. "," .. ss ( item.source ) .. ");"
 			j = j + 1
 		end
 		i = i + 1
-		s = s .. '}\n'
+		s [ #s + 1 ] = "}"
 	end
 	
 	-- History (played)
-	s = s .. "vars.played = {revision=0;\n"
+	s [ #s + 1 ] = "vars.played = {revision=0;"
 	local n
 	if #vars.played > config.history then n = config.history else n = #vars.played end
 	for i = 1 , n do
-		s = s .. '\tcic(' .. string.format ( '%q' , vars.played [ i ].typ ) .. ',' .. string.format ( '%q' , vars.played [ i ].source ) .. ') ;\n'
+		s [ #s + 1 ] = '\tcic(' .. strformat ( '%q' , vars.played [ i ].typ ) .. ',' .. strformat ( '%q' , vars.played [ i ].source ) .. ') ;'
 	end
-	s = s .. "};\n"
+	s [ #s + 1 ] = "};"
 	
 	-- Player
 	local volume , mute = player.getvolume ( )
-	s = s .. "player.setvolume(" .. volume .. "); player." .. ( ( mute and "" ) or "un" ) .. "mute();\n"
+	s [ #s + 1 ] = "player.setvolume(" .. volume .. "); player." .. ( ( mute and "" ) or "un" ) .. "mute();"
 	
 	-- Plugin specified things??
 	
-	local file, err = io.open ( config.statefile , "w+" )
+	local s = tblconcat ( s , "\n" )
+	
+	local file, err = ioopen ( config.statefile , "w+" )
 	if err then 
 		return ferror ( "Could not open state file: " .. err , 2 ) 
 	end
@@ -76,13 +86,13 @@ function core.savestate ( )
 end
 
 function core.restorestate ( )
-	local file, err = io.open ( config.statefile )
+	local file, err = ioopen ( config.statefile )
 	if file then -- Restoring State.
 		local v = file:read ( )
 		if not v then
 			return ferror ( "Invalid state file" , 1 )
 		end 
-		local _ , _ , program , major , minor , inc = string.find ( v , "^([^%s]+)%s+(%d+)%.(%d+)%.(%d+)" )
+		local _ , _ , program , major , minor , inc = strfind ( v , "^([^%s]+)%s+(%d+)%.(%d+)%.(%d+)" )
 		if type ( program ) == "string" and program == "LOMP" and tonumber ( major ) <= core._MAJ and tonumber ( minor ) <= core._MIN and tonumber ( inc ) <= core._INC then
 			local s = file:read ( "*a" )
 			file:close ( )

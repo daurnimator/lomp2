@@ -11,6 +11,8 @@
 
 require "general"
 
+local pairs , type = pairs , type
+
 module ( "lomp.core.info" , package.see ( lomp ) )
 
 function getplaylistinfo ( num )

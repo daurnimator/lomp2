@@ -11,6 +11,8 @@
 
 require "general"
 
+local require , setmetatable , type = require , setmetatable , type
+
 module ( "lomp.core.item" , package.see ( lomp ) )
 
 --[[
@@ -51,7 +53,7 @@ function additem ( object , playlistnum , position )
 	end
 	newrev [ position ] = object
 		
-	pl.revisions [ #pl.revisions + 1 ] = newrev
+	pl.newrevision = newrev
 	
 	triggers.fire ( "item_add" , playlistnum , position , object )
 	
@@ -73,7 +75,7 @@ function removeitem ( playlistnum , position )
 		newrev [ i - 1 ] = pl [ i ]
 	end
 	
-	pl.revisions [ #pl.revisions + 1 ] = newrev
+	pl.newrevision = newrev
 	
 	triggers.fire ( "item_remove" , playlistnum , position , object )
 

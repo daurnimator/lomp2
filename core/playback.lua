@@ -11,6 +11,10 @@
 
 require "general"
 
+local require , type = require , type
+local ostime = os.time
+local tblinsert , tblremove = table.insert , table.remove
+
 module ( "lomp.core.playback" , package.see ( lomp ) )
 
 require "player"
@@ -35,7 +39,7 @@ function play ( fromoffset, offsetispercent )
 	
 	player.play ( typ , source , offset , offsetispercent )
 	state = "playing"
-	vars.queue [ 0 ].laststarted = os.time ( )
+	vars.queue [ 0 ].laststarted = ostime ( )
 	
 	triggers.fire ( "playback_startsong" , typ , source )
 	
@@ -130,7 +134,7 @@ function forward ( queueonly ) -- Moves forward one song in the queue
 	local success , err
 	if vars.queue [ 0 ] then
 		if vars.queue [ 0 ].laststarted then
-			table.insert ( vars.played , 1 , vars.queue [ 0 ] ) -- Add current to played (history)
+			tblinsert ( vars.played , 1 , vars.queue [ 0 ] ) -- Add current to played (history)
 			vars.played.revision = vars.played.revision + 1
 		end
 	end
@@ -181,7 +185,7 @@ function backward ( ) -- Moves back one song from the history
 	end
 	if vars.played [ 1 ] then
 		vars.queue [ 0 ] = vars.played [ 1 ]
-		table.remove ( vars.played , 1 ) -- Shifts all elements down
+		tblremove ( vars.played , 1 ) -- Shifts all elements down
 		vars.played.revision = vars.played.revision + 1
 		return true , true
 	else -- Nothing left in history.

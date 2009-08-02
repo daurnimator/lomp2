@@ -83,6 +83,7 @@ translate = {
 	mute =  		{ func = basiccmd ( "player.mute" ) , params = "" , help = "mute the player" } ;
 	unmute =  	{ func = basiccmd ( "player.unmute" ) , params = "" , help = "unmute the player" } ;
 	manual = 	{ func = function ( )
+		print ( "Entered a raw lomp connection. Ctrl+Z to exit." )
 		local waiting
 		while true do
 			if not waiting then
@@ -100,9 +101,9 @@ translate = {
 			elseif code >= 0 then
 				waiting = false
 				if code == 0 then
-					print ( "Success! " .. tostring ( data ) )
+					print ( "Success! " ..  table.serialise ( data ) )
 				else
-					print( "Fail! " .. code .. ": " .. tostring ( data ) )
+					print( "Fail! " .. code .. ": " ..  table.serialise ( data ) )
 				end
 			else
 				print ( code , str , data )

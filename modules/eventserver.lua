@@ -11,6 +11,9 @@
 
 require "general"
 
+local error , pcall , require , select , tonumber , type , unpack = error , pcall , require , select , tonumber , type , unpack
+local tblconcat = table.concat
+
 module ( "eventserver" , package.see ( lomp ) )
 
 pcall ( require , "luarocks.require" ) -- Activates luarocks if available.
@@ -118,7 +121,7 @@ local versions = {
 				
 				local function interpret ( ok , ... )
 					if not ok then return ver.codes.ERROR
-					else return table.concat ( { ver.codes.SUCCESS , packobject ( session , ... ) } , " " ) end
+					else return tblconcat ( { ver.codes.SUCCESS , packobject ( session , ... ) } , " " ) end
 				end
 				return interpret ( cmd ( func , unpack ( args ) ) )
 			end ;
@@ -129,7 +132,7 @@ local versions = {
 				local pos = triggers.register ( callbackname , function ( ... )
 						local result = { ver.codes.EVENT , callbackname , packobject ( session , ... ) }
 						result [ #result + 1 ] = "\n"
-						conn.write ( table.concat ( result , " " ) )
+						conn.write ( tblconcat ( result , " " ) )
 					end , "Event Client Subscription" )
 				if pos then
 					subs [ callbackname ] = pos					
@@ -141,7 +144,6 @@ local versions = {
 			UNSUBSCRIBE = function ( conn , session , ver , params )
 				local callbackname  = params:match ( "^(%S+)" )
 				if not callbackname then return ver.codes.BAD_FORMAT end
-				sessionpos = tonumber ( sessionpos )
 				
 				local subs = session.subscriptions
 				if subs [ callbackname ] and triggers.unregister ( callbackname , subs [ callbackname ] ) then
@@ -154,7 +156,7 @@ local versions = {
 			GET = function ( conn , session , ver , params )
 				local ok , results = var ( params )
 				if ok then
-					return table.concat ( { ver.codes.OK , packobject ( ver , results ) } , " " )
+					return tblconcat ( { ver.codes.OK , packobject ( ver , results ) } , " " )
 				else
 					return ver.codes.ERROR
 				end
@@ -167,7 +169,7 @@ local connections = { }
 
 function incoming ( conn , data , err )
 	if err then
-		print("ERR " .. err )
+		updatelog ("Eventserver Incoming: " .. ( err or "" ) , 5 )
 	elseif data then
 		local session = connections [ conn ]
 		if not session then

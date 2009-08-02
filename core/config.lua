@@ -18,9 +18,9 @@ local function warn ( err )
 	print ( err )
 end
 
-config = {
-	type = type ,
-	plugins = { }
+local config = {
+	type = type ;
+	plugins = { } ;
 }
 
 -- Load config
@@ -28,7 +28,8 @@ local compiledchunk = loadfile ( "config" ) -- path from pwd
 if not compiledchunk then fail ( "Could not find config file" ) end
 setfenv ( compiledchunk , config )
 
-module ( "config" )
+lomp.config = config
+module ( "lomp.config" )
 
 -- Run config
 compiledchunk ( ) 
@@ -93,3 +94,5 @@ if type ( sortcaseinsensitive ) ~= "boolean" then
 	warn ( 'sortcaseinsensitive not a valid boolean value, defaulting to true' )
 	sortcaseinsensitive = true 
 end
+
+return _M

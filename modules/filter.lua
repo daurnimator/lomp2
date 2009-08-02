@@ -11,6 +11,8 @@
 
 require "general"
 
+local ipairs = ipairs
+
 module ( "lomp.filter" , package.see ( lomp ) )
 
 require "core.playlist"
@@ -30,8 +32,11 @@ local playlistfilters = 0
 local function makeplaylist ( filterresults )
 	filterresults.length = #filterresults
 	playlistfilters = playlistfilters + 1
+	
 	local playlistnum = core.playlist.new ( "Filter Results #" .. playlistfilters )
-	vars.playlist [ playlistnum ].revisions [ 1 ] = filterresults
+	local pl =  core.playlist.getplaylist ( playlistnum )
+	pl.newrevision = filterresults
+	
 	return playlistnum
 end
 

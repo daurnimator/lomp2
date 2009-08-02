@@ -11,6 +11,8 @@
 
 require "general"
 
+local ipairs , pairs , setmetatable = ipairs , pairs , setmetatable
+
 module ( "lomp.triggers" , package.see ( lomp ) )
 
 local callbacks = {
