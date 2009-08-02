@@ -89,9 +89,10 @@ function new ( name , playlistnumber )
 				end 
 			end ;
 			__newindex = function ( t , k , v )
-				updatelog ( "PLAYLIST newindex\t" .. k .. v , 2 )
 				if k == "newrevision" and type ( v ) == "table" then
-					revisions [ #revisions + 1 ] = v
+					t.revisions [ t.revision + 1 ] = v
+				else
+					updatelog ( "PLAYLIST newindex\t" .. k .. tostring ( v ) , 2 )
 				end
 			end ;
 			__len = function ( t ) -- FIX: Doesn't work on tables
