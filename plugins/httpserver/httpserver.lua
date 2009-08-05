@@ -480,7 +480,7 @@ local function webserver ( skt , session )
 				end
 			end
 			if not code and allowdirectorylistings then -- Directory listing
-				doc = "<html><head><title>" .. versionstring .. " Directory Listing</title></head><body><h1>Listing of " .. sfile .. "</h1><ul>"
+				local doct = { "<html><head><title>" .. versionstring .. " Directory Listing</title></head><body><h1>Listing of " .. sfile .. "</h1><ul>" }
 				local t = { }
 				for entry in lfs.dir ( path ) do
 					if entry:sub ( 1 , 1 ) ~= "." then
@@ -488,11 +488,13 @@ local function webserver ( skt , session )
 					end
 				end
 				tblsort ( t )
-				if sfile ~= "/" then doc = doc .. "<li><a href='" .. ".." .. "'>" .. ".." .. "</a></li>" end
+				if sfile ~= "/" then doct [ #doct + 1 ] = "<li><a href='" .. ".." .. "'>" .. ".." .. "</a></li>" end
 				for i , v in ipairs ( t ) do
-					doc = doc .. "<li><a href='" .. sfile .. v .. "'>" .. v .. "</a></li>"
+					doct [ #doct + 1 ] = "<li><a href='" .. sfile .. v .. "'>" .. v .. "</a></li>"
 				end
-				doc = doc .. "</ul></body></html>"
+				doct [ #doct + 1 ] = "</ul></body></html>"
+				
+				doc = tblconcat ( doct )
 				
 				code = 200
 			end

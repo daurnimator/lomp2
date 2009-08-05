@@ -7,7 +7,7 @@ verbosity = 		4
 
 -- Location of log file
  -- Default to ~/.lomp/lomp.log
-logfile = 			"lomp.log"
+logfile = 		"lomp.log"
 
 -- Location of state file
  -- Contains last state of playlists, queues, etc
@@ -22,13 +22,14 @@ tagcachefile =		"lomp.tagcache"
 -- Playback History
  -- How much history to remember
  -- Default to 200
-history =			200
+history =		200
 
 -- Library
  -- Location of your music
  -- Seperate entries with a comma
  -- eg: library = { "/media/mymusic" , "/home/myself/Music" }
-library = {	
+library = {
+	
 }
 
 -- Server Parameters
@@ -48,15 +49,15 @@ port = 			5667
  -- Seperate with commas.
  -- eg, plugins = { "myawesomeplugin" , "coolplugin1234" , }
 plugins = {
-	"httpserver" ;
-	"scrobbler" ;
-	--"mpd" ;
+			"httpserver" ;
+			"scrobbler" ;
+			--"mpd" ;
 }
 
 -- Tagging
  -- Save tag edits? (When a tag is changed, do we save the change to the file?)
   -- Default to false
-savetagedits = true
+savetagedits = 	true
 
  -- Tag matching patterns
   -- Let tags be guessed by file paths
@@ -64,12 +65,12 @@ savetagedits = true
    -- //_// is a junk operator
    -- ? makes the preceding character optional
 tagpatterns = {
-	Basic = "//Artist// - //Title//" ;
-	Daurn = "//Album Artist//, //Album// ?{?//Release//}? ?(?D?i?s?c? ?//Disc//)?/[//Track//] //Artist// - //Title//" ;
-	EAC = "//Artist// - //Album// (//Year//)//_/////Track// - //Title//" ;
+	Basic = 	"//Artist// - //Title//" ;
+	Daurn = 	"//Album Artist//, //Album// ?{?//Release//}? ?(?D?i?s?c? ?//Disc//)?/[//Track//] //Artist// - //Title//" ;
+	EAC = 		"//Artist// - //Album// (//Year//)//_/////Track// - //Title//" ;
 }
   -- Default - must be the name of a pattern from above.
-tagpatterndefault = "EAC"
+tagpatterndefault = 	"EAC"
 
 -- Pedantics
  -- File extensions to ban
@@ -79,4 +80,4 @@ banextensions = {
 
  -- When adding a folder, how do we sort? (by path)
   -- Default to true
-sortcaseinsensitive = true
+sortcaseinsensitive = 	true

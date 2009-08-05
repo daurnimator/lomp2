@@ -21,10 +21,10 @@ module ( "lomp.core.triggers" , package.see ( lomp ) )
 local callbacks = {
 	quit = { { func = function ( ) updatelog ( "Quiting" , 4 ) end } } ;
 
-	loop = { { func = function ( loop ) updatelog ( "loop set to " .. loop , 4 ) end } } ;
-	ploffset = { { func = function ( ploffset ) updatelog ( "ploffset set to " .. ploffset , 4 ) end } } ;
-	softqueueplaylist = { { func = function ( softqueueplaylist ) updatelog ( "softqueueplaylist set to playlist #" .. softqueueplaylist , 4 ) end } } ;
-	rpt = { { func = function ( rpt ) updatelog ( "repeat set to " .. rpt , 4 ) end } } ;
+	loop = { { func = function ( loop ) updatelog ( "loop set to " .. loop , 5 ) end } } ;
+	ploffset = { { func = function ( ploffset ) updatelog ( "ploffset set to " .. ploffset , 5 ) end } } ;
+	softqueueplaylist = { { func = function ( softqueueplaylist ) updatelog ( "softqueueplaylist set to playlist #" .. softqueueplaylist , 5 ) end } } ;
+	rpt = { { func = function ( rpt ) updatelog ( "repeat set to " .. rpt , 5 ) end } } ;
 	
 	playlist_create = { { func = function ( plnum ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Created playlist #" .. plnum .. ": '" .. pl.name .. "'" , 4 ) end } } ;
 	playlist_delete = { { func = function ( plnum ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Deleted playlist #" .. plnum .. " (" .. pl.name .. ")" , 4 ) end } } ;
