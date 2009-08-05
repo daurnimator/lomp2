@@ -58,7 +58,7 @@ end end
 
 local translate
 translate = {
-	setplaylist = 	{ func = basiccmd ( "core.setsoftqueueplaylist" ) , params = "<playlist>" , help = "sets which playlist is the soft queue" } ;
+	setplaylist = 	{ func = basiccmd ( "core.setsoftqueueplaylist" ) , params = "<playlist number>" , help = "sets which playlist is the soft queue" } ;
 	loop = 		{ func = basiccmd ( "core.loop" ) , params = "<loop?>" , help = "enables/disables looping the soft queue" } ;
 	["repeat"] = 	{ func = basiccmd ( "core.repeat" ) , params = "<repeat?>" , help = "enables/disables repeating the soft queue playlist" } ;
 	reloadlibrary = 	{ func = basiccmd ( "core.reloadlibrary" ) , params = "" , help = "reloads the library (with directories set in config file)" } ;
@@ -79,8 +79,8 @@ translate = {
 	randomisepl =	{ func = basiccmd ( "core.playlist.randomise" ) , params = "<playlist number>" , help = "Randomise the playlist with the given playlist number" } ;
 	copyitem = 	{ func = basiccmd ( "core.item.copytoplaylist" ) , params = "<old playlist number> <old position> <new playlist number> [<new position>]" , help = "Copies the song in given old position in old playlist to the new playlist in the given position or to the end" } ;
 	moveitem = 	{ func = basiccmd ( "core.item.movetoplaylist" ) , params = "<old playlist number> <old position> <new playlist number> [<new position>]" , help = "Moves the song in given old position in old playlist to the new playlist in the given position or to the end" } ;
-	addfile = 		{ func = basiccmd ( "core.localfileio.addfile" ) , params = " <path> <playlist>[ <position>]" , help = "add the song at the path given (on the server) to the playlist specified, in the position given (position defaults to the end of the playlist)" } ;
-	addfolder = 	{ func = basiccmd ( "core.localfileio.addfolder" ) , params = " <path> <playlist>[ <position>[ <recurse>]]" , help = "add a folder to a playlist starting at given position, recursing to given number of levels, or true for infinite (default is no recursion)" } ;
+	addfile = 		{ func = basiccmd ( "core.localfileio.addfile" ) , params = " <path> <playlist number>[ <position>]" , help = "add the song at the path given (on the server) to the playlist specified, in the position given (position defaults to the end of the playlist)" } ;
+	addfolder = 	{ func = basiccmd ( "core.localfileio.addfolder" ) , params = " <path> <playlist number>[ <position>[ <recurse>]]" , help = "add a folder to a playlist starting at given position, recursing to given number of levels, or true for infinite (default is no recursion)" } ;
 	setvolume =  	{ func = basiccmd ( "player.setvolume" ) , params = "<volume>" , help = "set the volume of the player (volume is between 0% and 1000%)" } ;
 	mute =  		{ func = basiccmd ( "player.mute" ) , params = "" , help = "mute the player" } ;
 	unmute =  	{ func = basiccmd ( "player.unmute" ) , params = "" , help = "unmute the player" } ;

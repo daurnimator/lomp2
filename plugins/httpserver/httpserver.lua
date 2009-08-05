@@ -37,11 +37,17 @@ local lfs = require "lfs"
 
 function loadconfig ( )
 	local httpconfig = { }
-	setfenv ( loadfile ( dir .. "config" ) , httpconfig )  ( ) -- Load config
+	local configfunc , err = loadfile ( dir .. "config" )
+	if not configfunc then return ferror ( "Could not load httpserver config: " .. err ) end
+	
+	setfenv ( configfunc , httpconfig )  ( ) -- Load config
 
+	if httpconfig.address == nil then
+		updatelog ( 'No httpserver binding address defined, using "*"' , 2 )
+		httpconfig.address = "*"
+	end
 	if type ( httpconfig.address ) ~= "string" then
-		updatelog ( 'Invalid or no httpserver binding address defined, using "*"' , 2)
-		address = "*"
+		updatelog ( 'Invalid httpserver binding address defined' , 0 )
 	end
 
 	if type ( httpconfig.port ) ~= "number" or httpconfig.port < 0 or httpconfig.port > 65536  then
@@ -412,9 +418,9 @@ local function webserver ( skt , session )
 		local allowdirectorylistings = true
 		
 		local defaultfiles = { "index.html" , "index.htm" }
-			
+		
 		--local sfile = strgsub ( session.file , "/%.[^/]*" , "" ) -- Strip out ".." and "." of file request
-		local sfile = session.file 
+		local sfile = session.file
 		
 		local path = publicdir .. sfile -- Prefix with public dir path
 		
@@ -560,43 +566,37 @@ local function httpserver ( conn , data, err )
 	if not session then
 		if data == "\r" then return end
 		
-		session = { request = {  } , body = { } , gotrequest = false }
+		session = { body = { } , gotrequest = false , needbody = false , headers = { } }
 		session.Method , session.Path , session.Major , session.Minor = data:match ( "(%u+)%s+(%S+)%sHTTP/(%d).(%d)" )
 		if not session.Method then conn.close ( ) return end
 		session.Method = session.Method:upper ( )
-		conns [ conn ] = session
-	elseif not session.gotrequest then -- Retrive HTTP header
-		local requestlines = #session.request
-		if requestlines > 25 then -- max of 25 lines, more and request could be a DOS Attack
-			conn.close ( )
+		
+		local file , querystring = session.Path:match ( "([^%?]+)%??(.*)$" ) 	-- HTTP Reserved characters: !*'();:@&=+$,/?%#[]
+															-- HTTP Unreserved characters: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~
+															-- Lua reserved pattern characters: ^$()%.[]*+-?
+															-- Intersection of http and lua reserved: *+$?%[]
+															-- %!%*%'%(%)%;%:%@%&%=%+%$%,%/%?%%%#%[%]
+		session.file = url.unescape ( file )
+		local queryvars = { }
+		if querystring then
+			for k, v in strgmatch ( querystring , "([^=]+)=([^&]+)&?" ) do --"([%w%-%%%_%.%~]+)=([%w%%%-%_%.%~]+)&?") do
+				queryvars [ url.unescape ( k ) ] = url.unescape ( v )
+			end
 		end
-		if #data >= 1 then 
-			session.request [ requestlines + 1 ] = data
+		
+		session.querystring , session.queryvars , session.peer = querystring , queryvars , conn.socket ( ):getpeername ( )
+		
+		conns [ conn ] = session
+	elseif not session.gotrequest then
+		if data ~= "" then -- \r\n is already stripped, look for an empty line to signify end of headers
+			local key , val = data:match ( "([^:]+):%s+(.*)" )
+			session.headers [ key:lower ( ) ] = val
 		else
 			session.gotrequest = true
 			
-			local request = tblconcat ( session.request , "\r\n" )
-			session.request = request
+			if not session.headers [ "host" ] then session.headers [ "host" ] = "default" end
 			
-			local file , querystring = session.Path:match ( "([^%?]+)%??(.*)$" ) 	-- HTTP Reserved characters: !*'();:@&=+$,/?%#[]
-																-- HTTP Unreserved characters: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~
-																-- Lua reserved pattern characters: ^$()%.[]*+-?
-																-- Intersection of http and lua reserved: *+$?%[]
-																-- %!%*%'%(%)%;%:%@%&%=%+%$%,%/%?%%%#%[%]
-			session.file = url.unescape ( file )
-			local queryvars = { }
-			if querystring then
-				for k, v in strgmatch( querystring , "([^=]+)=([^&]+)&?" ) do --"([%w%-%%%_%.%~]+)=([%w%%%-%_%.%~]+)&?") do
-					queryvars [ url.unescape ( k ) ] = url.unescape ( v )
-				end
-			end
-			
-			local headers = { } for k , v in strgmatch ( request , "\r\n([^:]+): ([^\r]+)" ) do headers [ k:lower ( ) ] = v end
-			if not headers [ "host" ] then headers [ "host" ] = "default" end
-			
-			session.querystring , session.queryvars , session.headers , session.peer = querystring , queryvars , headers , conn.socket ( ):getpeername ( )
-			
-			if headers [ "content-length" ] then session.needbody = true end
+			if session.headers [ "content-length" ] then session.needbody = true end
 		end
 	elseif session.needbody then
 		local bodylen = tonumber ( session.headers [ "content-length" ] )

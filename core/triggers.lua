@@ -19,7 +19,7 @@ local ostime = os.time
 module ( "lomp.core.triggers" , package.see ( lomp ) )
 
 local callbacks = {
-	quit = { { func = function ( ) updatelog ( "Quiting" , 4 ) end } } ;
+	quit = { { func = function ( ) updatelog ( "Quiting" , 4 ) end , instant = true } } ;
 
 	loop = { { func = function ( loop ) updatelog ( "loop set to " .. loop , 5 ) end } } ;
 	ploffset = { { func = function ( ploffset ) updatelog ( "ploffset set to " .. ploffset , 5 ) end } } ;

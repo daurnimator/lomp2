@@ -24,8 +24,8 @@ local config = {
 }
 
 -- Load config
-local compiledchunk = loadfile ( "config" ) -- path from pwd
-if not compiledchunk then fail ( "Could not find config file" ) end
+local compiledchunk , err = loadfile ( "config" ) -- path from pwd
+if not compiledchunk then fail ( "Could not load config file: " .. err ) end
 setfenv ( compiledchunk , config )
 
 lomp.config = config
@@ -65,6 +65,17 @@ end
 if type ( library ) ~= "table" then
 	warn ( 'Invalid or no library paths defined' )
 	library = { }
+end
+
+-- Server Parameters
+if type ( address ) ~= "string" then
+        warn ( 'Invalid or no server binding address defined, using "*"' )
+        address = "*"
+end
+
+if type ( port ) ~= "number" or port < 0 or port > 65536  then
+        warn ( 'Invalid or no server port defined, using 5667' )
+        port = 5667
 end
 
 -- Other/Misc Parameters
