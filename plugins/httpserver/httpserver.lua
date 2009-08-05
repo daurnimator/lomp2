@@ -232,13 +232,25 @@ local function httpsend ( conn , session , responsedetails )
 		end
 	end
 
-	local message = { "HTTP/1.1 " .. status .. " " .. httpcodes [ status ] }
+	local message = { "HTTP/" .. session.Major .. "." .. session.Minor .." " .. status .. " " .. httpcodes [ status ] }
 	local msgcount = 1
 	
 	sheaders [ "date" ] = httpdate ( )
 	sheaders [ "server" ] = versionstring
 	sheaders [ "content-type" ] = sheaders [ "content-type" ] or "text/html"
 	sheaders [ "content-length" ] = #body
+	
+	local requestconnection = session.headers [ "connection" ]
+	if requestconnection then
+		requestconnection = requestconnection:lower ( )
+		if requestconnection == "close" then
+			sheaders [ "connection" ] = "Close"
+		elseif requestconnection == "keep-alive" then
+			sheaders [ "connection" ] = "Keep-Alive"
+		end
+	elseif session.Major == "1" and session.Minor == "0" then
+		sheaders [ "connection" ] = "Close"
+	end
 	
 	for k,v in pairs ( sheaders ) do
 		msgcount = msgcount + 1
@@ -253,7 +265,8 @@ local function httpsend ( conn , session , responsedetails )
 	-- Apache Log Format
 	local apachelog = strformat ( '%s - - [%s] "GET %s HTTP/%s.%s" %s %s "%s" "%s"' , session.peer , osdate ( "!%m/%b/%Y:%H:%M:%S GMT" ) , session.Path , session.Major , session.Minor , status , #message , ( session.headers [ "referer" ] or "-" ) , ( session.headers [ "agent" ] or "-" ) )
 	updatelog ( "HTTP Server: " .. apachelog , 5 )
-
+	
+	if sheaders [ "connection" ] == "Close" then conn.close ( ) end
 	conns [ conn ] = nil -- Reset connection
 	
 	return status , reasonphrase
