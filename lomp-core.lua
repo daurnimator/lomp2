@@ -10,22 +10,23 @@
 ]]
 
 require "general"
-require "player"
 
 local ipairs , rawset , setmetatable , type , require = ipairs , rawset , setmetatable , type , require
 local ostime = os.time
-local strfind , strmatch , strlower = string.find , string.match , string.lower
+local strfind = string.find
 local tblremove = table.remove
 
-module ( "lomp" , package.seeall )
+module ( "lomp" )
 
-local t = ostime ( )
 core = { 
 	_NAME = "LOMP" , 
 	_MAJ = 0 ,
 	_MIN = 0 ,
 	_INC = 1 ,
 }
+
+core._VERSION = core._MAJ .. "." .. core._MIN .. "." .. core._INC 
+core._PROGRAM = _NAME .. " " .. core._VERSION
 
 require "core.triggers"
 
@@ -36,8 +37,9 @@ local triggeronchange = {
 	softqueueplaylist = true ;
 }
 
+local time = ostime ( )
 local varsindex = {
-	init= t ;
+	init= time ;
 	playlist = setmetatable ( {
 			revision = 0 ;
 		} , { __newindex = function ( t , k , v ) if type ( k ) == "number" then rawset ( t , k , v ) elseif k == "revision" then rawset ( t , k , v ) end end } ) ;
@@ -54,7 +56,7 @@ vars = setmetatable ( { } , {
 			local val = vars [ k ]
 			rawset ( varsindex , k , v )
 			if triggeronchange [ k ] then
-				triggers.fire ( k , v )
+				core.triggers.fire ( k , v )
 			end
 		end ;
 	}
@@ -63,7 +65,7 @@ vars = setmetatable ( { } , {
 function core.quit ( )
 	player.stop ( )
 	
-	triggers.fire ( "quit" , newoffset )	
+	core.triggers.fire ( "quit" , newoffset )	
 	
 	if metadata.savecache then
 		local ok , err = metadata.savecache ( )
@@ -76,9 +78,7 @@ function core.quit ( )
 	return true
 end
 
-core._VERSION = core._MAJ .. "." .. core._MIN .. "." .. core._INC 
-core._PROGRAM = _NAME .. " " .. core._VERSION
-
+require "player"
 require "core.playback"
 require "core.playlist"
 require "core.item"
@@ -120,15 +120,15 @@ function core.loop ( bool )
 	return true
 end
 
-core["repeat"] = function ( bool )
+core [ "repeat" ] = function ( bool )
 	if type ( bool ) ~= "boolean" then return ferror ( "Repeat called with invalid argument" ) end
 	vars.rpt = bool
 	return true
 end
 
-function core.checkfileaccepted ( filename )
-	local extension = strmatch ( filename , "%.?([^%./]+)$" )
-	extension = strlower ( extension )
+function core.checkfileaccepted ( path )
+	local extension = path:match ( "%.?([^%./]+)$" )
+	extension = extension:lower ( )
 	
 	local accepted = false
 	for i , v in ipairs ( player.extensions ) do
@@ -136,9 +136,10 @@ function core.checkfileaccepted ( filename )
 	end
 	if accepted == true then 
 		for i , v in ipairs ( config.banextensions ) do
-			if strfind ( extension , v ) then return false , ( "Banned file extension (" .. extension .. "): " .. filename )  end
+			if strfind ( extension , v ) then return false , ( "Banned file extension (" .. extension .. "): " .. path )  end
 		end
-	else	return false, ( "Invalid file type (" .. extension .. "): " .. filename )
+	else	
+		return false , ( "Invalid file type (" .. extension .. "): " .. path )
 	end
 	return true
 end
@@ -154,7 +155,6 @@ function core.setsoftqueueplaylist ( num )
 	return num
 end
 
-
 do -- Restore State
 	local ok , err = core.restorestate ( )
 	if not ok then
@@ -167,7 +167,6 @@ do -- Restore State
 	vars.hardqueue = vars.playlist [ -2 ]
 	if not ok then core.reloadlibrary ( ) end
 end
-
 
 -- Queue Stuff
 

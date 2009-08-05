@@ -11,7 +11,7 @@
 
 require "general"
 
-local require = require
+local require , select , type = require , select , type
 
 module ( "lomp.player" , package.see ( lomp ) )
 
@@ -29,8 +29,10 @@ extensions = {
 }
 
 local pipeline = gst.ElementFactory.make ( "playbin2" , "player" )
-local bus = pipeline:get_bus ( )
-bus:add_signal_watch ( )
+if not pipeline then updatelog ( "Could not create gstreamer pipeline" , 0 ) end
+updatelog ( "GST version: " .. gst.version ( ) , 5 )
+--local bus = pipeline:get_bus ( )
+--bus:add_signal_watch ( )
 
 function queuesong ( typ , source )
 	if not typ or not source then return false end
@@ -128,16 +130,17 @@ function getvolume ( )
 end
 
 function getposition ( )
-	local r , t , position = pipeline:query_position( gst.FORMAT_TIME )
+	local r , t , position = pipeline:query_position ( gst.FORMAT_TIME )
 	return position / 1000 -- Convert from milliseconds to seconds
 end
 
-bus:connect ( "message::eof" , function ( )
+--[[bus:connect ( "message::eof" , function ( )
 		playback.state = "stopped"
 	end )
 
 bus:connect ( "message" , function ( ... ) print ("statechange" , ... ) end )
+--]]
 
 pipeline:connect ( "about-to-finish" , function ( )
-		triggers.fire ( "player_abouttofinish" )
+		core.triggers.fire ( "player_abouttofinish" )
 	end )

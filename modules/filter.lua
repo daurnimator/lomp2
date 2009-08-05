@@ -11,7 +11,7 @@
 
 require "general"
 
-local ipairs = ipairs
+local ipairs , require = ipairs , require
 
 module ( "lomp.filter" , package.see ( lomp ) )
 

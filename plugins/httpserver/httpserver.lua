@@ -12,15 +12,15 @@
 require "general"
 
 local dir = dir -- Grab vars needed
-local updatelog , ferror = updatelog , ferror
-
 local lomp = lomp
 
+local updatelog , ferror = lomp.updatelog , lomp.ferror
+
 local tblsort , tblconcat = table.sort , table.concat
-local strlen , strlower , strupper , strfind , strgmatch , strformat , strgsub , strsub , strmatch = string.len , string.lower , string.upper , string.find , string.gmatch , string.format ,  string.gsub , string.sub , string.match
+local strfind , strgmatch , strformat , strgsub , strsub = string.find , string.gmatch , string.format ,  string.gsub , string.sub
 local osdate , ostime = os.date , os.time
 local ioopen = io.open
-local pcall , unpack , require , loadfile , assert , pairs , ipairs , setfenv , setmetatable , tonumber , tostring , type = pcall , unpack , require , loadfile , assert , pairs , ipairs , setfenv , setmetatable , tonumber , tostring , type
+local pcall , unpack , require , loadfile , pairs , ipairs , setfenv , setmetatable , tonumber , tostring , type = pcall , unpack , require , loadfile , pairs , ipairs , setfenv , setmetatable , tonumber , tostring , type
 
 module ( "httpserver" )
 
@@ -78,7 +78,7 @@ do -- Load mime types
 			elseif line:sub ( 1 , 1 ) == "#" then
 				-- Is a comment
 			else
-				local typ , name = strmatch ( line , "^(%S+)%s+(.+)$" )
+				local typ , name = line:match ( "^(%S+)%s+(.+)$" )
 				if typ then
 					for e in strgmatch ( name , "%S+" ) do
 						mimetypes [ e ] = typ
@@ -100,8 +100,8 @@ do -- Load mime types
 end
 
 local function pathtomime ( path )
+	local extension = path:match ( "%.?([^%./]+)$" )
 	local mimetyp
-	local _ , _ , extension = strfind ( path , "%.([^%./]+)$" ) 
 	if extension then
 		mimetyp = mimetypes [ extension ] 
 	else
@@ -151,15 +151,17 @@ local httpcodes = {
 	[503] = "Service Unavailable",
 	[504] = "Gateway Time-out",
 	[505] = "HTTP Version not supported"
-	}
+}
 	
 local function httpdate ( time )
 	--eg, "Sun, 10 Apr 2005 20:27:03 GMT"
 	return osdate ( "!%a, %d %b %Y %H:%M:%S GMT" , time )
 end
+
 local function httperrorpage ( status )
 	return "<html><head><title>HTTP Code " .. status .. "</title></head><body><h1>HTTP Code " .. status .. "</h1><p>" .. httpcodes [ status ] .. "</p><hr><i>Generated on " .. osdate ( ) .." by " .. versionstring .. " </i></body></html>"
 end
+
 local conns = { }
 
 local function httpsend ( conn , session , responsedetails )
@@ -168,19 +170,19 @@ local function httpsend ( conn , session , responsedetails )
 	if type ( status ) ~= "number" or status < 100 or status > 599 then error ( "Invalid http code" ) end
 	if type ( body ) ~= "string" then body = httperrorpage ( status ) end
 	local sheaders = { }
-	for k , v in pairs ( ( responsedetails.headers or { } ) ) do
-		sheaders [ strlower ( k ) ] = v
+	for k , v in pairs ( responsedetails.headers or { } ) do
+		sheaders [ k:lower ( ) ] = v
 	end
 
 	if session.Method == "HEAD" then body = "" end
 	do -- Zlib
 		local ok , zlib = pcall ( require , 'zlib' )
 		if ok and type ( zlib ) == "table" then 
-			if strlen ( body ) > 32 then
+			if #body > 32 then
 				local acceptencoding = ( session.headers [ "accept-encoding" ] or "" ):lower ( )
 				if ( strfind ( acceptencoding , "gzip" ) or strfind ( acceptencoding , "[^%w]*[^%w]" ) ) then
-					local zbody = zlib.compress( body , 9, nil, 15 + 16 )
-					if zbody:len ( ) < body:len() then
+					local zbody = zlib.compress ( body , 9 , nil , 15 + 16 )
+					if #zbody < #body then -- If gzip'd body is shorter than uncompressed body
 						local vary = ( session.headers [ 'vary' ] or 'accept-encoding' ):lower ( )
 						if strfind ( vary , '[^%w]accept-encoding[^%w]' ) then
 							vary = vary .. ',' .. 'accept-encoding'
@@ -200,14 +202,14 @@ local function httpsend ( conn , session , responsedetails )
 		if type ( md5 ) == "table" and md5.sumhexa then
 			local bodymd5 = md5.sumhexa ( body )
 			sheaders [ "content-md5" ] = bodymd5
-			if strlen ( body ) > 0 then -- ETag (md5 of body)
+			if #body > 0 then -- ETag (md5 of body)
 				local etag = session.headers [ "etag" ]
 				if not etag then 
 					sheaders [ "etag" ] = bodymd5
 				end
 			end
 		else -- Don't have md5 library
-			--print ( "md5 library missing" )
+			--updatelog ( "md5 library missing" , 5 )
 		end
 	end
 	do -- If modified...
@@ -230,7 +232,7 @@ local function httpsend ( conn , session , responsedetails )
 	sheaders [ "date" ] = httpdate ( )
 	sheaders [ "server" ] = versionstring
 	sheaders [ "content-type" ] = sheaders [ "content-type" ] or "text/html"
-	sheaders [ "content-length" ] = strlen ( body )
+	sheaders [ "content-length" ] = #body
 	
 	for k,v in pairs ( sheaders ) do
 		msgcount = msgcount + 1
@@ -250,6 +252,7 @@ local function httpsend ( conn , session , responsedetails )
 	
 	return status , reasonphrase
 end
+
 local function execute ( name , ... )
 	-- Executes a function, given a string
 	-- Example of string: core.playback.play
@@ -263,6 +266,7 @@ local function execute ( name , ... )
 	
 	return interpret ( lomp.cmd ( name , ... ) )
 end
+
 local function getvar ( name )
 	-- Executes a function, given a string
 	-- Example of string: core.playback.play
@@ -275,20 +279,21 @@ local function getvar ( name )
 		return nil , results
 	end
 end
+
 local function auth ( headers )
 	if httpconfig.authorisation then
 		local preferred = "basic" -- Preferred method is basic auth (Only thing currently supported)
 		if headers [ "authorization" ] then -- If using http authorization
-			local _ , _ , AuthType , AuthString = strfind ( headers [ "authorization" ] , "([^ ]+)% +(.+)" )
-			if strlower ( AuthType )  == "basic" then -- If they are trying Basic Authentication:
-				local _ , _ , user , pass = strfind ( mime.unb64 ( AuthString ) , "([^:]+):(.+)" ) -- Decrypt username:password ( Sent in base64 )
+			local AuthType , AuthString = headers [ "authorization" ]:match ( "([^ ]+)% +(.+)" )
+			if AuthType:lower ( )  == "basic" then -- If they are trying Basic Authentication:
+				local user , pass = mime.unb64 ( AuthString ):match ( "([^:]+):(.+)" ) -- Decrypt username:password ( Sent in base64 )
 				-- Check credentials:
 				if user == httpconfig.username and pass == httpconfig.password then
 					return true
 				else -- Credentials incorrect
 					return false , preferred 
 				end
-			--elseif strlower ( AuthType ) == "digest" then 
+			--elseif AuthType:lower ( ) == "digest" then 
 				-- TODO: Implement digest authentication
 			end
 		else -- No "Authorization" header present: Other authorisation being used?
@@ -313,7 +318,7 @@ local function xmlrpcserver ( skt , session )
 		local method_name , list_params = xmlrpc.srvDecode ( session.body )
 		list_params = list_params [ 1 ] -- KLUDGE: I don't know why it needs this, but it does -- maybe its so you can have multiple methodnames?? but then wtf is the previous cmd...
 		
-		local function depack ( t , i , j )
+		local function depack ( t , i , j ) -- like unpack but uses a string indexed array (rather than number)
 			if not t then return end
 			i = i or 1
 			if ( j and i > j ) or ( not j and t [ tostring ( i ) ] == nil ) then return end 
@@ -334,6 +339,7 @@ local function xmlrpcserver ( skt , session )
 		return true
 	end
 end
+
 local function basiccmdserver ( skt , session )
 	-- Execute action based on GET string.
 	local authorised , typ = auth ( session.headers )
@@ -368,7 +374,8 @@ local function basiccmdserver ( skt , session )
 					httpsend ( skt , session , { status = 400 } )
 					return false
 				end
-			else break
+			else
+				break
 			end
 			i = i + 1
 		end
@@ -454,7 +461,7 @@ local function webserver ( skt , session )
 					
 					hdr [ "content-type" ] = pathtomime ( path )
 					hdr [ "last-modified" ] = httpdate ( attributes.modification )
-					local mimemajor , mimeminor = strmatch ( hdr [ "content-type" ] , "([^/]+)/(.+)") 
+					local mimemajor , mimeminor = hdr [ "content-type" ]:match ( "([^/]+)/(.+)" )
 					if mimemajor == "image" then
 						hdr [ "expires" ] = httpdate ( ostime ( ) + 86400 ) -- 1 day in the future
 					elseif mimeminor == "css" then
@@ -476,7 +483,7 @@ local function webserver ( skt , session )
 				doc = "<html><head><title>" .. versionstring .. " Directory Listing</title></head><body><h1>Listing of " .. sfile .. "</h1><ul>"
 				local t = { }
 				for entry in lfs.dir ( path ) do
-					if strsub ( entry , 1 , 1 ) ~= "." then
+					if entry:sub ( 1 , 1 ) ~= "." then
 						t [ #t + 1 ] = entry
 					end
 				end
@@ -497,10 +504,11 @@ local function webserver ( skt , session )
 		
 		return true
 end
+
 local function jsonserver ( skt , session )
 	local Json = require "Json"
 	--print ( "Json cmd received: " , session.body )
-	local hdr = { ["content-type"] = "application/json" }
+	local hdr = { [ "content-type" ] = "application/json" }
 	if session.Method == "POST" then
 		local o = Json.Decode ( session.body )
 		if type ( o ) == "table" then
@@ -508,7 +516,7 @@ local function jsonserver ( skt , session )
 			local code = 200
 			for i , v in ipairs ( o ) do
 				if v.cmd then
-					t [ i ] = { execute ( v.cmd , unpack ( v.params ) ) }
+					t [ i ] = { execute ( v.cmd , unpack ( v.params or { } ) ) }
 				else -- Not a command?
 					code = 206
 					t [ i ] = { false , "Provide a function" }
@@ -551,9 +559,9 @@ local function httpserver ( conn , data, err )
 		if data == "\r" then return end
 		
 		session = { request = {  } , body = { } , gotrequest = false }
-		session.Method , session.Path , session.Major , session.Minor = strmatch ( data , "(%u+)%s+(%S+)%sHTTP/(%d).(%d)" )
+		session.Method , session.Path , session.Major , session.Minor = data:match ( "(%u+)%s+(%S+)%sHTTP/(%d).(%d)" )
 		if not session.Method then conn.close ( ) return end
-		session.Method = strupper ( session.Method )
+		session.Method = session.Method:upper ( )
 		conns [ conn ] = session
 	elseif not session.gotrequest then -- Retrive HTTP header
 		local requestlines = #session.request
@@ -568,11 +576,11 @@ local function httpserver ( conn , data, err )
 			local request = tblconcat ( session.request , "\r\n" )
 			session.request = request
 			
-			local file , querystring = strmatch ( session.Path , "([^%?]+)%??(.*)$" ) 	-- HTTP Reserved characters: !*'();:@&=+$,/?%#[]
-																	-- HTTP Unreserved characters: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~
-																	-- Lua reserved pattern characters: ^$()%.[]*+-?
-																	-- Intersection of http and lua reserved: *+$?%[]
-																	-- %!%*%'%(%)%;%:%@%&%=%+%$%,%/%?%%%#%[%]
+			local file , querystring = session.Path:match ( "([^%?]+)%??(.*)$" ) 	-- HTTP Reserved characters: !*'();:@&=+$,/?%#[]
+																-- HTTP Unreserved characters: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~
+																-- Lua reserved pattern characters: ^$()%.[]*+-?
+																-- Intersection of http and lua reserved: *+$?%[]
+																-- %!%*%'%(%)%;%:%@%&%=%+%$%,%/%?%%%#%[%]
 			session.file = url.unescape ( file )
 			local queryvars = { }
 			if querystring then
@@ -581,7 +589,7 @@ local function httpserver ( conn , data, err )
 				end
 			end
 			
-			local headers = { } for k , v in strgmatch ( request , "\r\n([^:]+): ([^\r]+)" ) do headers [ strlower ( k ) ] = v end
+			local headers = { } for k , v in strgmatch ( request , "\r\n([^:]+): ([^\r]+)" ) do headers [ k:lower ( ) ] = v end
 			if not headers [ "host" ] then headers [ "host" ] = "default" end
 			
 			session.querystring , session.queryvars , session.headers , session.peer = querystring , queryvars , headers , conn.socket ( ):getpeername ( )

@@ -3,6 +3,8 @@
  JSON Encoder and Parser for Lua 5.1
  
  Copyright © 2007 Shaun Brown (http://www.chipmunkav.com).
+ Modifications by Daurnimator
+ 
  All Rights Reserved.
  
  Permission is hereby granted, free of charge, to any person 
@@ -51,20 +53,13 @@
  7) Lua dictionary tables are converted to Json objects eg {"one":1,"two":2}
  8) Json nulls are decoded to Lua nil and treated by Lua in the normal way
 
---]]
+]]
 
-local string = string
-local math = math
-local table = table
-local error = error
-local tonumber = tonumber
-local tostring = tostring
-local type = type
-local setmetatable = setmetatable
-local pairs = pairs
-local ipairs = ipairs
-local assert = assert
-local Chipmunk = Chipmunk
+require "general"
+
+local assert , error , ipairs , pairs , setmetatable , tonumber , tostring , type = assert , error , ipairs , pairs , setmetatable , tonumber , tostring , type
+local floor , max = math.floor , math.max
+local tblconcat= table.concat
 
 module("Json")
 
@@ -85,19 +80,19 @@ function StringBuilder:Append(s)
 end
 
 function StringBuilder:ToString()
-	return table.concat(self.buffer)
+	return tblconcat(self.buffer)
 end
 
 local JsonWriter = {
 	backslashes = {
-		['\b'] = "\\b",
-		['\t'] = "\\t",	
-		['\n'] = "\\n", 
-		['\f'] = "\\f",
-		['\r'] = "\\r", 
-		['"']  = "\\\"", 
-		['\\'] = "\\\\", 
-		['/']  = "\\/"
+		['\b'] = [[\b]];
+		['\t'] = [[\t]];
+		['\n'] = [[\n]];
+		['\f'] = [[\f]];
+		['\r'] = [[\r]];
+		['"']  = [[\"]];
+		['\\'] = [[\\]];
+		['/']  = [[\/]];
 	}
 }
 
@@ -148,10 +143,10 @@ end
 
 function JsonWriter:ParseString(s)
 	self:Append('"')
-	self:Append(string.gsub(s, "[%z%c\\\"/]", function(n)
+	self:Append(s:gsub("[%z%c\\\"/]", function(n)
 		local c = self.backslashes[n]
 		if c then return c end
-		return string.format("\\u%.4X", string.byte(n))
+		return ("\\u%.4X"):format(n:byte())
 	end))
 	self:Append('"')
 end
@@ -159,18 +154,17 @@ end
 function JsonWriter:IsArray(t)
 	local count = 0
 	local isindex = function(k) 
-		if type(k) == "number" and k > 0 then
-			if math.floor(k) == k then
-				return true
-			end
+		if type(k) == "number" and k > 0 and floor(k) == k then
+			return true
+		else
+			return false
 		end
-		return false
 	end
 	for k,v in pairs(t) do
 		if not isindex(k) then
 			return false, '{', '}'
 		else
-			count = math.max(count, k)
+			count = max(count, k)
 		end
 	end
 	return true, '[', ']', count
@@ -202,9 +196,7 @@ function JsonWriter:WriteTable(t)
 end
 
 function JsonWriter:WriteError(o)
-	error(string.format(
-		"Encoding of %s unsupported", 
-		tostring(o)))
+	error ( ("Encoding of %s unsupported"):format ( tostring(o) ) )
 end
 
 function JsonWriter:WriteFunction(o)
@@ -231,7 +223,7 @@ end
 function StringReader:Peek()
 	local i = self.i + 1
 	if i <= #self.s then
-		return string.sub(self.s, i, i)
+		return self.s:sub(i, i)
 	end
 	return nil
 end
@@ -239,7 +231,7 @@ end
 function StringReader:Next()
 	self.i = self.i+1
 	if self.i <= #self.s then
-		return string.sub(self.s, self.i, self.i)
+		return self.s:sub(self.i, self.i)
 	end
 	return nil
 end
@@ -270,16 +262,14 @@ function JsonReader:Read()
 	self:SkipWhiteSpace()
 	local peek = self:Peek()
 	if peek == nil then
-		error(string.format(
-			"Nil string: '%s'", 
-			self:All()))
+		error( ("Nil string: '%s'"):format ( self:All()))
 	elseif peek == '{' then
 		return self:ReadObject()
 	elseif peek == '[' then
 		return self:ReadArray()
 	elseif peek == '"' then
 		return self:ReadString()
-	elseif string.find(peek, "[%+%-%d]") then
+	elseif peek:find("[%+%-%d]") then
 		return self:ReadNumber()
 	elseif peek == 't' then
 		return self:ReadTrue()
@@ -291,9 +281,7 @@ function JsonReader:Read()
 		self:ReadComment()
 		return self:Read()
 	else
-		error(string.format(
-			"Invalid input: '%s'", 
-			self:All()))
+		error(("Invalid input: '%s'"):format(self:All()))
 	end
 end
 		
@@ -315,9 +303,8 @@ end
 function JsonReader:TestReservedWord(t)
 	for i, v in ipairs(t) do
 		if self:Next() ~= v then
-			 error(string.format(
-				"Error reading '%s': %s", 
-				table.concat(t), 
+			 error(("Error reading '%s': %s"):format (
+				tblconcat(t), 
 				self:All()))
 		end
 	end
@@ -326,17 +313,14 @@ end
 function JsonReader:ReadNumber()
         local result = self:Next()
         local peek = self:Peek()
-        while peek ~= nil and string.find(
-		peek, 
+        while peek ~= nil and peek:find(
 		"[%+%-%d%.eE]") do
             result = result .. self:Next()
             peek = self:Peek()
 	end
 	result = tonumber(result)
 	if result == nil then
-	        error(string.format(
-			"Invalid number: '%s'", 
-			result))
+	        error(("Invalid number: '%s'"):format(result))
 	else
 		return result
 	end
@@ -357,10 +341,9 @@ function JsonReader:ReadString()
 	end
         assert(self:Next() == '"')
 	local fromunicode = function(m)
-		return string.char(tonumber(m, 16))
+		return tonumber(m, 16):char()
 	end
-	return string.gsub(
-		result, 
+	return result:gsub(
 		"u%x%x(%x%x)", 
 		fromunicode)
 end
@@ -373,8 +356,7 @@ function JsonReader:ReadComment()
         elseif second == '*' then
             self:ReadBlockComment()
         else
-            error(string.format(
-		"Invalid comment: %s", 
+            error(("Invalid comment: %s"):format(
 		self:All()))
 	end
 end
@@ -389,8 +371,7 @@ function JsonReader:ReadBlockComment()
 		if not done and 
 			ch == '/' and 
 			self:Peek() == "*" then
-                    error(string.format(
-			"Invalid comment: %s, '/*' illegal.",  
+                    error(("Invalid comment: %s, '/*' illegal."):format(
 			self:All()))
 		end
 	end
@@ -421,8 +402,7 @@ function JsonReader:ReadArray()
 		if not done then
 			local ch = self:Next()
 			if ch ~= ',' then
-				error(string.format(
-					"Invalid array: '%s' due to: '%s'", 
+				error(("Invalid array: '%s' due to: '%s'"):format(
 					self:All(), ch))
 			end
 		end
@@ -441,15 +421,12 @@ function JsonReader:ReadObject()
 	while not done do
 		local key = self:Read()
 		if type(key) ~= "string" then
-			error(string.format(
-				"Invalid non-string object key: %s", 
-				key))
+			error(("Invalid non-string object key: %s"):format(key))
 		end
 		self:SkipWhiteSpace()
 		local ch = self:Next()
 		if ch ~= ':' then
-			error(string.format(
-				"Invalid object: '%s' due to: '%s'", 
+			error(("Invalid object: '%s' due to: '%s'"):format(
 				self:All(), 
 				ch))
 		end
@@ -463,8 +440,7 @@ function JsonReader:ReadObject()
 		if not done then
 			ch = self:Next()
                 	if ch ~= ',' then
-				error(string.format(
-					"Invalid array: '%s' near: '%s'", 
+				error(("Invalid array: '%s' near: '%s'"):format(
 					self:All(), 
 					ch))
 			end
@@ -476,7 +452,7 @@ end
 
 function JsonReader:SkipWhiteSpace()
 	local p = self:Peek()
-	while p ~= nil and string.find(p, "[%s/]") do
+	while p ~= nil and p:find("[%s/]") do
 		if p == '/' then
 			self:ReadComment()
 		else

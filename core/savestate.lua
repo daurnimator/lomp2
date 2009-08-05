@@ -17,7 +17,7 @@ local ioopen = io.open
 local osdate = os.date
 local strfind , strformat = string.find , string.format
 
-module ( "lomp" , package.seeall )
+module ( "lomp" )
 
 -- Safe string
 local function ss ( s )

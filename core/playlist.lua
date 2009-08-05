@@ -75,7 +75,7 @@ function new ( name , playlistnumber )
 	
 	playlistnumber = playlistnumber or ( #vars.playlist + 1 )
 	
-	local pl = setmetatable ( { 
+	local pl = setmetatable ( {
 			revisions = { [ 0 ] = { name = name , length = 0 } } ;
 			index = playlistnumber ;
 		} , {
@@ -88,11 +88,13 @@ function new ( name , playlistnumber )
 					return playlistval ( t.revisions , k , #t.revisions , 0 )
 				end 
 			end ;
-			__newindex = function ( t , k , v )
+			__newindex = function ( playlist , k , v )
 				if k == "newrevision" and type ( v ) == "table" then
-					t.revisions [ t.revision + 1 ] = v
+					local newrevision = playlist.revision + 1
+					playlist.revisions [ newrevision ] = v
+					core.triggers.fire ( "playlist_newrevision" , getnum ( playlist ) )
 				else
-					updatelog ( "PLAYLIST newindex\t" .. k .. tostring ( v ) , 2 )
+					updatelog ( "PLAYLIST newindex\t" .. k .. "\t" .. tostring ( v ) , 2 )
 				end
 			end ;
 			__len = function ( t ) -- FIX: Doesn't work on tables
@@ -104,7 +106,7 @@ function new ( name , playlistnumber )
 	vars.playlist [ playlistnumber ] = pl
 	vars.playlist.revision = vars.playlist.revision + 1
 	
-	triggers.fire ( "playlist_create" , playlistnumber )
+	core.triggers.fire ( "playlist_create" , playlistnumber )
 	
 	return playlistnumber , name
 end
@@ -120,7 +122,7 @@ function delete ( num )
 	vars.pl.revision = vars.pl.revision + 1
 	if pl == vars.queue.softqueueplaylist then vars.queue.softqueueplaylist = -1 end -- If deleted playlist was the soft queue
 	
-	triggers.fire ( "playlist_delete" , num )
+	core.triggers.fire ( "playlist_delete" , num )
 	
 	return true
 end
@@ -133,7 +135,7 @@ function clear ( num )
 	
 	pl.newrevision = { length = 0 }
 	
-	triggers.fire ( "playlist_clear" , num )
+	core.triggers.fire ( "playlist_clear" , num )
 	
 	return true
 end
@@ -157,7 +159,7 @@ function randomise ( num )
 	
 	pl.newrevision = tblrandomise ( collapserev ( pl.revisions , pl.revision ) , pl.length , true )
 	
-	triggers.fire ( "playlist_sort" , num )
+	core.triggers.fire ( "playlist_sort" , num )
 	
 	return true
 end
@@ -170,7 +172,7 @@ function sort ( num , eq )
 
 	pl.newrevision = tblstablesort ( collapserev ( pl.revisions , pl.revision ) , eq , true )
 	
-	triggers.fire ( "playlist_sort" , num )
+	core.triggers.fire ( "playlist_sort" , num )
 	
 	return true
 end

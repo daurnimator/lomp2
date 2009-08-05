@@ -50,7 +50,9 @@ local function basiccmd ( cmd ) return function ( ... )
 			end
 			return
 		elseif code < 0 then
-		else error ( lompclient.codes [ code ] ) end
+		else 
+			print ( lompclient.codes [ code ] , str , unpack ( data ) ) 
+		end
 	end
 end end
 
@@ -111,8 +113,9 @@ translate = {
 		end
 	end , params = "" , help = "opens a telnet like session with the server" } ;
 	help = 		{ func = function ( ... )
+		local argn = select ( "#" , ... )
 		local t , maxlen = { } , 0
-		if select ( "#" , ... ) == 0 then
+		if argn == 0 then
 			for k , v in pairs ( translate ) do
 				local params , helptxt = v.params , v.help
 				if ( #k + #params ) > maxlen then maxlen = #k + #params end
@@ -120,19 +123,22 @@ translate = {
 			end
 			print ( "Valid functions are:" )
 		else
-			for i , v in ipairs ( { ... } ) do
-				local f = translate [ v ]
+			local args = { ... }
+			for i = 1 , argn do
+				local arg = args [ i ]
+				local f = translate [ arg ]
 				if f then
-					local params , helptxt = f.params , f.help
-					if ( #v + #params ) > maxlen then maxlen = #v + #params end
-					t [ #t + 1 ] = { v , params , helptxt }
+					local params = f.params
+					local len = #arg + #params + 1
+					if len > maxlen then maxlen = len end
+					t [ #t + 1 ] = { arg , params , f.help }
 				end
 			end
 		end
 		
 		table.sort ( t , function ( a , b ) return a[1] < b[1] end )
 		for k , v in ipairs ( t ) do
-			io.write ( v [ 1 ] , " " , v [ 2 ] , "\n  " , v [ 3 ] , "\n" )
+			io.write ( " " , v [ 1 ] , " " , v [ 2 ] , "\n   " , v [ 3 ] , "\n" )
 		end
 	end , params = "" , help = "displays help" } ;
 }

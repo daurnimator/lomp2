@@ -10,9 +10,9 @@
 ]]
 
 local dir = dir -- Grab vars needed
-local updatelog , ferror = updatelog , ferror
-
 local lomp = lomp
+
+local updatelog , ferror = lomp.updatelog , lomp.ferror
 
 local pcall , require , loadfile , ipairs , assert , setfenv = pcall , require , loadfile , ipairs , assert , setfenv
 local strfind = string.find
@@ -167,9 +167,9 @@ function addtosubmissions ( typ , source )
 end
 
 function enablescrobbler ( )
-	lomp.triggers.register ( "playback_startsong" , nowplaying , "Scrobbler Now-Playing" )
-	lomp.triggers.register ( "playback_startsong" , addtosubmissions , "Scrobbler Add Song To Submit Queue" )
-	lomp.triggers.register ( "playback_stop" , function ( typ , source , stopoffset ) 
+	lomp.core.triggers.register ( "playback_startsong" , nowplaying , "Scrobbler Now-Playing" )
+	lomp.core.triggers.register ( "playback_startsong" , addtosubmissions , "Scrobbler Add Song To Submit Queue" )
+	lomp.core.triggers.register ( "playback_stop" , function ( typ , source , stopoffset ) 
 		local d = lomp.metadata.getdetails ( source )
 		if stopoffset > 240 
 		or ( d and d.length and ( stopoffset / d.length ) > 0.5 ) then
@@ -182,9 +182,9 @@ function enablescrobbler ( )
 	enabled = true
 end
 function disablescrobbler ( )
-	lomp.triggers.unregister ( "playback_startsong" , "Scrobbler Now-Playing" )
-	lomp.triggers.unregister ( "playback_startsong" , "Scrobbler Add Song To Submit Queue" )
-	lomp.triggers.unregister ( "playback_stop" , "Scrobbler Submissions" )
+	lomp.core.triggers.unregister ( "playback_startsong" , "Scrobbler Now-Playing" )
+	lomp.core.triggers.unregister ( "playback_startsong" , "Scrobbler Add Song To Submit Queue" )
+	lomp.core.triggers.unregister ( "playback_stop" , "Scrobbler Submissions" )
 	
 	enabled = false
 end

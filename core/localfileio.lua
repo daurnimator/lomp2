@@ -11,8 +11,8 @@
 
 require "general"
 
-local ipairs , pcall , require , type = ipairs , pcall , require , type
-local tblsort = table.sort
+local ipairs , pcall , require , type , unpack = ipairs , pcall , require , type , unpack
+local tblsort , tblappend = table.sort , table.append
 
 module ( "lomp.core.localfileio" , package.see ( lomp ) )
 
@@ -34,6 +34,30 @@ function addfile ( path , pl , pos )
 	end
 end
 
+-- Returns an array of items
+local function getdir ( path , recurse )
+	local items = { }
+	
+	for entry in lfs.dir ( path ) do
+		local fullpath = path .. "/" .. entry
+		local mode = lfs.attributes ( fullpath , "mode" )
+		if mode == "file" then
+			local a , err = core.checkfileaccepted ( fullpath )
+			if a then
+				items [ #items + 1 ] = core.item.create ( "file" , fullpath )
+			else -- no return - keep going (even after a failure)
+				ferror ( err , 5 )
+			end
+		elseif mode == "directory" and entry ~= "." and entry ~= ".." then
+			if recurse > 0 then 
+				tblappend ( items , getdir ( fullpath , recurse - 1 ) )
+			end
+		end
+	end
+	
+	return items
+end
+
 function addfolder ( path , pl , pos , recurse )
 	if recurse then
 		if type ( recurse ) ~= "number" then
@@ -44,40 +68,23 @@ function addfolder ( path , pl , pos , recurse )
 	end
 	-- Check path exists
 	if type ( path ) ~= "string" then return ferror ( "'Add folder' called with invalid path" , 1 ) end
-	if string.sub ( path , -1) == "/" then path = path:sub ( 1 , ( #path - 1 ) ) end -- Remove trailing slash if needed
+	if path:sub ( -1) == "/" then path = path:sub ( 1 , ( #path - 1 ) ) end -- Remove trailing slash if needed
 	
 	if type ( pl ) ~= "number" or not vars.playlist [ pl ] then return ferror ( "'Add folder' called with invalid playlist" , 1 ) end
 	if type ( pos ) ~= "number" then pos = nil end
 	
 	updatelog ( "Adding folder '" .. path .. "' to playlist #" .. pl , 3 )
 	
-	local dircontents = { }
-	local todo = { }
-	for entry in lfs.dir ( path ) do
-		local fullpath = path .. "/" .. entry
-		local mode = lfs.attributes ( fullpath , "mode" )
-		if mode == "file" then
-			local a , err = core.checkfileaccepted ( entry )
-			if a then
-				dircontents [ #dircontents + 1 ] = fullpath
-			else -- no return - keep going (even after a failure)
-				ferror ( err , 3 )
-			end
-		elseif mode == "directory" and entry ~= "." and entry ~= ".." then
-			if recurse > 0 then addfolder ( fullpath , pl , true , recurse - 1 ) end
-		end
-	end
-	if config.sortcaseinsensitive then tblsort ( dircontents , function ( a , b ) if a:lower ( ) < b:lower ( ) then return true end end ) end-- Put in alphabetical order of path (case insensitive) 
-	local firstpos = nil
-	for i , v in ipairs ( dircontents ) do
-		local o = core.item.create ( "file" , v )
-		local a , b = core.item.additem ( o , pl , pos )
-		
-		if a then --If not failed
-			pos = a + 1 -- Increment playlist position
-			firstpos = firstpos or a
-		end -- keep going (even after a failure)
-	end
+	local items = getdir ( path , recurse )
 	
-	return firstpos , dircontents
+	if #items == 0 then return true end
+	
+	if config.sortcaseinsensitive then tblsort ( items , function ( a , b ) if a.source:lower ( ) < b.source:lower ( ) then return true end end ) end -- Put in alphabetical order of path (case insensitive) 
+	
+	local firstpos , err = core.item.additems ( pl , pos , unpack ( items ) )
+	if firstpos then
+		return firstpos
+	else
+		return false , err
+	end
 end

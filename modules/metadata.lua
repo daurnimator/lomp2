@@ -14,9 +14,10 @@ require "general"
 local ipairs , pairs , require , setmetatable , type , unpack = ipairs , pairs , require , setmetatable , type , unpack
 local osdate , ostime = os.date , os.time
 
-module ( "lomp.metadata" , package.see ( lomp ) )
-
 require "SaveToTable"
+local tblload , tblsave = table.load , table.save
+
+module ( "lomp.metadata" , package.see ( lomp ) )
 
 --[[
 Format:
@@ -126,7 +127,7 @@ function edittag ( path , edits , inherit )
 end
 
 function savecache ( )
-	local ok , err = table.save ( {  lomp = core._VERSION , major = core._MAJ , minor = core._MIN , inc = core._INC , timesaved = osdate ( ) , cache = cache } , config.tagcachefile , "" , "" )
+	local ok , err = tblsave ( {  lomp = core._VERSION , major = core._MAJ , minor = core._MIN , inc = core._INC , timesaved = osdate ( ) , cache = cache } , config.tagcachefile , "" , "" )
 	if not ok then
 		return ferror ( err , 2 )
 	else
@@ -136,7 +137,7 @@ function savecache ( )
 end
 
 function restorecache ( )
-	local tbl , err = table.load ( config.tagcachefile )
+	local tbl , err = tblload ( config.tagcachefile )
 	if not tbl then
 		return ferror ( err , 2 )
 	-- elseif -- TODO: Version Checks

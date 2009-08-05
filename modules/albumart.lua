@@ -11,16 +11,18 @@
 
 require "general"
 
+local ipairs , pcall , require = ipairs , pcall , require
+
 module ( "lomp.albumart" , package.see ( lomp ) )
 
 pcall ( require , "luarocks.require" ) -- Activates luarocks if available.
-require "lfs"
+local lfs = require "lfs"
 
 local formats = {
 	jpg = true , jpeg = true , png = true , bmp = true ,
 }
 local subdirs = {
-	"Artwork" , "images" , scans
+	"Artwork" ; "images" ; "scans" ;
 }
 -- First checks for folder.ext or thumb.ext in same folder
 -- Then checks for Artwork and images subdirectory(s)
@@ -28,7 +30,7 @@ local subdirs = {
 -- TODO: Then checks for any picture in any sub folder
 -- Else return nothing
 function getalbumartpath ( path )
-	local _ , _ , directory = string.find ( path , "^(.*)/[^/]*$" )
+	local _ , _ , directory = path:find ( "^(.*)/[^/]*$" )
 	
 	for k , v in pairs ( formats ) do
 		if lfs.attributes ( directory .. "/folder." .. k , "mode" ) == "file" then return directory .. "/folder." .. k 
@@ -44,7 +46,7 @@ function getalbumartpath ( path )
 				local fullpath = directory .. "/" .. v .. "/" .. entry
 				local mode = lfs.attributes ( fullpath , "mode" )
 				if mode == "file" then
-					local _ , _ , ext = string.find ( entry , "%.([^%./]+)$" )
+					local _ , _ , ext = entry:find ( "%.([^%./]+)$" )
 					if formats [ ext ] then return fullpath end			
 				end
 			end
@@ -55,7 +57,7 @@ function getalbumartpath ( path )
 		local fullpath = directory .. "/" .. entry
 		local mode = lfs.attributes ( fullpath , "mode" )
 		if mode == "file" then -- Any image in file's folder
-			local _ , _ , ext = string.find ( entry , "%.([^%./]+)$" )
+			local _ , _ , ext = entry:find ( "%.([^%./]+)$" )
 			if formats [ ext ] then return fullpath end
 		end
 	end

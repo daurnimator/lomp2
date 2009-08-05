@@ -11,7 +11,8 @@
 
 require "general"
 
-local require , setmetatable , type = require , setmetatable , type
+local require , select , setmetatable , type = require , select , setmetatable , type
+local tblcopy = table.copy
 
 module ( "lomp.core.item" , package.see ( lomp ) )
 
@@ -28,36 +29,46 @@ require "modules.metadata"
 require "core.localfileio"
 
 function create ( typ , source )
-	return setmetatable ( { typ = typ , source = source , laststarted = false } , { __index = function ( t , k ) return metadata.getdetails ( t.source ) [ k ] end } )
+	return setmetatable ( 
+		{ typ = typ , source = source , laststarted = false } ,
+		{ __index = function ( t , k ) return metadata.getdetails ( t.source ) [ k ] end }
+	)
 end
 
 function copyitem ( item )
-	return table.copy ( item )
+	return tblcopy ( item )
 end
 
-function additem ( object , playlistnum , position )
+function additems ( playlistnum , position , ... )
 	local pl = core.playlist.getplaylist ( playlistnum )
 	if not pl then return ferror ( "'Add Item' called with invalid playlist" , 1 ) end
 	local pllength = pl.length
 	
-	if position and type ( position ) ~= "number" then
+	if position and ( type ( position ) ~= "number" or position > ( pl.length + 1 ) ) then
 		return ferror ( "'Add Item' called with invalid position" , 1 ) 
 	else
 		position = position or ( pllength + 1 )
 	end
 
-	local newrev = { length = pllength + 1 }
+	local objectn = select ( "#" , ... )
+	local objects = { ... }
+	local newrev = { length = pllength + objectn }
 	
 	for i = pllength , position , -1 do
-		newrev [ i + 1 ] = pl [ i ]
+		newrev [ i + objectn ] = pl [ i ]
 	end
-	newrev [ position ] = object
-		
+	for i = 1 , objectn do
+		newrev [ position + i - 1 ] = objects [ i ]
+	end
 	pl.newrevision = newrev
 	
-	triggers.fire ( "item_add" , playlistnum , position , object )
+	core.triggers.fire ( "item_add" , playlistnum , position , objectn )
 	
 	return position
+end
+
+function additem ( object , playlistnum , position )
+	return additems ( playlistnum , position , object )
 end
 
 function removeitem ( playlistnum , position )
@@ -77,7 +88,7 @@ function removeitem ( playlistnum , position )
 	
 	pl.newrevision = newrev
 	
-	triggers.fire ( "item_remove" , playlistnum , position , object )
+	core.triggers.fire ( "item_remove" , playlistnum , position , object )
 
 	return true
 end

@@ -11,7 +11,9 @@
 
 require "general"
 
-module ( "lomp" , package.seeall )
+local ipairs , loadstring , pairs , print , require , select , setfenv , tostring , type = ipairs , loadstring , pairs , print , require , select , setfenv , tostring , type
+
+module ( "lomp" )
 
 require "lomp-core"
 require "core.info"
@@ -48,7 +50,7 @@ function core.listqueue ( )
 	if vars.queue[0] then
 		s = s .. "Current Song: " .. " \t(" .. vars.queue [ 0 ].typ .. ") \tSource: '" .. vars.queue [ 0 ].source .. "'\n"
 	end
-	i = 1
+	local i = 1
 	while true do
 		local v = vars.queue [ i ]
 		if not v then break end
@@ -130,9 +132,11 @@ end
 	print ( ... )
 	elseif type ( select ( 1 , ... ) ) == "table" then for k,v in pairs((...)) do p(...) end
 	end
-end--]] p = print
+end--]] 
 
-triggers.register ( "playback_startsong" , function ( )
+p = print
+
+core.triggers.register ( "playback_startsong" , function ( )
 		-- Print new song stats
 		local t = vars.queue [ 0 ]
 		print( "--------------------Now playing file: ", t.filename )

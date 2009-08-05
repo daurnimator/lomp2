@@ -67,11 +67,12 @@ local function packobject ( session , ... )
 		vararg [ i ] = var
 	end
 	
-	local encoded 
+	local encoded
 	if session.vars.dataencoding == "json" then
 		encoded = Json.Encode ( vararg )
 	else
-		error ( "invalid data encoding" )
+		encoded = "invalid data encoding"
+		error ( encoded )
 	end
 	
 	return #encoded , encoded
@@ -120,7 +121,7 @@ local versions = {
 				end
 				
 				local function interpret ( ok , ... )
-					if not ok then return ver.codes.ERROR
+					if not ok then return tblconcat ( { ver.codes.ERROR , packobject ( session , ... ) } , " " )
 					else return tblconcat ( { ver.codes.SUCCESS , packobject ( session , ... ) } , " " ) end
 				end
 				return interpret ( cmd ( func , unpack ( args ) ) )
@@ -156,9 +157,9 @@ local versions = {
 			GET = function ( conn , session , ver , params )
 				local ok , results = var ( params )
 				if ok then
-					return tblconcat ( { ver.codes.OK , packobject ( ver , results ) } , " " )
+					return tblconcat ( { ver.codes.SUCCESS , packobject ( session , results ) } , " " )
 				else
-					return ver.codes.ERROR
+					return tblconcat ( { ver.codes.ERROR , packobject ( session , results ) } , " " )
 				end
 			end ;
 		} ;

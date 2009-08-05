@@ -20,16 +20,19 @@ require "general"
 local getfenv , getmetatable , ipairs , loadstring , loadfile , newproxy , pairs , pcall , require , setmetatable , setfenv , tostring , type = getfenv , getmetatable , ipairs , loadstring , loadfile , newproxy , pairs , pcall , require , setmetatable , setfenv , tostring , type
 local osdate , osexit , ostime = os.date , os.exit , os.time
 local iotype , ioopen , iowrite , iostderr = io.type , io.open , io.write , io.stderr
+local tblconcat = table.concat
+
+local _G = _G
 
 module ( "lomp" )
 
 quit = false
 
 do 
-	local log = ""
+	log = ""
 
 	-- Output Loading Annoucement
-	local str = "LOMP Loading " .. osdate ( "%c" ) .. "\n"
+	local str = "LOMP is loading " .. osdate ( "%c" ) .. "\n"
 	iowrite ( "\n" , str , "\n" )
 
 	-- Load Configuration
@@ -67,13 +70,15 @@ function updatelog ( data , level )
 	
 	local datatbl = { ostime ( ) .. ": " , levels [ level ] , tostring ( data ) }
 	
-	if level <= config.verbosity then iostderr:write ( table.concat ( datatbl , "\t" ) , "\n" ) end
+	local msg = tblconcat ( datatbl , "\t" )
+	
+	if level <= config.verbosity then iostderr:write ( msg , "\n" ) end
 	if not iotype ( logfilehandle ) or iotype ( logfilehandle ) == "closed" then
 		logfilehandle = openlogfile ( )
 	end
 	
 	logfilehandle:seek ( "end" )
-	logfilehandle:write ( data , "\n" )
+	logfilehandle:write ( msg , "\n" )
 	
 	if level == 0 then osexit ( 1 ) end
 	
@@ -93,6 +98,8 @@ function addstep ( func )
 	steps [ #steps + 1 ] = func
 end
 
+require "lomp-debug" -- TODO: remove debug
+
 require "lomp-core"
 
 require "modules.metadata"
@@ -108,7 +115,7 @@ for i , v in ipairs ( config.plugins ) do
 	if not plugin then
 		ferror ( "Could not load plugin '" .. v .. "' : " .. err , 1 )
 	else
-		setfenv ( plugin , setmetatable ( { dir = dir } , { __index = getfenv ( 1 ) } ) )
+		setfenv ( plugin , setmetatable ( { dir = dir , lomp = lomp } , { __index = _G } ) )
 		
 		local name , version , ok = v , ""
 		ok , name , version = pcall ( plugin )
@@ -127,7 +134,7 @@ local function buildMetatableCall ( ref )
 	return { 
 		__index = function ( t , k )
 			local newref = ref [ k ]
-			if type ( newref ) == "table" then
+			if type ( newref ) == "table" or type ( newref ) == "userdata" then
 				local val = newproxy ( true ) -- Undocumented lua function
 				local mt = getmetatable ( val )
 				for k , v in pairs ( buildMetatableCall ( newref ) ) do
@@ -147,7 +154,7 @@ local function buildMetatableGet ( ref )
 	return {
 		__index = function ( t , k )
 			local newref = ref [ k ]
-			if type ( newref ) == "table" then
+			if type ( newref ) == "table" or type ( newref ) == "userdata" then
 				local val = newproxy ( true ) -- Undocumented lua function
 				local mt = getmetatable ( val )
 				for k , v in pairs ( buildMetatableGet ( newref ) ) do
@@ -157,7 +164,7 @@ local function buildMetatableGet ( ref )
 			elseif type ( newref ) == "function" then
 				--return string.dump ( newref )
 				return nil
-			else
+			else -- string, boolean, number, nil
 				return newref
 			end
 		end ;
@@ -192,22 +199,22 @@ end
 
 function var ( var )
 	local fn , fail = loadstring ( "return " .. var )
+	-- Check to see if bytecode contains certain opcodes?
+	
 	if fail then -- Check for compilation errors
 		return false , fail
 	else
 		setfenv ( fn , setmetatable ( { } , buildMetatableGet ( _M ) ) )
-		local ok , var = pcall ( fn )
+		local ok , result = pcall ( fn )
 		if not ok then -- Check for no errors while finding variable
-			return false , var
-		elseif type ( var ) ~= "string" and type ( var ) ~= "table" and type ( var ) ~= "number" and type ( var ) ~= "boolean" and var ~= nil then -- Make sure function was found, var already has to be a string, number or nil
-			return false , "Not a variable, tried to return value of: " .. type ( var )
+			return false , result
+		elseif type ( result ) == "string" or type ( result ) == "number" or type ( result ) == "boolean" or type ( result ) == "table" or result == nil then -- Make sure function was found, result already has to be a string, number or nil
+			return ok , result -- Note: result could be nil
 		else
-			return ok , var -- var could be nil
+			return false , "Not a valid variable, tried to return value of: " .. type ( result )
 		end
 	end
 end
-
-require "lomp-debug" -- TODO: remove debug
 
 -- Initialisation finished.
 updatelog ( "LOMP Loaded " .. osdate ( "%c" ) , 3 )
