@@ -432,9 +432,10 @@ local function webserver ( skt , session )
 		
 		local defaultfiles = { "index.html" , "index.htm" }
 		
-		--local sfile = strgsub ( session.file , "/%.[^/]*" , "" ) -- Strip out ".." and "." of file request
 		local sfile = session.file
-		
+		if sfile:find ( "/%.%./" ) then -- TODO: some sort of canoncalization
+			sfile = "NON_EXISTANT_FILE"
+		end
 		local path = publicdir .. sfile -- Prefix with public dir path
 		
 		local attributes = lfs.attributes ( path )
@@ -638,11 +639,11 @@ local function httpserver ( conn , data, err )
 			else
 				webserver ( conn , session )
 			end
-		elseif session.Method == "TRACE" then -- Send back request as body
-			httpsend ( conn , session , 200 , { [ 'content-type'] = "message/http" } , session.request )
+		--elseif session.Method == "TRACE" then -- Send back request as body
+		--	httpsend ( conn , session , { status = 200 , headers = { [ 'content-type'] = "message/http" } , body = session.request )
 		--elseif Method == "PUT" or Method == "DELETE" or Method == "OPTIONS" then	
 		else
-			session.httpsend ( conn , session , { status = 501 , headers = { Allow = "GET, POST, HEAD" } } )
+			httpsend ( conn , session , { status = 501 , headers = { Allow = "GET, POST, HEAD" } } )
 		end
 	end
 end
