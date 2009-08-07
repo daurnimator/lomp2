@@ -22,6 +22,8 @@ local osdate , ostime = os.date , os.time
 local ioopen = io.open
 local pcall , unpack , require , loadfile , pairs , ipairs , setfenv , setmetatable , tonumber , tostring , type = pcall , unpack , require , loadfile , pairs , ipairs , setfenv , setmetatable , tonumber , tostring , type
 
+local p , ts = print , table.serialise
+
 module ( "httpserver" )
 
 _NAME = "Lomp HTTP Server"
@@ -301,23 +303,21 @@ end
 
 local function auth ( headers )
 	if httpconfig.authorisation then
-		local preferred = "basic" -- Preferred method is basic auth (Only thing currently supported)
 		if headers [ "authorization" ] then -- If using http authorization
-			local AuthType , AuthString = headers [ "authorization" ]:match ( "([^ ]+)% +(.+)" )
-			if AuthType:lower ( )  == "basic" then -- If they are trying Basic Authentication:
-				local user , pass = mime.unb64 ( AuthString ):match ( "([^:]+):(.+)" ) -- Decrypt username:password ( Sent in base64 )
-				-- Check credentials:
-				if user == httpconfig.username and pass == httpconfig.password then
-					return true
-				else -- Credentials incorrect
-					return false , preferred 
+			local AuthType , AuthString = headers [ "authorization" ]:match ( "(%S+)%s+(.*)%s*" )
+			if AuthType then
+				AuthType = AuthType:lower ( )
+				if AuthType == "basic" then -- If they are trying Basic Authentication:
+					local user , pass = mime.unb64 ( AuthString ):match ( "([^:]+):(.+)" ) -- Decrypt username:password ( Sent in base64 )
+					if user == httpconfig.username and pass == httpconfig.password then
+						return true
+					end
+				elseif AuthType == "digest" then 
+					-- TODO: implement digest authentication
 				end
-			--elseif AuthType:lower ( ) == "digest" then 
-				-- TODO: Implement digest authentication
 			end
-		else -- No "Authorization" header present: Other authorisation being used?
-			return false , preferred 
 		end
+		return false , { ['WWW-Authenticate'] = 'Basic realm=" ' .. versionstring .. '"' } 
 	else -- Open Access Wanted
 		return true
 	end
@@ -325,12 +325,13 @@ end
 
 local function xmlrpcserver ( skt , session )
 	local xmlrpc = require "xmlrpc"
-	local authorised , typ = auth ( session.headers )
+	local authorised , headers = auth ( session.headers )
 	if not authorised then
 		if typ == "basic" then
 			-- Send a xml fault document
 			updatelog ( "Unauthorised login blocked." , 3 )
-			httpsend ( skt , session , { status = 401 , headers = { [ 'WWW-Authenticate' ] = 'Basic realm="' .. versionstring .. '"' ; [ 'content-length' ] = "text/xml" } , body = xmlrpc.srvEncode ( { faultCode = 401 , faultString = httpcodes [ 401 ] } , true ) } )
+			headers [ 'content-length' ] = "text/xml"
+			httpsend ( skt , session , { status = 401 , headers = headers , body = xmlrpc.srvEncode ( { faultCode = 401 , faultString = httpcodes [ 401 ] } , true ) } )
 			return false
 		end
 	else -- Authorised
@@ -361,12 +362,12 @@ end
 
 local function basiccmdserver ( skt , session )
 	-- Execute action based on GET string.
-	local authorised , typ = auth ( session.headers )
+	local authorised , headers = auth ( session.headers )
 	if not authorised then
 		if typ == "basic" then
 			-- Send an xml fault document
 			updatelog ( "Unauthorised login blocked." , 3 )
-			httpsend ( skt , session , { status = 401 , headers = { ['WWW-Authenticate'] = 'Basic realm=" ' .. versionstring .. '"' } } )
+			httpsend ( skt , session , { status = 401 , headers = headers } )
 			return false
 		end		
 	else
@@ -585,8 +586,14 @@ local function httpserver ( conn , data, err )
 		conns [ conn ] = session
 	elseif not session.gotrequest then
 		if data ~= "" then -- \r\n is already stripped, look for an empty line to signify end of headers
-			local key , val = data:match ( "([^:]+):%s+(.*)" )
-			session.headers [ key:lower ( ) ] = val
+			local key , val = data:match ( "([^:]+):%s*(.*)" )
+			if key then
+				key = key:lower ( )
+				session.lastheader = key
+				session.headers [ key ] = val
+			else
+				session.headers [ session.lastheader ] = session.headers [ session.lastheader ] .. "\n" .. data
+			end
 		else
 			session.gotrequest = true
 			
