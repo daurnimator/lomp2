@@ -426,105 +426,87 @@ local function basiccmdserver ( skt , session )
 	end
 end
 local function webserver ( skt , session )
-		local code , doc , hdr = nil , nil , { }
-		local publicdir = "."
-		local allowdirectorylistings = true
+	local code , doc , hdr = nil , nil , { }
+	local publicdir = "."
+	local allowdirectorylistings = true
+	
+	local defaultfiles = { "index.html" , "index.htm" }
+	
+	local sfile = session.file
+	repeat
+		local reps
+		sfile , reps = sfile:gsub ( "([^/]+)/%.%./" , "")
+	until reps == 0
+	
+	local path = publicdir .. sfile -- Prefix with public dir path
+	local attributes = lfs.attributes ( path )
 		
-		local defaultfiles = { "index.html" , "index.htm" }
-		
-		local sfile = session.file
-		if sfile:find ( "/%.%./" ) then -- TODO: some sort of canoncalization
-			sfile = "NON_EXISTANT_FILE"
+	if sfile:find ( "^%.%." ) then
+		code = 403
+	elseif strsub ( path , -1 ) ~= "/" then -- Requesting a specific path
+		if not attributes then -- Path doesn't exist
+			code = 404
+		elseif attributes.mode == "directory" then -- Its a directory: forward client to there
+			code = 301
+			hdr [ "location" ] = sfile .. "/"
+		elseif attributes.mode == "file" then -- Its a file: serve it up!			
+			local f
+			f , err = ioopen ( path , "rb" )
+			if f then					
+				doc = f:read ( "*a" )
+				f:close ( )
+				
+				if offset and length then -- Partial Content
+					code = 206
+				else -- Standard OK
+					code = 200 
+				end
+				
+				hdr [ "content-type" ] = pathtomime ( path )
+				hdr [ "last-modified" ] = httpdate ( attributes.modification )
+				local mimemajor , mimeminor = hdr [ "content-type" ]:match ( "([^/]+)/(.+)" )
+				if mimemajor == "image" then
+					hdr [ "expires" ] = httpdate ( ostime ( ) + 86400 ) -- 1 day in the future
+				elseif mimeminor == "css" then
+					hdr [ "expires" ] = httpdate ( ostime ( ) + 86400 ) -- 1 day in the future
+				else
+					hdr [ "expires" ] = httpdate ( ostime ( ) + 30 ) -- 30 seconds in the future
+				end
+			end
 		end
-		local path = publicdir .. sfile -- Prefix with public dir path
-		
-		local attributes = lfs.attributes ( path )
-		if strsub ( path , -1 ) ~= "/" then -- Requesting a specific path
-			if not attributes then -- Path doesn't exist
-				code = 404
-			elseif attributes.mode == "directory" then -- Its a directory: forward client to there
+	elseif attributes.mode == "directory" then -- Want index file or directory listing
+		for i , v in ipairs ( defaultfiles ) do
+			if lfs.attributes ( path .. v , "mode" ) == "file" then
 				code = 301
-				hdr [ "location" ] = sfile .. "/"
-			elseif attributes.mode == "file" then -- Its a file: serve it up!			
-				local f , filecontents
-				f , err = ioopen ( path , "rb" )
-				if f then
-					local offset 
-					local length
-					
-					--print ( "Range: ", session.headers [ "range" ] )
-					--[[do
-						local s , e , r_A , r_B = strfind ( session.headers [ "range" ] , "(%d*)%s*-%s*(%d*)" )	
-						if s and e then
-							r_A = tonumber (r_A)
-							r_B = tonumber (r_B)
-							
-							if r_A then
-								f:seek ("set", r_A)
-								if r_B then return r_B + 1 - r_A end
-							else
-								if r_B then f:seek ("end", - r_B) end
-							end
-						end
-					end--]]
-					
-					f:seek ( "set" , offset )
-					filecontents = f:read ( length or "*all" )
-					f:close ( )
-					
-					if offset and length then -- Partial Content
-						code = 206
-					else -- Standard OK
-						code = 200 
-					end
-					doc = filecontents
-					
-					hdr [ "content-type" ] = pathtomime ( path )
-					hdr [ "last-modified" ] = httpdate ( attributes.modification )
-					local mimemajor , mimeminor = hdr [ "content-type" ]:match ( "([^/]+)/(.+)" )
-					if mimemajor == "image" then
-						hdr [ "expires" ] = httpdate ( ostime ( ) + 86400 ) -- 1 day in the future
-					elseif mimeminor == "css" then
-						hdr [ "expires" ] = httpdate ( ostime ( ) + 86400 ) -- 1 day in the future
-					else
-						hdr [ "expires" ] = httpdate ( ostime ( ) + 30 ) -- 30 seconds in the future
-					end
-				end
-			end
-		elseif attributes.mode == "directory" then -- Want index file or directory listing
-			for i , v in ipairs ( defaultfiles ) do
-				if lfs.attributes ( path .. v , "mode" ) == "file" then
-					code = 301
-					hdr [ "location" ] = sfile .. v
-					break
-				end
-			end
-			if not code and allowdirectorylistings then -- Directory listing
-				local doct = { "<html><head><title>" .. versionstring .. " Directory Listing</title></head><body><h1>Listing of " .. sfile .. "</h1><ul>" }
-				local t = { }
-				for entry in lfs.dir ( path ) do
-					if entry:sub ( 1 , 1 ) ~= "." then
-						t [ #t + 1 ] = entry
-					end
-				end
-				tblsort ( t )
-				if sfile ~= "/" then doct [ #doct + 1 ] = "<li><a href='" .. ".." .. "'>" .. ".." .. "</a></li>" end
-				for i , v in ipairs ( t ) do
-					doct [ #doct + 1 ] = "<li><a href='" .. sfile .. v .. "'>" .. v .. "</a></li>"
-				end
-				doct [ #doct + 1 ] = "</ul></body></html>"
-				
-				doc = tblconcat ( doct )
-				
-				code = 200
+				hdr [ "location" ] = sfile .. v
+				break
 			end
 		end
-		if not code then -- If still around at this point: couldn't access file or forbidden to list the directory
-			code = 403		
+		if not code and allowdirectorylistings then -- Directory listing
+			local doct = { "<html><head><title>" .. versionstring .. " Directory Listing</title></head><body><h1>Listing of " .. sfile .. "</h1><ul>" }
+			local t = { }
+			for entry in lfs.dir ( path ) do
+				if entry:sub ( 1 , 1 ) ~= "." then
+					t [ #t + 1 ] = entry
+				end
+			end
+			tblsort ( t )
+			if sfile ~= "/" then doct [ #doct + 1 ] = "<li><a href='" .. ".." .. "'>" .. ".." .. "</a></li>" end
+			for i , v in ipairs ( t ) do
+				doct [ #doct + 1 ] = "<li><a href='" .. sfile .. v .. "'>" .. v .. "</a></li>"
+			end
+			doct [ #doct + 1 ] = "</ul></body></html>"
+			
+			doc = tblconcat ( doct )
+			
+			code = 200
+		else
+			code =  403
 		end
-		local code , str , bytessent = httpsend ( skt , session , { status = ( code or 404 ) , headers = hdr , body = doc } )
-		
-		return true
+	end
+	local code , str , bytessent = httpsend ( skt , session , { status = ( code or 404 ) , headers = hdr , body = doc } )
+	
+	return true
 end
 
 local function jsonserver ( skt , session )

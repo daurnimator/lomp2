@@ -76,7 +76,7 @@ function core.savestate ( )
 	if err then 
 		return ferror ( "Could not open state file: " .. err , 2 ) 
 	end
-	file:write ( s )
+	file:write ( s , "\n" )
 	file:flush ( )
 	file:close ( )
 	

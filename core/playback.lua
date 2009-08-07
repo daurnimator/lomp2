@@ -38,6 +38,7 @@ function play ( fromoffset, offsetispercent )
 	end
 	
 	player.play ( typ , source , offset , offsetispercent )
+	
 	state = "playing"
 	vars.queue [ 0 ].laststarted = ostime ( )
 	

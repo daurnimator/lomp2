@@ -47,13 +47,21 @@ end
 function play ( typ , source , offset , offsetispercent )
 	if not typ or not source then return false end
 	
-	pipeline:set_state ( gst.STATE_READY )
-	pipeline:get_state ( -1 )
+	local GstStateChangeReturn = pipeline:set_state ( gst.STATE_READY )
+	if GstStateChangeReturn == gst.STATE_CHANGE_ASYNC then pipeline:get_state ( -1 )
+	elseif GstStateChangeReturn == gst.STATE_CHANGE_SUCCESS then
+	elseif GstStateChangeReturn == gst.STATE_CHANGE_FAILURE then
+		return false
+	end
 	
 	queuesong ( typ , source )
 	
-	pipeline:set_state ( gst.STATE_PLAYING )
-	pipeline:get_state ( -1 )
+	local GstStateChangeReturn = pipeline:set_state ( gst.STATE_PLAYING )
+	if GstStateChangeReturn == gst.STATE_CHANGE_ASYNC then pipeline:get_state ( -1 )
+	elseif GstStateChangeReturn == gst.STATE_CHANGE_SUCCESS then
+	elseif GstStateChangeReturn == gst.STATE_CHANGE_FAILURE then
+		return false
+	end
 	
 	if offset then seek ( offset , false , offsetispercent ) end
 	return true
@@ -97,6 +105,14 @@ end
 
 function getstate ( )
 	local GstStateChangeReturn , state , pendingstate = pipeline:get_state ( -1 )
+	
+	if GstStateChangeReturn == gst.STATE_CHANGE_FAILURE then
+		return false
+	--elseif GstStateChangeReturn == gst.STATE_CHANGE_SUCCESS then
+	--else
+		-- Timeout is infinite, we shouldn't get here.
+	end
+	
 	if state == gst.STATE_NULL then
 	elseif state == gst.STATE_READY then
 		return "stopped"
