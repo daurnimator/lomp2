@@ -30,6 +30,7 @@ function play ( fromoffset, offsetispercent )
 	
 	local typ = vars.queue [ 0 ].typ
 	local source = vars.queue [ 0 ].source
+	
 	local offset 
 	if type ( fromoffset ) == "boolean" then
 		offset = vars.queue [ 0 ].offset
@@ -188,7 +189,7 @@ function backward ( ) -- Moves back one song from the history
 		vars.queue [ 0 ] = vars.played [ 1 ]
 		tblremove ( vars.played , 1 ) -- Shifts all elements down
 		vars.played.revision = vars.played.revision + 1
-		return true , true
+		return true
 	else -- Nothing left in history.
 		return false , "No played songs left"
 	end

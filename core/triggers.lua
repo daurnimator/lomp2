@@ -11,7 +11,7 @@
 
 require "general"
 
-local ipairs , pairs , pcall , setmetatable , unpack = ipairs , pairs , pcall , setmetatable , unpack
+local ipairs , pairs , pcall , setmetatable , tostring , unpack = ipairs , pairs , pcall , setmetatable , tostring , unpack
 local tblremove = table.remove
 
 local ostime = os.time
@@ -21,26 +21,26 @@ module ( "lomp.core.triggers" , package.see ( lomp ) )
 local callbacks = {
 	quit = { { func = function ( ) updatelog ( "Quiting" , 4 ) end , instant = true } } ;
 
-	loop = { { func = function ( loop ) updatelog ( "loop set to " .. loop , 5 ) end } } ;
+	loop = { { func = function ( loop ) updatelog ( "loop set to " .. tostring ( loop ) , 5 ) end } } ;
 	ploffset = { { func = function ( ploffset ) updatelog ( "ploffset set to " .. ploffset , 5 ) end } } ;
 	softqueueplaylist = { { func = function ( softqueueplaylist ) updatelog ( "softqueueplaylist set to playlist #" .. softqueueplaylist , 5 ) end } } ;
-	rpt = { { func = function ( rpt ) updatelog ( "repeat set to " .. rpt , 5 ) end } } ;
+	rpt = { { func = function ( rpt ) updatelog ( "repeat set to " .. tostring ( rpt ) , 5 ) end } } ;
 	
 	playlist_create = { { func = function ( plnum ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Created playlist #" .. plnum .. ": '" .. pl.name .. "'" , 4 ) end } } ;
 	playlist_delete = { { func = function ( plnum ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Deleted playlist #" .. plnum .. " (" .. pl.name .. ")" , 4 ) end } } ;
 	playlist_clear = { { func = function ( plnum ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Cleared playlist #" .. plnum .. " (" .. pl.name .. ")" , 4 ) end } } ;
 	playlist_sort = { { func = function ( plnum ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Sorted playlist #" .. plnum .. " (" .. pl.name .. ")" , 4 ) end } } ;
-	playlist_newrevision = { { func = function ( plnum ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Playlist #" .. plnum .. " (" .. pl.name .. ") has a new revision" , 4 ) end } ;
-		{ func = function ( plnum ) if plnum == vars.softqueueplaylist then core.setploffset ( 0 ) end end } } ; -- If current soft queue playlist has changed, reset ploffset
+	playlist_newrevision = { { func = function ( plnum , revision ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Playlist #" .. plnum .. " (" .. pl.name .. ") has a new revision" , 4 ) end } ;
+		{ func = function ( plnum , revision ) if plnum == vars.softqueueplaylist then core.setploffset ( 0 ) end end } } ; -- If current soft queue playlist has changed, reset ploffset
 	
 	item_add = { { func = function ( plnum , position , numobjects ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Added " .. numobjects .. " item(s) to playlist #" .. plnum .. " (" .. pl.name .. ") at position #" .. position , 4 ) end } } ;
-	item_remove = { { func = function ( plnum , position ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Removed item from playlist #" .. plnum .. " (" .. pl.name .. ") position #" .. position .. " Source: " .. pl [ position ].source  , 4 ) end } } ;
+	item_remove = { { func = function ( plnum , position ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Removed item from playlist #" .. plnum .. " (" .. pl.name .. ") position #" .. position --[[.. " Source: " .. pl [ position ].source]]  , 4 ) end } } ;
 	
-	playback_stop = { { } } ; -- ( type , source , offset )
-	playback_pause = { { } } ; -- ( offset )
-	playback_unpause = { { } } ; -- ( )
-	playback_startsong = { { } } ; -- ( type , source )
-	playback_seek = { { } } ;
+	playback_stop = { } ; -- ( type , source , offset )
+	playback_pause = { } ; -- ( offset )
+	playback_unpause = { } ; -- ( )
+	playback_startsong = { } ; -- ( type , source )
+	playback_seek = { } ;
 	
 	player_abouttofinish = { { func = function ( ) updatelog ( "About to finish song" , 5 ) end } } ;
 	player_finished = { } ;
@@ -84,7 +84,8 @@ local queue = { }
 function fire ( callback , ... )
 	for i , v in ipairs ( callbacks [ callback ] ) do
 		if v.instant then
-			v.func ( ... )
+			local ok , err = pcall ( v.func , ... )
+			if not ok then updatelog ( err ,  3 ) end
 		else
 			queue [ #queue + 1 ] = { v.func , ... }
 		end
@@ -93,7 +94,8 @@ end
 
 addstep ( function ( ) 
 	for i , v in ipairs ( queue ) do 
-			pcall ( unpack ( v ) )
+			local ok , err = pcall ( unpack ( v ) )
+			if not ok then updatelog ( err ,  3 ) end
 			queue [ i ] = nil
 		end 
 	end

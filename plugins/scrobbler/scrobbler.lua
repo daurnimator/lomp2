@@ -80,7 +80,7 @@ function handshake ( user , md5pass , count )
 end	
 
 function nowplaying ( typ , songpath )
-	if not sessionid then 
+	if not sessionid then
 		local w , cap , err = handshake ( user , md5pass )
 		if not w then return ferror ( "Last.fm Handshake error: " .. err , 1 ) end
 	end
@@ -97,16 +97,19 @@ function nowplaying ( typ , songpath )
 	local rbody = "s=" .. sessionid .. "&a=" .. artistname .. "&t=" .. trackname .. "&b=" .. album .. "&l=" .. length .. "&n=" .. tracknumber .. "&m=" .. musicbrainzid
 	
 	local body , code , h = http.request ( nowplayingurl , rbody )
-
 	if code == 200 then
-		local i , j , cap = strfind ( body , "([^\n]+)" )
+		local cap = body:match ( "([^\n]+)" )
 		if cap == "OK" then
 			return true
 		elseif cap == "BADSESSION" then
 			updatelog ( "Bad last.fm session, re-handshaking" , 2 )
 			sessionid = nil
 			nowplaying ( songpath )
+		else
+			updatelog ( "Scrobbler wtf: " .. body , 1 )
 		end
+	else
+		return ferror ( "Scrobbler error: " .. code , 1 )
 	end
 end
 

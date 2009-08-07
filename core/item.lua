@@ -13,6 +13,7 @@ require "general"
 
 local require , select , setmetatable , type = require , select , setmetatable , type
 local tblcopy = table.copy
+local ostime = os.time
 
 module ( "lomp.core.item" , package.see ( lomp ) )
 
@@ -30,7 +31,7 @@ require "core.localfileio"
 
 function create ( typ , source )
 	return setmetatable ( 
-		{ typ = typ , source = source , laststarted = false } ,
+		{ typ = typ , source = source , laststarted = false , itemcreated = ostime ( ) } ,
 		{ __index = function ( t , k ) return metadata.getdetails ( t.source ) [ k ] end }
 	)
 end

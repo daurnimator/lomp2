@@ -38,7 +38,9 @@ item.filesize
 item.extra = {...}
 --]]
 
-modules = {
+local cache
+
+local modules = {
 	"modules.fileinfo.wavpack" ;
 	"modules.fileinfo.mpeg" ;
 	"modules.fileinfo.flac" ;

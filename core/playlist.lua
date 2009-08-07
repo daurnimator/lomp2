@@ -85,14 +85,14 @@ function new ( name , playlistnumber )
 				elseif type ( _M [ k ] ) == "function" and k ~= "new" then
 					return function ( self , ... ) return _M [ k ] ( getnum ( self ) , ... ) end
 				else 
-					return playlistval ( t.revisions , k , #t.revisions , 0 )
+					return playlistval ( t.revisions , k , t.revision , 0 )
 				end 
 			end ;
 			__newindex = function ( playlist , k , v )
 				if k == "newrevision" and type ( v ) == "table" then
 					local newrevision = playlist.revision + 1
 					playlist.revisions [ newrevision ] = v
-					core.triggers.fire ( "playlist_newrevision" , getnum ( playlist ) )
+					core.triggers.fire ( "playlist_newrevision" , getnum ( playlist ) , newrevision )
 				else
 					updatelog ( "PLAYLIST newindex\t" .. k .. "\t" .. tostring ( v ) , 2 )
 				end
