@@ -22,7 +22,7 @@ local function basiccmd ( cmd ) return function ( ... )
 	local args = { ... }
 	for i = 1 , select ( "#" , ... ) do
 		local a = args [ i ]
-		if a == nil then args [ i ] = Json.null
+		if a == nil then args [ i ] = Json.Null
 		elseif a == "false" then args [ i ] = false
 		elseif a == "true" then args [ i ] = true
 		elseif tonumber ( a ) then args [ i ] = tonumber ( a )
@@ -59,6 +59,7 @@ end end
 local translate
 translate = {
 	setplaylist = 	{ func = basiccmd ( "core.setsoftqueueplaylist" ) , params = "<playlist number>" , help = "sets which playlist is the soft queue" } ;
+	setploffset = 	{ func = basiccmd ( "core.setploffset" ) , params = "[<offset>]" , help = "sets what number item the soft queue is up to in the softqueueplaylist, default is 0" } ;
 	loop = 		{ func = basiccmd ( "core.loop" ) , params = "<loop?>" , help = "enables/disables looping the soft queue" } ;
 	["repeat"] = 	{ func = basiccmd ( "core.repeat" ) , params = "<repeat?>" , help = "enables/disables repeating the soft queue playlist" } ;
 	reloadlibrary = 	{ func = basiccmd ( "core.reloadlibrary" ) , params = "" , help = "reloads the library (with directories set in config file)" } ;

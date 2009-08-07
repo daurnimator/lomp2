@@ -31,7 +31,7 @@ local callbacks = {
 	playlist_clear = { { func = function ( plnum ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Cleared playlist #" .. plnum .. " (" .. pl.name .. ")" , 4 ) end } } ;
 	playlist_sort = { { func = function ( plnum ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Sorted playlist #" .. plnum .. " (" .. pl.name .. ")" , 4 ) end } } ;
 	playlist_newrevision = { { func = function ( plnum ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Playlist #" .. plnum .. " (" .. pl.name .. ") has a new revision" , 4 ) end } ;
-		{ func = function ( plnum ) if plnum == vars.softqueueplaylist then vars.ploffset = 0 end end } } ; -- If current soft queue playlist has changed, reset ploffset
+		{ func = function ( plnum ) if plnum == vars.softqueueplaylist then core.setploffset ( 0 ) end end } } ; -- If current soft queue playlist has changed, reset ploffset
 	
 	item_add = { { func = function ( plnum , position , numobjects ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Added " .. numobjects .. " item(s) to playlist #" .. plnum .. " (" .. pl.name .. ") at position #" .. position , 4 ) end } } ;
 	item_remove = { { func = function ( plnum , position ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Removed item from playlist #" .. plnum .. " (" .. pl.name .. ") position #" .. position .. " Source: " .. pl [ position ].source  , 4 ) end } } ;

@@ -144,13 +144,27 @@ function core.checkfileaccepted ( path )
 	return true
 end
 
+function core.setploffset ( num )
+	if type ( num ) ~= "number" or not vars.queue [ num + vars.hardqueue.length ] then
+		return ferror ( "'Set playlist offset' called with invalid offset" )
+	elseif num == nil then
+		num = 0
+	end
+	
+	vars.ploffset = num
+	
+	return num
+end
+
 function core.setsoftqueueplaylist ( num )
 	if type ( num ) ~= "number" or not vars.playlist [ num ] then 
 		return ferror ( "'Set soft queue playlist' called with invalid playlist" , 1 ) 
 	end
 	
-	vars.softqueueplaylist = num
-	vars.ploffset = 0 -- Reset offset
+	if vars.softqueueplaylist ~= num then
+		vars.softqueueplaylist = num
+		core.setploffset ( 0 )
+	end
 	
 	return num
 end
