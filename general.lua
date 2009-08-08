@@ -46,7 +46,8 @@ do
 	end
 end
 
-function toboolean ( o )
+function toboolean ( o , strmode )
+	if strmode and o == "false" then return false end
 	return not not o
 end
 
@@ -88,17 +89,22 @@ function string.trim ( str )
 end
 
 -- Converts string in specified encoding to utf8
-function utf8 ( str , encoding )
+function string.utf8 ( str , encoding )
+	if #str == 0 then return "" end
 	if not encoding then encoding = "ISO-8859-1" end
 	return iconv.new ( "UTF-8" ,  encoding ):iconv ( str )
 end
+
 -- Converts string in specified encoding to utf16
-function utf16 ( str , encoding )
+function string.utf16 ( str , encoding )
+	if #str == 0 then return "" end
 	if not encoding then encoding = "UTF-8" end
 	return iconv.new ( "UTF-16" ,  encoding ):iconv ( str )
 end
+
 -- Converts string in specified encoding to ascii (iso-8859-1)
-function ascii ( str , encoding )
+function string.ascii ( str , encoding )
+	if #str == 0 then return "" end
 	if not encoding then encoding = "UTF-8" end
 	return iconv.new ( "ISO-8859-1" ,  encoding ):iconv ( str )
 end
