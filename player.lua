@@ -34,27 +34,18 @@ updatelog ( "GST version: " .. gst.version ( ) , 5 )
 --local bus = pipeline:get_bus ( )
 --bus:add_signal_watch ( )
 
--- Returns ok and if the operation had to set the state to playing or not
 function queuesong ( typ , source )
 	if not typ or not source then return false , "Bad argument" end
 	local uri
 	if typ == "file" then
 		uri = "file://" .. source
+	else
+		return ferror ( "Invalid file typ" , 0 )
 	end
+	
 	pipeline:set ( "uri" , uri )
 	
-	local GstStateChangeReturn , state , pendingstate = pipeline:get_state ( 1 )
-	if state == gst.STATE_PLAYING then
-		return true , true
-	else
-		local GstStateChangeReturn = pipeline:set_state ( gst.STATE_PLAYING )
-		if GstStateChangeReturn == gst.STATE_CHANGE_ASYNC then pipeline:get_state ( -1 )
-		elseif GstStateChangeReturn == gst.STATE_CHANGE_SUCCESS then
-		elseif GstStateChangeReturn == gst.STATE_CHANGE_FAILURE then
-			return false , "Failed set_state"
-		end
-		return true , false
-	end
+	return true
 end
 
 function play ( typ , source , offset , offsetispercent )
@@ -67,8 +58,14 @@ function play ( typ , source , offset , offsetispercent )
 		return false
 	end
 	
-	local ok = queuesong ( typ , source )
-	if not ok then return false end
+	queuesong ( typ , source )
+	
+	local GstStateChangeReturn = pipeline:set_state ( gst.STATE_PLAYING )
+	if GstStateChangeReturn == gst.STATE_CHANGE_ASYNC then pipeline:get_state ( -1 )
+	elseif GstStateChangeReturn == gst.STATE_CHANGE_SUCCESS then
+	elseif GstStateChangeReturn == gst.STATE_CHANGE_FAILURE then
+		return false , "Failed set_state"
+	end
 	
 	if offset then seek ( offset , false , offsetispercent ) end
 	return true

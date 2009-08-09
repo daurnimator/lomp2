@@ -19,11 +19,6 @@ local strfind , strformat = string.find , string.format
 
 module ( "lomp" )
 
--- Safe string
-local function ss ( s )
-	return strformat ( '%q' , s )
-end
-
 function core.savestate ( )
 	local s = { 
 		core._NAME .. "\t" .. core._VERSION .. " State File.\tCreated: " .. osdate ( ) .. "\n" ;
@@ -42,13 +37,13 @@ function core.savestate ( )
 	while true do
 		local pl = vars.playlist [ i ]
 		if not pl then break end
-		s [ #s + 1 ] = "cpn(" .. ss ( pl.name ) .. "," .. i .. ")" -- Name in this line does nothing
+		s [ #s + 1 ] = strformat ( 'cpn(%q,%d);' , pl.name , i )-- Name in this line does nothing
 		s [ #s + 1 ] = "vars.playlist[" .. i .. "].revisions[1]={length=" .. pl.length .. ";"
 		local j = 1
 		while true do
 			local item = pl [ j ]
 			if not item then break end
-			s [ #s + 1 ] = "\tcic(" .. ss ( item.typ ) .. "," .. ss ( item.source ) .. ");"
+			s [ #s + 1 ] = strformat ( "\tcic(%q,%q,%d);" , item.typ , item.source , item.created )
 			j = j + 1
 		end
 		i = i + 1
@@ -60,7 +55,8 @@ function core.savestate ( )
 	local n
 	if #vars.played > config.history then n = config.history else n = #vars.played end
 	for i = 1 , n do
-		s [ #s + 1 ] = '\tcic(' .. strformat ( '%q' , vars.played [ i ].typ ) .. ',' .. strformat ( '%q' , vars.played [ i ].source ) .. ') ;'
+		local item = vars.played [ i ]
+		s [ #s + 1 ] = strformat ( "\tcic(%q,%q,%q);" , item.typ , item.source , item.created )
 	end
 	s [ #s + 1 ] = "};"
 	

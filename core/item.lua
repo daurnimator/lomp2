@@ -29,9 +29,9 @@ require "modules.metadata"
 
 require "core.localfileio"
 
-function create ( typ , source )
+function create ( typ , source , createdtime )
 	return setmetatable ( 
-		{ typ = typ , source = source , laststarted = false , itemcreated = ostime ( ) } ,
+		{ typ = typ , source = source , laststarted = false , created = createdtime or ostime ( ) } ,
 		{ __index = function ( t , k ) return metadata.getdetails ( t.source ) [ k ] end }
 	)
 end

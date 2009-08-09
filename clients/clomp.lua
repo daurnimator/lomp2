@@ -48,12 +48,13 @@ local function basiccmd ( cmd ) return function ( ... )
 			else
 				print ( "Error in lomp server: " .. data [ 2 ] )
 			end
-			return
+			break
 		elseif code < 0 then
 		else 
 			print ( lompclient.codes [ code ] , str , unpack ( data ) ) 
 		end
 	end
+	client:close ( )
 end end
 
 local translate

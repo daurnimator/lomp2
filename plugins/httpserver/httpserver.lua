@@ -521,7 +521,11 @@ local function jsonserver ( skt , session )
 			local code = 200
 			for i , v in ipairs ( o ) do
 				if v.cmd then
-					t [ i ] = { execute ( v.cmd , unpack ( v.params or { } ) ) }
+					if v.params and type ( v.params ) == "table" then
+						t [ i ] = { execute ( v.cmd , unpack ( v.params ) ) }
+					else
+						t [ i ] = { execute ( v.cmd ) }
+					end
 				else -- Not a command?
 					code = 206
 					t [ i ] = { false , "Provide a function" }

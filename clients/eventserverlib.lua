@@ -78,22 +78,22 @@ codes = {
 } ;
 		
 function connect ( address , port )
-	local ob , err = socket.connect ( address , port )
-	if not ob then return false , err end
-	ob:settimeout ( 0.03 )
+	local client , err = socket.connect ( address , port )
+	if not client then return false , err end
+	client:settimeout ( 0.03 )
 	
-	ob:send ( "LOMP 1\n" )
+	client:send ( "LOMP 1\n" )
 
-	local client = setmetatable ( { } , { client = ob , __index = { receive = receive , send = send } } ) 
+	local ob = setmetatable ( { } , { client = client , __index = { receive = receive , send = send , close = function ( ob ) local client = getmetatable ( ob ).client return client:close ( ) end } } ) 
 
 	local code , str
 	repeat 
-		code , str = receive ( client )
+		code , str = receive ( ob )
 		if code == false then error ( str ) end
 	until code ~= nil
 	if code ~= 0 then error ( "Not a lomp server" ) end
 	
-	return client
+	return ob
 end
 
 return _M

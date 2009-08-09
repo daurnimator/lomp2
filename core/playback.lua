@@ -11,7 +11,7 @@
 
 require "general"
 
-local require , type = require , type
+local require , select , type = require , select , type
 local ostime = os.time
 local tblinsert , tblremove = table.insert , table.remove
 
@@ -72,27 +72,38 @@ end
 
 function pause ( )
 	local item = vars.queue [ 0 ]
-	local offset = player.getposition ( )
-	item.offset = offset
 	
-	if item and player.pause ( ) then
-		state = "paused"
-		core.triggers.fire ( "playback_pause" , offset )
-		return true
+	if item then
+		local offset = player.getposition ( )
+		item.offset = offset
+		
+		local ok , err = player.pause ( )
+		if ok then
+			state = "paused"
+			core.triggers.fire ( "playback_pause" , offset )
+			return true
+		else
+			return false , err or "Could not pause"
+		end
 	else
-		return false , "Could not pause"
+		return false , "Nothing to pause"
 	end
 end
 
 function unpause ( )
 	local item = vars.queue [ 0 ]
 	
-	if item and player.unpause ( ) then
-		state = "playing"
-		core.triggers.fire ( "playback_unpause" )
-		return true
+	if item then
+		local ok , err = player.unpause ( )
+		if ok then
+			state = "playing"
+			core.triggers.fire ( "playback_unpause" )
+			return true
+		else
+			return false , err or "Could not unpause"
+		end	
 	else
-		return false , "Could not unpause"
+		return false , "Nothing to unpause"
 	end
 end
 
@@ -197,12 +208,14 @@ end
 
 
 function seek ( offset , relative , percent )
-	if type ( offset ) ~= "number" then return false end
+	if type ( offset ) ~= "number" then return false , "Invalid offset" end
+	local item = vars.queue [ 0 ]
+	if not item then return false , "No item" end
 	
 	player.seek ( offset , relative , percent )
 	
 	local newoffset = player.getposition ( )
-	vars.queue [ 0 ].offset = newoffset
+	item.offset = newoffset
 
 	core.triggers.fire ( "playback_seek" , newoffset )	
 
