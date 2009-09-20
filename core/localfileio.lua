@@ -81,7 +81,7 @@ function addfolder ( path , pl , pos , recurse )
 	
 	if config.sortcaseinsensitive then tblsort ( items , function ( a , b ) if a.source:lower ( ) < b.source:lower ( ) then return true end end ) end -- Put in alphabetical order of path (case insensitive) 
 	
-	local firstpos , err = core.item.additems ( pl , pos , unpack ( items ) )
+	local firstpos , err = core.item.additems ( pl , pos , items )
 	if firstpos then
 		return firstpos
 	else

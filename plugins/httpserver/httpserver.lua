@@ -573,10 +573,10 @@ local function httpserver ( conn , data, err )
 		session.Method = session.Method:upper ( )
 		
 		local file , querystring = session.Path:match ( "([^%?]+)%??(.*)$" ) 	-- HTTP Reserved characters: !*'();:@&=+$,/?%#[]
-															-- HTTP Unreserved characters: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~
-															-- Lua reserved pattern characters: ^$()%.[]*+-?
-															-- Intersection of http and lua reserved: *+$?%[]
-															-- %!%*%'%(%)%;%:%@%&%=%+%$%,%/%?%%%#%[%]
+																-- HTTP Unreserved characters: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~
+																-- Lua reserved pattern characters: ^$()%.[]*+-?
+																-- Intersection of http and lua reserved: *+$?%[]
+																-- %!%*%'%(%)%;%:%@%&%=%+%$%,%/%?%%%#%[%]
 		session.file = url.unescape ( file )
 		local queryvars = { }
 		if querystring then
@@ -615,7 +615,7 @@ local function httpserver ( conn , data, err )
 		session.needbody = false
 	end
 	
-	if session and session.gotrequest and not session.needbody then	
+	if session and session.gotrequest and not session.needbody then
 		if session.Method == "POST" then
 			if session.file == "/LOMP" and session.headers [ "content-type" ] == "text/xml" then -- This is an xmlrpc command for lomp
 				xmlrpcserver ( conn , session )

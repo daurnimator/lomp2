@@ -194,7 +194,7 @@ function backward ( ) -- Moves back one song from the history
 	stop ( )
 	local current = vars.queue [ 0 ]
 	if current then
-		core.item.additem ( current , core.playlist.getnum ( vars.hardqueue ) , 1 )
+		core.item.additem ( core.playlist.getnum ( vars.hardqueue ) , 1 , current )
 	end
 	if vars.played [ 1 ] then
 		vars.queue [ 0 ] = vars.played [ 1 ]

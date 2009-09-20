@@ -40,7 +40,7 @@ function copyitem ( item )
 	return tblcopy ( item )
 end
 
-function additems ( playlistnum , position , ... )
+function additems ( playlistnum , position , objects )
 	local pl = core.playlist.getplaylist ( playlistnum )
 	if not pl then return ferror ( "'Add Item' called with invalid playlist" , 1 ) end
 	local pllength = pl.length
@@ -51,8 +51,7 @@ function additems ( playlistnum , position , ... )
 		position = position or ( pllength + 1 )
 	end
 
-	local objectn = select ( "#" , ... )
-	local objects = { ... }
+	local objectn = #objects
 	local newrev = { length = pllength + objectn }
 	
 	for i = pllength , position , -1 do
@@ -68,8 +67,8 @@ function additems ( playlistnum , position , ... )
 	return position
 end
 
-function additem ( object , playlistnum , position )
-	return additems ( playlistnum , position , object )
+function additem ( playlistnum , position , object )
+	return additems ( playlistnum , position , { object } )
 end
 
 function removeitem ( playlistnum , position )
@@ -108,7 +107,7 @@ function copytoplaylist ( oldplnum , oldpos , newplnum , newpos )
 		newpos = newpos or ( newpl.length + 1 ) -- If new position is not given, add to end of playlist.
 	end
 
-	additem ( copyitem ( oldpl [ oldpos ] ) , newpos , newplnum , newpos )
+	additem ( newplnum , newpos , copyitem ( oldpl [ oldpos ] ) )
 	
 	return newpos
 end
@@ -131,7 +130,7 @@ function movetoplaylist ( oldplnum , oldpos , newplnum , newpos )
 	end
 	
 	removeitem ( oldplnum , oldpos )
-	additem ( object , newplnum , newpos )
+	additem ( newplnum , newpos , object )
 	
 	return newpos
 end

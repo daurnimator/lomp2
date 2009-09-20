@@ -30,7 +30,7 @@ function core.savestate ( )
 	}
 	
 	local current = vars.queue [ 0 ]
-	if current then core.item.additem ( current , core.playlist.getnum ( vars.hardqueue ) , 1 ) end -- If currently playing a song, add to start of hardqueue so its first up
+	if current then core.item.additem ( core.playlist.getnum ( vars.hardqueue ) , 1 , current ) end -- If currently playing a song, add to start of hardqueue so its first up
 	
 	-- Playlists
 	local i = -2
