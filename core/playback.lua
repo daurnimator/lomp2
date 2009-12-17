@@ -38,7 +38,7 @@ function play ( fromoffset, offsetispercent )
 		offset = fromoffset
 	end
 	
-	player.play ( typ , source , offset , offsetispercent )
+	if not player.play ( typ , source , offset , offsetispercent ) then return false , "Could not start playback" end
 	
 	state = "playing"
 	vars.queue [ 0 ].laststarted = ostime ( )
@@ -63,7 +63,7 @@ function stop ( )
 			state = "stopped"
 			return true
 		else -- Stop didn't work
-			return false
+			return false , "Could not stop"
 		end
 	else -- Nothing to stop...
 		return false

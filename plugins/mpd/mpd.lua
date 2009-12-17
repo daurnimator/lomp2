@@ -429,5 +429,6 @@ function initiate ( host , port )
 end
 
 initiate ( address ,  port )
-addstep ( copas.step )
+addstep ( function ( ) copas.step ( 0 ) return true end ) -- 0 timeout
+
 return _NAME , _VERSION

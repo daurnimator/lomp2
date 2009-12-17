@@ -13,6 +13,7 @@ require "general"
 
 local ipairs , pcall , require , type , unpack = ipairs , pcall , require , type , unpack
 local tblsort , tblappend = table.sort , table.append
+local ioopen = io.open
 
 module ( "lomp.core.localfileio" , package.see ( lomp ) )
 
@@ -20,18 +21,37 @@ pcall ( require , "luarocks.require" ) -- Activates luarocks if available.
 
 local lfs = require "lfs"
 
+function checkfileaccepted ( path )
+	local extension = path:match ( "%.?([^%./]+)$" )
+	extension = extension:lower ( )
+	
+	local accepted = false
+	for i , v in ipairs ( player.extensions ) do
+		if extension == v then accepted = true end
+	end
+	if accepted == true then 
+		for i , v in ipairs ( config.banextensions ) do
+			if strfind ( extension , v ) then return false , ( "Banned file extension (" .. extension .. "): " .. path )  end
+		end
+	else	
+		return false , ( "Invalid file type (" .. extension .. "): " .. path )
+	end
+	return true
+end
+
 function addfile ( path , pl , pos )
 	-- Check path exists
 	if type ( path ) ~= "string" then return ferror ( "'Add file' called with invalid path" , 1 ) end
 	
 	local filename = path:match ( "([^/]+)$" )
-	local a , err = core.checkfileaccepted ( filename )
-	if a then
-		local o = core.item.create ( "file" , path )
-		return core.item.additem ( o , pl , pos )
-	else
-		return ferror ( err , 2 )
-	end
+	local a , err = checkfileaccepted ( filename )
+	if not a then return ferror ( err , 2 ) end
+	
+	local fd , err = ioopen ( path , "r" )
+	if not fd then return ferror ( "Unable to add file: '" .. path .. "' : " .. err , 1 ) end
+	fd:close ( )
+	
+	return core.item.additem ( core.item.create ( "file" , path ) , pl , pos )
 end
 
 -- Returns an array of items
@@ -42,7 +62,7 @@ local function getdir ( path , recurse )
 		local fullpath = path .. "/" .. entry
 		local mode = lfs.attributes ( fullpath , "mode" )
 		if mode == "file" then
-			local a , err = core.checkfileaccepted ( fullpath )
+			local a , err = checkfileaccepted ( fullpath )
 			if a then
 				items [ #items + 1 ] = core.item.create ( "file" , fullpath )
 			else -- no return - keep going (even after a failure)

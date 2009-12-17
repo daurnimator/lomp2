@@ -126,24 +126,6 @@ core [ "repeat" ] = function ( bool )
 	return true
 end
 
-function core.checkfileaccepted ( path )
-	local extension = path:match ( "%.?([^%./]+)$" )
-	extension = extension:lower ( )
-	
-	local accepted = false
-	for i , v in ipairs ( player.extensions ) do
-		if extension == v then accepted = true end
-	end
-	if accepted == true then 
-		for i , v in ipairs ( config.banextensions ) do
-			if strfind ( extension , v ) then return false , ( "Banned file extension (" .. extension .. "): " .. path )  end
-		end
-	else	
-		return false , ( "Invalid file type (" .. extension .. "): " .. path )
-	end
-	return true
-end
-
 function core.setploffset ( num )
 	if type ( num ) ~= "number" or not vars.queue [ num + vars.hardqueue.length ] then
 		return ferror ( "'Set playlist offset' called with invalid offset" )

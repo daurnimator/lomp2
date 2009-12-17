@@ -60,6 +60,7 @@ require "general"
 local assert , error , ipairs , pairs , setmetatable , tonumber , tostring , type = assert , error , ipairs , pairs , setmetatable , tonumber , tostring , type
 local floor , max = math.floor , math.max
 local tblconcat= table.concat
+local strchar = string.char
 
 module("Json")
 
@@ -341,7 +342,7 @@ function JsonReader:ReadString()
 	end
         assert(self:Next() == '"')
 	local fromunicode = function(m)
-		return tonumber(m, 16):char()
+		return strchar(tonumber(m, 16) )
 	end
 	return result:gsub(
 		"u%x%x(%x%x)", 

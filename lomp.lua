@@ -24,6 +24,9 @@ local tblconcat = table.concat
 
 local _G = _G
 
+require "lgob.gobject" -- glib is loaded as part of gobject
+local glib = glib
+
 module ( "lomp" )
 
 quit = false
@@ -90,12 +93,22 @@ function ferror ( data , level )
 	return false , data
 end
 
+
+
+
+local main = glib.MainLoop.new()
+
 local steps = { }
+-- Add a step to the main loop.
+-- Duplicate steps not allowed, returns false if the step already exists.
 function addstep ( func )
 	for i , v in ipairs ( steps ) do
-		if v == func then return end
+		if v == func then return false end
 	end
 	steps [ #steps + 1 ] = func
+	
+	glib.timeout_add ( glib.PRIORITY_DEFAULT , 40 , func )
+	return true
 end
 
 require "lomp-debug" -- TODO: remove debug
@@ -127,7 +140,7 @@ for i , v in ipairs ( config.plugins ) do
 		end
 	end
 end
-updatelog ( "All Plugins Loaded" , 3 )
+updatelog ( "Plugins Loaded" , 3 )
 
  -- Function/Variable finders.
 local function buildMetatableCall ( ref )
@@ -193,7 +206,7 @@ function cmd ( cmd , ... )
 			return false , "Not a function"
 		else
 			return pcall ( func , ... )
-		end                     
+		end
 	end
 end
 
@@ -219,10 +232,6 @@ end
 -- Initialisation finished.
 updatelog ( "LOMP Loaded " .. osdate ( "%c" ) , 3 )
 
-local i = 1
-while not quit do
-	steps [ i ] ( )
-	if i == #steps then i = 1 else i = i + 1 end
-end
+main:run ( )
 
 logfilehandle:close ( )

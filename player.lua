@@ -34,14 +34,19 @@ updatelog ( "GST version: " .. gst.version ( ) , 5 )
 --local bus = pipeline:get_bus ( )
 --bus:add_signal_watch ( )
 
-function queuesong ( typ , source )
+function geturi ( typ , source )
 	if not typ or not source then return false , "Bad argument" end
-	local uri
+	
 	if typ == "file" then
-		uri = "file://" .. source
+		return "file://" .. source:gsub ( "([^/A-Za-z0-9_])" , function ( c ) return ("%%%02x"):format ( c:byte ( ) ) end ) -- Escapes a file path (for uri)
 	else
-		return ferror ( "Invalid file typ" , 0 )
+		return false , "Invalid file typ"
 	end
+end
+
+function queuesong ( typ , source )
+	local uri , err = geturi ( typ , source )
+	if not uri then return ferror ( err , 1 ) end
 	
 	pipeline:set ( "uri" , uri )
 	
@@ -49,26 +54,32 @@ function queuesong ( typ , source )
 end
 
 function play ( typ , source , offset , offsetispercent )
-	if not typ or not source then return false end
+	local uri , err = geturi ( typ , source )
+	if not uri then return ferror ( err , 1 ) end
 	
 	local GstStateChangeReturn = pipeline:set_state ( gst.STATE_READY )
-	if GstStateChangeReturn == gst.STATE_CHANGE_ASYNC then pipeline:get_state ( -1 )
+	if GstStateChangeReturn == gst.STATE_CHANGE_ASYNC then
+		pipeline:get_state ( -1 )
 	elseif GstStateChangeReturn == gst.STATE_CHANGE_SUCCESS then
 	elseif GstStateChangeReturn == gst.STATE_CHANGE_FAILURE then
 		return false
 	end
 	
-	queuesong ( typ , source )
+	pipeline:set ( "uri" , uri )
 	
 	local GstStateChangeReturn = pipeline:set_state ( gst.STATE_PLAYING )
-	if GstStateChangeReturn == gst.STATE_CHANGE_ASYNC then pipeline:get_state ( -1 )
+	if GstStateChangeReturn == gst.STATE_CHANGE_ASYNC then
+		pipeline:get_state ( -1 )
 	elseif GstStateChangeReturn == gst.STATE_CHANGE_SUCCESS then
 	elseif GstStateChangeReturn == gst.STATE_CHANGE_FAILURE then
 		return false , "Failed set_state"
 	end
-	
-	if offset then seek ( offset , false , offsetispercent ) end
-	return true
+
+	if offset then
+		return seek ( offset , false , offsetispercent )
+	else
+		return true
+	end
 end
 
 function pause ( )
@@ -110,12 +121,12 @@ end
 function getstate ( )
 	local GstStateChangeReturn , state , pendingstate = pipeline:get_state ( -1 )
 	
-	if GstStateChangeReturn == gst.STATE_CHANGE_FAILURE then
+	--[[if GstStateChangeReturn == gst.STATE_CHANGE_FAILURE then
 		return false
 	--elseif GstStateChangeReturn == gst.STATE_CHANGE_SUCCESS then
 	--else
 		-- Timeout is infinite, we shouldn't get here.
-	end
+	end--]]
 	
 	if state == gst.STATE_NULL then
 	elseif state == gst.STATE_READY then

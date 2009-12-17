@@ -9,6 +9,8 @@
 	You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ]]
 
+local prefix = (...):match("^(.-)[^%.]*$")
+
 require "general"
 
 local ipairs , pairs , require , setmetatable , type , unpack = ipairs , pairs , require , setmetatable , type , unpack
@@ -41,15 +43,17 @@ item.extra = {...}
 local cache
 
 local modules = {
-	"modules.fileinfo.wavpack" ;
-	"modules.fileinfo.mpeg" ;
-	"modules.fileinfo.flac" ;
-	"modules.fileinfo.ogg" ;
+	"fileinfo.wavpack" ;
+	"fileinfo.mpeg" ;
+	"fileinfo.flac" ;
+	"fileinfo.ogg" ;
 }
 
+-- Make tables that map extensions to (de|en)coders
 local exttodec = { }
 local exttoenc = { }
 for i , v in ipairs ( modules ) do
+	v = prefix .. v
 	local extensions , decoder , encoder = unpack ( require ( v ) )
 	for i , v in ipairs ( extensions ) do
 		exttodec [ v ] = decoder
@@ -61,11 +65,11 @@ local function getitem ( path )
 	local item = { 
 		path = path ;
 		filename = path:match ( "([^/]+)$" ) ;
+		extension = path:match ( "%.([^%./]+)$" ):lower ( ) ;
 		tags = { } ;
 		extra = { } ;
 	}
-	item.extension = item.filename:match ( "%.([^%./]+)$" ):lower ( )
-
+	
 	local f = exttodec [ item.extension ]
 	if f then
 		local ok , err = f ( item )
