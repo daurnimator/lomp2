@@ -15,8 +15,7 @@ require "general"
 local lompclient = require "clients.eventserverlib"
 local Json = require "Json"
 
-local client = lompclient.connect ( os.getenv ( "LOMP_HOST" ) or "localhost" , os.getenv ( "LOMP_PORT" ) or 5667 )
-if not client then error ( "Cannot connect to server" ) end
+local client
 
 local function basiccmd ( cmd ) return function ( ... )
 	local args = { ... }
@@ -147,6 +146,11 @@ translate = {
 
 local ret = translate [ arg [ 1 ] ]
 if ret then
+	if arg [ 1 ] ~= "help" then
+		client = lompclient.connect ( os.getenv ( "LOMP_HOST" ) or "localhost" , os.getenv ( "LOMP_PORT" ) or 5667 )
+		if not client then error ( "Cannot connect to server" ) end
+	end
+	
 	ret.func ( select ( 2 , ... ) )
 	print ( )
 	os.exit ( 0 )

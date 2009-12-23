@@ -93,11 +93,8 @@ function ferror ( data , level )
 	return false , data
 end
 
-
-
-
-local main = glib.MainLoop.new()
-
+-- Setup main loop:
+mainloop = glib.MainLoop.new ( )
 local steps = { }
 -- Add a step to the main loop.
 -- Duplicate steps not allowed, returns false if the step already exists.
@@ -232,6 +229,6 @@ end
 -- Initialisation finished.
 updatelog ( "LOMP Loaded " .. osdate ( "%c" ) , 3 )
 
-main:run ( )
+mainloop:run ( )
 
 logfilehandle:close ( )

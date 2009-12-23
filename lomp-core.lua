@@ -65,7 +65,7 @@ vars = setmetatable ( { } , {
 function core.quit ( )
 	player.stop ( )
 	
-	core.triggers.fire ( "quit" , newoffset )	
+	core.triggers.fire ( "quit" , newoffset )
 	
 	if metadata.savecache then
 		local ok , err = metadata.savecache ( )
@@ -74,7 +74,7 @@ function core.quit ( )
 		local ok , err = core.savestate ( )
 	end
 	
-	quit = true
+	addstep ( function ( ) mainloop:quit ( ) return false end )
 	return true
 end
 

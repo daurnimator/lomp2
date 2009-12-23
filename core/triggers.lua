@@ -13,13 +13,13 @@ require "general"
 
 local ipairs , pairs , pcall , setmetatable , tostring , unpack = ipairs , pairs , pcall , setmetatable , tostring , unpack
 local tblremove = table.remove
-
+local coroutinewrap , coroutineyield = coroutine.wrap , coroutine.yield
 local ostime = os.time
 
 module ( "lomp.core.triggers" , package.see ( lomp ) )
 
 local callbacks = {
-	quit = { { func = function ( ) updatelog ( "Quiting" , 4 ) end , instant = true } } ;
+	quit = { { func = function ( ) updatelog ( "Quiting" , 4 ) end , instant = false } } ;
 
 	loop = { { func = function ( loop ) updatelog ( "loop set to " .. tostring ( loop ) , 5 ) end } } ;
 	ploffset = { { func = function ( ploffset ) updatelog ( "ploffset set to " .. ploffset , 5 ) end } } ;
@@ -31,7 +31,7 @@ local callbacks = {
 	playlist_clear = { { func = function ( plnum ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Cleared playlist #" .. plnum .. " (" .. pl.name .. ")" , 4 ) end } } ;
 	playlist_sort = { { func = function ( plnum ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Sorted playlist #" .. plnum .. " (" .. pl.name .. ")" , 4 ) end } } ;
 	playlist_newrevision = { { func = function ( plnum , revision ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Playlist #" .. plnum .. " (" .. pl.name .. ") has a new revision" , 4 ) end } ;
-		{ func = function ( plnum , revision ) if plnum == vars.softqueueplaylist then core.setploffset ( 0 ) end end } } ; -- If current soft queue playlist has changed, reset ploffset
+		{ func = function ( plnum , revision ) if plnum == vars.softqueueplaylist then core.setploffset ( 0 ) end end } } ; -- If it was the current soft queue playlist that changed, reset ploffset
 	
 	item_add = { { func = function ( plnum , position , numobjects ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Added " .. numobjects .. " item(s) to playlist #" .. plnum .. " (" .. pl.name .. ") at position #" .. position , 4 ) end } } ;
 	item_remove = { { func = function ( plnum , position ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Removed item from playlist #" .. plnum .. " (" .. pl.name .. ") position #" .. position --[[.. " Source: " .. pl [ position ].source]]  , 4 ) end } } ;
@@ -60,6 +60,7 @@ function register ( callback , func , name , instant )
 	t [ name ] = pos
 	return pos
 end
+
 function unregister ( callback , id )
 	local t = callbacks [ callback ]
 	if not t then return ferror ( "Deregister callback called with invalid callback" , 1 ) end
@@ -79,7 +80,20 @@ function unregister ( callback , id )
 	return true
 end
 
-local queue = { }
+local queue , qn = { } , 1 -- Qn is the next empty queue slot.
+local processqueue = coroutinewrap ( function ( )
+	local i = 1
+	while true do
+		if i < qn then
+			local ok , err = pcall ( unpack ( queue [ i ] ) )
+			if not ok then updatelog ( err ,  3 ) end
+			queue [ i ] = nil
+			i = i + 1
+		else
+			coroutineyield ( true )
+		end
+	end
+end )
 
 function fire ( callback , ... )
 	for i , v in ipairs ( callbacks [ callback ] ) do
@@ -87,19 +101,13 @@ function fire ( callback , ... )
 			local ok , err = pcall ( v.func , ... )
 			if not ok then updatelog ( err ,  3 ) end
 		else
-			queue [ #queue + 1 ] = { v.func , ... }
+			queue [ qn ] = { v.func , ... }
+			qn = qn + 1
 		end
 	end
 end
 
-addstep ( function ( ) 
-	for i , v in ipairs ( queue ) do 
-			local ok , err = pcall ( unpack ( v ) )
-			if not ok then updatelog ( err ,  3 ) end
-			queue [ i ] = nil
-		end 
-	end
-)
+addstep ( processqueue )
 
 register ( "playback_startsong" , function ( )
 		vars.queue [ 0 ].laststarted = ostime ( ) -- Better way to figure this out?

@@ -97,13 +97,13 @@ function addfolder ( path , pl , pos , recurse )
 	
 	local items = getdir ( path , recurse )
 	
-	if #items == 0 then return true end
+	if #items == 0 then return true , nil , 0 end
 	
 	if config.sortcaseinsensitive then tblsort ( items , function ( a , b ) if a.source:lower ( ) < b.source:lower ( ) then return true end end ) end -- Put in alphabetical order of path (case insensitive) 
 	
 	local firstpos , err = core.item.additems ( pl , pos , items )
 	if firstpos then
-		return firstpos
+		return true , firstpos , #items
 	else
 		return false , err
 	end
