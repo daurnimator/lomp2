@@ -17,7 +17,7 @@ end
 
 require "general"
 
-local getfenv , getmetatable , ipairs , loadstring , loadfile , newproxy , pairs , pcall , require , setmetatable , setfenv , tostring , type = getfenv , getmetatable , ipairs , loadstring , loadfile , newproxy , pairs , pcall , require , setmetatable , setfenv , tostring , type
+local collectgarbage , getfenv , getmetatable , ipairs , loadstring , loadfile , newproxy , pairs , pcall , require , setmetatable , setfenv , tostring , type = collectgarbage , getfenv , getmetatable , ipairs , loadstring , loadfile , newproxy , pairs , pcall , require , setmetatable , setfenv , tostring , type
 local osdate , osexit , ostime = os.date , os.exit , os.time
 local iotype , ioopen , iowrite , iostderr = io.type , io.open , io.write , io.stderr
 local tblconcat = table.concat
@@ -225,6 +225,13 @@ function var ( var )
 		end
 	end
 end
+
+-- Turn off the garbage collector
+collectgarbage ( "stop" )
+glib.idle_add ( glib.PRIORITY_DEFAULT_IDLE , function ( )
+		collectgarbage ( "collect" ) -- Do a garbage collection
+		collectgarbage ( "stop" ) -- Doing a collect turns the gc back on.... turn it off again.
+	return true end )
 
 -- Initialisation finished.
 updatelog ( "LOMP Loaded " .. osdate ( "%c" ) , 3 )

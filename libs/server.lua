@@ -7,18 +7,17 @@
 
 -- // wrapping luadch stuff // --
 
-local use = function( what )
-    return _G[ what ]
-end
 local clean = function( tbl )
     for i, k in pairs( tbl ) do
         tbl[ i ] = nil
     end
 end
 
-local table_concat = table.concat;
-local out_put = function (...) return lomp.updatelog( "INFO: " .. table_concat{...} , 5 ); end
-local out_error = function (...) return lomp.updatelog( "ERROR: " .. table_concat{...} , 5 ); end
+local log = lomp.updatelog
+local table_concat = table.concat
+
+local out_put = function (...) return log ( "INFO: " .. table_concat{...} , 5 ); end
+local out_error = function (...) return log ( "ERROR: " .. table_concat{...} , 5 ); end
 local mem_free = collectgarbage
 
 ----------------------------------// DECLARATION //--
@@ -29,26 +28,19 @@ local STAT_UNIT = 1    -- byte
 
 --// lua functions //--
 
-local type = use "type"
-local pairs = use "pairs"
-local ipairs = use "ipairs"
-local tostring = use "tostring"
-local collectgarbage = use "collectgarbage"
-
---// lua libs //--
-
-local os = use "os"
-local table = use "table"
-local string = use "string"
-local coroutine = use "coroutine"
+local type = type
+local pairs = pairs
+local ipairs = ipairs
+local tonumber = tonumber
+local tostring = tostring
+local collectgarbage = collectgarbage
+local setmetatable = setmetatable
 
 --// lua lib methods //--
 
 local os_time = os.time
 local os_difftime = os.difftime
-local table_concat = table.concat
 local table_remove = table.remove
-local string_len = string.len
 local string_sub = string.sub
 local coroutine_wrap = coroutine.wrap
 local coroutine_yield = coroutine.yield
@@ -370,7 +362,7 @@ wrapconnection = function( server, listeners, socket, ip, serverport, clientport
         return clientport
     end
     local write = function( data )
-        bufferlen = bufferlen + string_len( data )
+        bufferlen = bufferlen + #data
         if bufferlen > maxsendlen then
             _closelist[ handler ] = "send buffer exceeded"   -- cannot close the client at the moment, have to wait to the end of the cycle
             handler.write = idfalse    -- dont write anymore
@@ -442,7 +434,7 @@ wrapconnection = function( server, listeners, socket, ip, serverport, clientport
         local buffer, err, part = receive( socket, pattern )    -- receive buffer with "pattern"
         if not err or ( err == "timeout" or err == "wantread" ) then    -- received something
             local buffer = buffer or part or ""
-            local len = string_len( buffer )
+            local len = #buffer
             if len > maxreadlen then
                 disconnect( handler, "receive buffer exceeded" )
                 handler.close( true )
@@ -751,7 +743,7 @@ end
 
 local dontstop = true; -- thinking about tomorrow, ...
 
-setquitting = function (quit)
+local setquitting = function (quit)
 	dontstop = not quit;
 	return;
 end
@@ -828,9 +820,9 @@ end
 
 ----------------------------------// BEGIN //--
 
-use "setmetatable" ( _socketlist, { __mode = "k" } )
-use "setmetatable" ( _readtimes, { __mode = "k" } )
-use "setmetatable" ( _writetimes, { __mode = "k" } )
+setmetatable ( _socketlist, { __mode = "k" } )
+setmetatable ( _readtimes, { __mode = "k" } )
+setmetatable ( _writetimes, { __mode = "k" } )
 
 _timer = os_time( )
 _starttime = os_time( )
@@ -865,6 +857,7 @@ return {
     wrapclient = wrapclient,
     
     loop = loop,
+    setquitting = setquitting,
     step = step,
     stats = stats,
     closeall = closeall,
