@@ -60,7 +60,7 @@ function additems ( playlistnum , position , objects )
 	for i = 1 , objectn do
 		newrev [ position + i - 1 ] = objects [ i ]
 	end
-	pl.newrevision = newrev
+	core.playlist.newrevision ( pl , newrev )
 	
 	core.triggers.fire ( "item_add" , playlistnum , position , objectn )
 	
@@ -86,7 +86,7 @@ function removeitem ( playlistnum , position )
 		newrev [ i - 1 ] = pl [ i ]
 	end
 	
-	pl.newrevision = newrev
+	core.playlist.newrevision ( pl , newrev )
 	
 	core.triggers.fire ( "item_remove" , playlistnum , position , object )
 

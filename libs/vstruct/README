@@ -1,0 +1,415 @@
+Contents
+========
+1.	Overview
+2.	API
+3.	Warning!
+4.	The Format String
+		Naming
+		Grouping
+		Repetition
+        Bitpacks
+5.	Format Specifiers
+6.  Adding your own formats
+7.	Credits
+
+
+1. Overview
+===========
+VStruct is a library for Lua 5.1. It provides functions for manipulating binary
+data, in particular for unpacking binary files or byte buffers into Lua values
+and for packing Lua values back into files or buffers. Supported data types
+include:
+	- signed and unsigned integers of arbitrary byte width
+	- booleans and bitmasks
+	- plain and null-terminated strings
+	- fixed and floating point reals (the latter requires C module support)
+In addition, the library supports seeking, alignment, and byte order controls,
+repetition, grouping of data into tables, and naming of values within tables.
+
+
+
+2. API
+======	
+
+Variables
+---------
+
+    vstruct.cache = (true|false|nil)
+
+Enables or disables cacheing of compiled format strings. This can significantly
+improve performance in the common case where you are re-using the same strings
+many times; if, on the other hand, you are generating lots of different strings,
+this will have unfortunate implications for memory use and should be turned off.
+(If you're doing both, see vstruct.compile below.)
+
+If true, cacheing is enabled.
+If false, new cache entries will not be created but old ones will still be used.
+If nil, cacheing is disabled entirely.
+
+
+Functions
+---------
+
+    vstruct.pack(fmt, [fd], data)
+
+pack takes a format string and a table of data and packs the contents into a
+buffer. If the fd argument is present, it will write the data directly to it
+using standard file io methods (write and seek), and return the fd; otherwise
+it will construct and return a string.
+
+
+    vstruct.unpack(fmt, <fd or string>, [unpacked])
+
+unpack takes a format string and a buffer or file to unpack from, and returns
+the unpacked data as a table. If the _unpacked_ argument is true, it will return
+the unpacked data as a series of values rather than as a table, equivalent to
+using the standard Lua function unpack() on the return value. If the _unpacked_
+argument is a table, it will pack the results into that table rather than
+returning a new one.
+
+
+    vstruct.explode(int)
+	vstruct.implode(table)
+
+explode converts a bitmask into a list of booleans, and implode does the
+converse. In such lists, list[1] is the least significant bit, and list[n] the
+most significant.
+
+
+    vstruct.cursor(string)
+
+cursor wraps a string in something that looks, at first glance, like a file.
+This permits strings to be wrapped and passed to the vstruct IO functions. The
+wrapped string supports :seek, and has limited support for :read (the only
+supported calling mode is :read(num_bytes)) and :write (as :write(buffer)).
+
+
+    vstruct.compile(format)
+
+compile takes a format string and runs it through the compiler and code
+generator, but does not actually pack or unpack anything. Instead, it returns a
+table containing three values -
+
+    pack(fd, data) - equivalent to struct.pack(format, fd, data)
+    unpack(fd, [unpacked]) - equivalent to struct.unpack(format, fd, [unpacked])
+    source - a string containing the generated source for the format string.
+             Primarily of use when debugging.
+
+ In effect, the following code:
+	t = vstruct.compile(fmt)
+	d = t.unpack(fd)
+    t.pack(fd, d)
+Is equivalent to:
+	d = vstruct.unpack(fmt, fd)
+    vstruct.pack(fmt, fd, d)
+
+
+
+3. Warning!
+===========
+When reading and writing numeric formats, vstruct is inherently limited by lua's
+number format, which is by default the IEEE 754 double. What this means in
+practice is that formats cipPu may be subject to data loss when read in widths
+of 7 bytes or more, if they contain more than 52 significant bits. (The same is
+true of numeric constants declared in Lua itself, of course, and other libraries
+which store values in lua numbers).
+Formats bfmsxz are unaffected by this, as they either do not use lua numbers or
+are guaranteed to fit inside them.
+
+
+4. The Format String
+====================
+The format string contains any number of endianness controls, seek controls,
+format specifiers, and grouping/naming sequences, seperated by whitespace,
+commas, or semicolons (or any mix thereof, although you are encouraged to choose
+one and stick to it for the sake of consistency). Each of these is detailed
+below.
+
+In the documentation below, the convention is that A represents an address and W
+a width in bytes. At present only base-10 numerals are supported.
+
+
+Naming
+------
+Under normal operation, when unpacking, the library simply stores unpacked
+values sequentially into a list, which is returned. Similarly, when packing, it
+expects a list of values which will be packed in order. However, values can be
+named, in which case the unpacked value will be stored in a field with that
+name, and when packing, it will use the value stored with that key. This is done
+by prefixing the format specifier with the name (which can be any sequence of
+letters, numbers, and _, provided it does not start with a number) followed by a
+':'. For example, the following format would generate a table with three keys,
+'x', 'y', and 'z':
+	"x:u4 y:u4 z:u4"
+And, when packing, would expect a table with those three keys and store their
+corresponding values.
+
+If the same name is specified multiple times, or is combined with repetition
+(see below), only the last read value is stored there.
+
+Named and anonymous values can be freely mixed; the named values will be
+assigned to their given fields and the anonymous ones to sequential indices.
+
+
+Grouping
+--------
+Rather than generating or expecting a flat table, the library can be instructed to
+create or read from a table containing subtables. This is done by surrounding the
+group of values you wish to be packed with '{' and '}' in the format string. For example,
+the following format string:
+	"{ u4 i4 } { s32 u4 }"
+Would, rather than generating a list of four values, generate a list containing two
+lists of two values each.
+Similarly, when packing, it would expect not a flat list, but a list of sublists, from
+which the values to be packed will be drawn.
+
+Groups can be named, so formats like:
+	"flags:m1 coords:{ x:u4 y:u4 z:u4 }"
+Are permitted and meaningful.
+
+Names can also contain '.' characters, in which case table creation is implied;
+the following is equivalent to the above example:
+    "flags:m1 coords.x:u4 coords.y:u4 coords.z:u4"
+
+
+Repetition
+----------
+A {} group can be repeated by prefixing or suffixing it with a count, seperated
+from the group by a '*'. For example:
+	"4 * { u4 }"
+	"{ u4 } * 4"
+	"{ u4 } { u4 } { u4 } { u4 }"
+Are all equivalent. Note that the whitespace in the above examples is optional.
+
+In cases where you want to repeat format specifiers without implying a grouping,
+you can use (). For example:
+	"4 * (u4 b1)"
+Is equivalent to:
+	"u4 b1 u4 b1 u4 b1 u4"
+Like grouping, these can be nested arbitrarily.
+
+Finally, individual format items can also be repeated, as in "4 * u4".
+
+
+Bitpacks
+--------
+Bitpacks provide support for formats that store data bit-aligned inside larger
+fields - for example, using a uint16_t to store three five-bit unsigneds and a
+boolean.
+
+Bitpacks have the form:
+
+    '[' size '|' formats ']'
+
+'size' is the size, in *bytes*, of the field as a whole. 'formats' is the list
+of interior formats, with widths in *bits*. For example, the above would be
+represented as:
+
+    "[2| u5 u5 u5 b1 ]"
+
+Bitpacks presently support only the following interior formats:
+    b   boolean
+    i   signed int
+    m   bitmask
+    u   unsigned int
+    x   skip/pad
+See "Format Specifiers", below, for details on how they work. The usual naming,
+grouping, and repetition constructs are fully supported.
+
+Bitpacks respect endianness.
+
+
+5. Format Specifiers
+====================
+
+
+Endianness Controls
+-------------------
+The formats i, m, and u are affected by the endianness setting, which controls
+the order in which bytes are read and written within a field. The following
+characters in a format string adjust the endianness setting:
+
+<
+	Sets the endianness to little-endian (eg, Intel processors)
+>
+	Sets the endianness to big-endian (eg, PPC and Motorola processors)
+=
+	Sets the endianness to the native endianness.
+
+
+Seek Controls
+-------------
+These characters are used to seek to specific locations in the input or output.
+Note that they only work on buffers or file-like objects that support the seek()
+method; for streams which cannot be sought on, use the 'x' (skip/null-pad)
+data format instead.
+
+@A
+	Seek to absolute address A.
++A
+	Seek forward A bytes.
+-A
+	Seek backwards A bytes.
+aW
+	Align to word width W (seek to the next address which is a multiple of W)
+
+
+Data Format Specifiers
+----------------------
+bW	Boolean.
+	Read: as uW, but returns true if the result is non-zero and false otherwise.
+	Write: as uW with input 1 if true and 0 otherwise.
+
+cW	Counted string.
+	Read: uW to determine the length of the string W', followed by sW'.
+	Write: the length of the string as uW, followed by the string itself.
+	The counted string is a common idiom where a string is immediately prefixed
+	with its length, as in:
+		size_t len;
+		char[] str;
+	The counted string format can be used to easily read and write these. The
+	width provided is the width of the len field, which is treated as an
+	unsigned int. Only the string itself is returned (when unpacking) or
+	required (when packing).
+	The len field is affected by endianness, as in format u.
+
+fW	IEEE 754 floating point.
+	Valid widths are 4 (float) and 8 (double). No quads yet, sorry!
+	Affected by endianness.
+
+iW	Signed integer.
+	Read: a signed integer of width W bytes.
+	Write: a signed integer of width W bytes.
+	Floating point values will be truncated.
+	Affected by endianness.
+
+mW	Bitmask.
+	Read: as uW, but explodes the result into a list of booleans, one per bit.
+	Write: implodes the input value, then writes it as uW.
+	Affected by endianness.
+	See also: vstruct.implode, vstruct.explode.
+
+pW	Signed fixed point rational.
+	Width is in the format "I,F"; the value before the comma is the number of
+	bits in the integer part, and the value after, in the fractional part.
+	Read: a fixed point rational of (I+F)/8 bytes.
+	Write: a fixed point rational of (I+F)/8 bytes. Values which cannot be
+    exactly	represented in the specified width are truncated.
+	Affected by endianness.
+
+sW	String.
+	Read: reads exactly W bytes and returns them as a string. If W is omitted,
+      reads until EOF.
+	Write:
+	  If W is omitted, uses the string length.
+	  If W is shorter than the string length, truncates the string.
+	  If W is greater than the string length, null pads the string.
+
+uW	Unsigned integer.
+	Read: an unsigned integer of width W bytes.
+	Write: an unsigned integer of width W bytes.
+	Floating point values will be truncated.
+	Negative values will be taken absolute.
+	Affected by endianness.
+
+xW	Skip/pad.
+	Read: read and discard the next W bytes.
+	Write: write W zero bytes.
+
+zW	Null terminated string.
+	Read: reads exactly W bytes. Returns everything up to the first zero byte.
+	If W is omitted, reads up to the next zero byte.
+	Write: writes exactly W bytes.
+	If the input is shorter than W, zero pads the output.
+	If as long or longer, truncates to W-1 and writes a zero byte at the end.
+	If W is omitted, uses the string length plus one (ie, writes the string
+	out entire and then null terminates it).
+
+
+6. Adding New Formats
+=====================
+
+These instructions might be a bit unclear, and are mostly here so that I don't
+forget what the API is before 1.1 final is released. Suggestions for
+improvements are welcome; failing that, check the io/ directory for some real-
+world examples.
+
+
+Where to put them
+-----------------
+When vstruct first sees a format, it attempts to load it using
+
+    require(libname..".io."..format)
+    
+Assuming you've installed vstruct as vstruct, then, putting support for a new
+format F in <lua library path>/vstruct/io/F.lua will work.
+
+At runtime, you can use package.preload equivalently:
+    
+    package.preload["vstruct.io.F"] = <loader for F>
+
+
+What they should do
+-------------------
+
+When loaded, a format module should return a table containing some or all of the
+following functions. Note that whenever '...' appears in these signatures, it
+represents the comma-seperated arguments provided in the format string -
+typically nil or a single number, but some formats (such as p, fixed point) need
+more than one.
+
+    hasdata()
+    
+Returns true if, when packing, this format consumes a value from the data table.
+
+
+    width(...)
+
+Returns the exact amount of data this format will consume from the input if
+unpack is called, or the exact amount it will append to the output if pack is
+called, in bytes. If this cannot be determined until the functions are actually
+called, it should return nil.
+    
+
+    pack(fd, data, ...)
+    
+If possible, pack data into a string and return it. If not, manipulate fd
+directly to append data to it.
+    
+
+    unpack(fd, buffer, ...)
+    
+If width was specified, buffer will be a string of exactly width bytes; unpack
+it and return the value. If it wasn't, buffer will be nil and it's up to unpack
+to get the data it needs from the fd.
+
+
+    packbits(bit, data, ...)
+    
+Pack data bit by bit by passing each bit, LSB first, to the bit() function, as
+0 or 1.
+
+
+    unpackbits(bit, ...)
+
+Unpack data bit by bit. Each call to bit() will return 0 or 1, LSB first.
+    
+    
+7. Credits
+==========
+	While most of the library code was written by me (Ben Kelly), the existence
+of this library owes itself to many others:
+	The floating point code was contributed by Peter Cawley on lua-l.
+	The original inspiration came from Roberto Ierusalimschy's "struct" library
+and Luiz Henrique de Figueiredo's "lpack" library, as well as the "struct"
+available in Python.
+	sanooj, from #lua, has done so much testing and bug reporting that at this
+point he's practically a co-author; the 'struct-test-gen' module in test/ is
+his work.
+	The overall library design and  interface are the result of much discussion
+with rici, sanooj, Keffo, snogglethorpe, Spark, kozure, Vornicus, McMartin, and
+probably several others I've forgotten about on IRC (#lua on freenode and #code
+on nightstar).
+	Finally, without Looking Glass Studios to make System Shock, and Team TSSHP
+(in particular Jim "hairyjim" Cameron) to reverse engineer it, I wouldn't have
+had a reason to write this library in the first place.

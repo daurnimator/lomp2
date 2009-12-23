@@ -89,13 +89,7 @@ function new ( name , playlistnumber )
 				end 
 			end ;
 			__newindex = function ( playlist , k , v )
-				if k == "newrevision" and type ( v ) == "table" then
-					local newrevision = playlist.revision + 1
-					playlist.revisions [ newrevision ] = v
-					core.triggers.fire ( "playlist_newrevision" , getnum ( playlist ) , newrevision )
-				else
-					updatelog ( "PLAYLIST newindex\t" .. k .. "\t" .. tostring ( v ) , 2 )
-				end
+				updatelog ( "PLAYLIST newindex\t" .. k .. "\t" .. tostring ( v ) , 2 )
 			end ;
 			__len = function ( t ) -- FIX: Doesn't work on tables
 				return t.length
@@ -109,6 +103,12 @@ function new ( name , playlistnumber )
 	core.triggers.fire ( "playlist_create" , playlistnumber )
 	
 	return playlistnumber , name
+end
+
+function newrevision ( playlist , revision )
+	local newrevision = playlist.revision + 1
+	playlist.revisions [ newrevision ] = v
+	core.triggers.fire ( "playlist_newrevision" , getnum ( playlist ) , newrevision )
 end
 
 function delete ( num )
@@ -133,7 +133,7 @@ function clear ( num )
 		return ferror ( "'Clear playlist' called with invalid playlist" , 1 ) 
 	end
 	
-	pl.newrevision = { length = 0 }
+	newrevision ( pl , { length = 0 } )
 	
 	core.triggers.fire ( "playlist_clear" , num )
 	
@@ -146,7 +146,7 @@ function rename ( num , newname )
 		return ferror ( "'Rename playlist' called with invalid playlist" , 1 ) 
 	end
 	
-	pl.newrevision = { name = newname }
+	newrevision ( pl , { name = newname } )
 	
 	return true
 end
@@ -157,7 +157,7 @@ function randomise ( num )
 		return ferror ( "'Randomise playlist' called with invalid playlist" , 1 ) 
 	end
 	
-	pl.newrevision = tblrandomise ( collapserev ( pl.revisions , pl.revision ) , pl.length , true )
+	newrevision ( pl , tblrandomise ( collapserev ( pl.revisions , pl.revision ) , pl.length , true ) )
 	
 	core.triggers.fire ( "playlist_sort" , num )
 	
@@ -170,7 +170,7 @@ function sort ( num , eq )
 		return ferror ( "'Sort playlist' called with invalid playlist" , 1 )
 	end
 
-	pl.newrevision = tblstablesort ( collapserev ( pl.revisions , pl.revision ) , eq , true )
+	newrevision ( pl , tblstablesort ( collapserev ( pl.revisions , pl.revision ) , eq , true ) )
 	
 	core.triggers.fire ( "playlist_sort" , num )
 	
