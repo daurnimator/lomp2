@@ -642,13 +642,18 @@ local function httpserver ( conn , data, err )
 end
 
 function initiate ( host , port )
-	server.addserver ( {
+	local s , err = server.addserver ( {
 			incoming = httpserver ;
 			disconnect = function ( conn , err )
 				conns [ conn ] = nil
 			end ;
 		} , port , host , "*l" )
-	updatelog ( "HTTP Server started; bound to '" .. host .. "', port #" .. port , 4 )
+	if s then
+		updatelog ( "HTTP Server started; bound to '" .. host .. "', port #" .. port , 4 )
+		return true
+	else
+		return ferror ( "HTTP Server could not be started: " .. err , 1 )
+	end
 end
 
 initiate ( httpconfig.address , httpconfig.port )

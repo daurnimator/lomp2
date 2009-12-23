@@ -13,6 +13,8 @@ require "general"
 
 local error , pcall , require , select , tonumber , type , unpack = error , pcall , require , select , tonumber , type , unpack
 local tblconcat = table.concat
+local print = print
+local pairs = pairs
 
 module ( "eventserver" , package.see ( lomp ) )
 
@@ -194,13 +196,18 @@ function incoming ( conn , data , err )
 end
 
 function initiate ( host , port )
-	server.addserver ( {
+	local s , err = server.addserver ( {
 			incoming = incoming ;
 			disconnect = function ( conn , err )
 				connections [ conn ] = nil
 			end ;
-		} , port , host , "*l" )
-	updatelog ( "LOMP Event Server started; bound to '" .. host .. "', port #" .. port , 4 )
+		} , port , host , "*l" ) 
+	if s then
+		updatelog ( "LOMP Event Server started; bound to '" .. host .. "', port #" .. port , 4 )
+		return true
+	else
+		return ferror ( "Event Server could not be started: " .. err , 1 )
+	end
 end
 
 initiate ( config.address , config.port )

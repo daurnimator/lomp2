@@ -63,13 +63,13 @@ function filter ( int , out , func )
 end
 
 common = {
-	tag = function ( int , out , field , pattern ) 
+	tag = function ( int , out , field , pattern , plain )
 		return filter ( int , out , function ( item )
 			local tagfield = item.tags [ field ]
 			if not tagfield then return false end		
 			
 			for i , v in ipairs ( tagfield ) do
-				if v:find ( pattern ) then return true end
+				if v:find ( pattern , 1 , plain ) then return true end
 			end
 			
 			return false

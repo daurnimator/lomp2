@@ -39,19 +39,12 @@ local callbacks = {
 	playback_stop = { } ; -- ( type , source , offset )
 	playback_pause = { } ; -- ( offset )
 	playback_unpause = { } ; -- ( )
-	playback_startsong = { } ; -- ( type , source )
+	playback_startsong = { { func = function ( typ , source ) vars.queue [ 0 ].laststarted = ostime ( ) end , instant = true } } ;
 	playback_seek = { } ;
 	
 	player_abouttofinish = { { func = function ( ) updatelog ( "About to finish song" , 5 ) end } } ;
 	player_finished = { } ;
 }
-
-list = { }
-
-for k , v in pairs ( callbacks ) do
-	setmetatable ( v , { __mode = "k" } )
-	list [ #list + 1 ] = k
-end
 
 function register ( callback , func , name , instant )
 	local t = callbacks [ callback ]
@@ -68,6 +61,7 @@ function unregister ( callback , id )
 	local pos
 	if type ( id ) == "string" then
 		pos = t [ id ]
+		t [ id ] = nil
 	elseif type ( id ) == "number" then
 		pos = id
 	end
@@ -97,10 +91,10 @@ end )
 
 function fire ( callback , ... )
 	for i , v in ipairs ( callbacks [ callback ] ) do
-		if v.instant then
+		if v.instant then -- Fire instant callbacks right now
 			local ok , err = pcall ( v.func , ... )
 			if not ok then updatelog ( err ,  3 ) end
-		else
+		else -- Otherwise add them to the trigger queue
 			queue [ qn ] = { v.func , ... }
 			qn = qn + 1
 		end
@@ -108,7 +102,3 @@ function fire ( callback , ... )
 end
 
 addstep ( processqueue )
-
-register ( "playback_startsong" , function ( )
-		vars.queue [ 0 ].laststarted = ostime ( ) -- Better way to figure this out?
-	end , "Set Played" , true )

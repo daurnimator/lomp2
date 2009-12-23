@@ -17,8 +17,8 @@ local clean = function( tbl )
 end
 
 local table_concat = table.concat;
-local out_put = function (...) return lomp.updatelog( table_concat{...} , 5 ); end
-local out_error = function (...) return lomp.updatelog( table_concat{...} , 2 ); end
+local out_put = function (...) return lomp.updatelog( "INFO: " .. table_concat{...} , 5 ); end
+local out_error = function (...) return lomp.updatelog( "ERROR: " .. table_concat{...} , 5 ); end
 local mem_free = collectgarbage
 
 ----------------------------------// DECLARATION //--
