@@ -226,12 +226,12 @@ function var ( var )
 	end
 end
 
--- Turn off the garbage collector
+--[[ Turn off the garbage collector
 collectgarbage ( "stop" )
-glib.idle_add ( glib.PRIORITY_DEFAULT_IDLE , function ( )
+glib.idle_add ( glib.PRIORITY_DEFAULT_IDLE *50 , function ( )
 		collectgarbage ( "collect" ) -- Do a garbage collection
 		collectgarbage ( "stop" ) -- Doing a collect turns the gc back on.... turn it off again.
-	return true end )
+	return true end )--]]
 
 -- Initialisation finished.
 updatelog ( "LOMP Loaded " .. osdate ( "%c" ) , 3 )

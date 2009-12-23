@@ -120,7 +120,7 @@ function core.loop ( bool )
 	return true
 end
 
-core [ "repeat" ] = function ( bool )
+core [ "repeat" ] = function ( bool ) -- repeat is a keyword
 	if type ( bool ) ~= "boolean" then return ferror ( "Repeat called with invalid argument" ) end
 	vars.rpt = bool
 	return true

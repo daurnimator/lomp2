@@ -12,6 +12,7 @@
 require "general"
 
 local ipairs , loadstring , pairs , print , require , select , setfenv , tostring , type = ipairs , loadstring , pairs , print , require , select , setfenv , tostring , type
+local tblconcat = table.concat
 
 module ( "lomp" )
 
@@ -20,52 +21,53 @@ require "core.info"
 
 function core.listpl ( )
 	local info = core.info.getlistofplaylists ( )
-	local str = "Listing Playlists:\n" 
+	local t = { "Listing Playlists:" } 
 	for i , v in ipairs ( info ) do
-		str = str .. "Playlist #" .. v.index .. "\t" .. v.name .. "\trev: " .. v.revision .. " Items " .. v.items .. "\n"
+		t [ #t + 1 ] = "Playlist #" .. v.index .. "\t" .. v.name .. "\trev: " .. v.revision .. " Items " .. v.items .. "\n"
 	end
-	return str
+	return tblconcat ( t , "\n" )
 end
 
 function core.listentries ( pl )
 	local info , revision = core.playlist.fetch ( pl )
-	local s = "Listing Playlist #" .. pl .. " \t(Revision: " .. revision .. ")\n"
+	local t = { "Listing Playlist #" .. pl .. " \t(Revision: " .. revision .. ")" }
 	for i , v in ipairs ( info ) do
-		s = s .. "Entry #" .. i .. " \t(" .. v.typ .. ") \tSource: '" .. v.source .. "'\n"
+		t [ #t + 1 ] = "Entry #" .. i .. " \t(" .. v.typ .. ") \tSource: '" .. v.source .. "'"
 	end
-	return s
+	return tblconcat ( t , "\n" )
 end
 
 function core.listallentries ( )
-	local s = ""
+	local t = { }
 	for k , v in pairs ( vars.playlist ) do if type ( k ) == "number" then
-		s = s .. core.listentries ( k )
+		t [ #t + 1 ] = core.listentries ( k )
 	end end
-	return s
+	return tblconcat ( t , "\n"  )
 end
 
 function core.listqueue ( )
-	local s = "Listing Queue\nSoft Queue is currently: " .. vars.softqueueplaylist .. "\n"
-	s = s .. "Currently Looping? " .. tostring ( vars.loop ) .. "\n"
+	local t = { "Listing Queue" , "Soft Queue is currently: " .. vars.softqueueplaylist ,
+		"Currently Looping? " .. tostring ( vars.loop ) }
+		
 	if vars.queue[0] then
-		s = s .. "Current Song: " .. " \t(" .. vars.queue [ 0 ].typ .. ") \tSource: '" .. vars.queue [ 0 ].source .. "'\n"
+		t [ #t + 1 ] = "Current Song: " .. " \t(" .. vars.queue [ 0 ].typ .. ") \tSource: '" .. vars.queue [ 0 ].source
 	end
 	local i = 1
 	while true do
 		local v = vars.queue [ i ]
 		if not v then break end
-		s = s .. "Entry #" .. i .. " \t(" .. v.typ .. ") \tSource: '" .. v.source .. "' " .. "\n"
+		t [ #t + 1 ] = "Entry #" .. i .. " \t(" .. v.typ .. ") \tSource: '" .. v.source .. "' "
 		i = i + 1
 	end
-	return vars.queue , s
+	return vars.queue , tblconcat ( t , "\n"  )
 end
 
 function core.listplayed ( )
-	local s = "Listing Played Songs (most recent first) \t(Last Revision: " .. vars.played.revision .. ")\n"
+	local t = { "Listing Played Songs (most recent first) \t(Last Revision: " .. vars.played.revision .. ")" }
 	for i , v in ipairs ( vars.played ) do
-		s = s .. "Entry #" .. i .. " \t(" .. v.typ .. ") \tSource: '" .. v.source .. "'\n"
+		t [ #t + 1 ] = "Entry #" .. i .. " \t(" .. v.typ .. ") \tSource: '" .. v.source .. "'"
 	end
-	return vars.played , s
+	return vars.played , tblconcat ( t , "\n"  )
 end
 
 function getvar ( varstring )
