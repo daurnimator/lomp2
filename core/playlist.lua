@@ -30,6 +30,18 @@ function getnum ( playlist )
 	return playlist.index
 end
 
+function getpl ( id )
+	local pl , num
+	if type ( id ) == "number" then
+		num = id
+		pl = getplaylist ( num )
+	elseif type ( id ) == "playlist" then
+		pl = id
+		num = getnum ( pl )
+	end
+	return pl , num
+end
+
 local function playlistval ( revisions , k , latest , earliest )
 	if type ( k ) == "number" and k > playlistval ( revisions , "length" , latest , 0 ) then return nil end
 	
@@ -57,8 +69,8 @@ local function collapserev ( revisions , latest , earliest )
 	return t
 end
 
-function fetch ( num , latest , earliest )
-	local pl = getplaylist ( num )
+function fetch ( id , latest , earliest )
+	local pl , num = getpl ( id )
 	if not pl then return ferror ( "Fetch called with invalid playlist" , 3 ) end
 	latest = latest or pl.revision
 	earliest = earliest or 0
@@ -76,15 +88,15 @@ function new ( name , playlistnumber )
 	playlistnumber = playlistnumber or ( #vars.playlist + 1 )
 	
 	local pl = setmetatable ( {
-			revisions = { [ 0 ] = { name = name , length = 0 } } ;
+			revisions = { [ 0 ] = { name = name , length = 0 } };
 			index = playlistnumber ;
 		} , {
 			__index = function ( t , k )
 				if k == "revision" then 
-					return #t.revisions 
+					return #t.revisions
 				elseif type ( _M [ k ] ) == "function" and k ~= "new" then
-					return function ( self , ... ) return _M [ k ] ( getnum ( self ) , ... ) end
-				else 
+					return function ( self , ... ) return _M [ k ] ( self , ... ) end
+				else
 					return playlistval ( t.revisions , k , t.revision , 0 )
 				end 
 			end ;
@@ -94,6 +106,7 @@ function new ( name , playlistnumber )
 			__len = function ( t ) -- FIX: Doesn't work on tables
 				return t.length
 			end ;
+			__type = function ( t ) return "playlist" end ;
 		}
 	)
 		
@@ -107,12 +120,13 @@ end
 
 function newrevision ( playlist , revision )
 	local newrevision = playlist.revision + 1
-	playlist.revisions [ newrevision ] = v
+	playlist.revisions [ newrevision ] = revision
 	core.triggers.fire ( "playlist_newrevision" , getnum ( playlist ) , newrevision )
+	return newrevision
 end
 
-function delete ( num )
-	local pl = getplaylist ( num )
+function delete ( id )
+	local pl , num = getpl ( id )
 	if not pl then
 		return ferror ( "'Delete playlist' called with invalid playlist" , 1 ) 
 	end
@@ -127,8 +141,8 @@ function delete ( num )
 	return true
 end
 
-function clear ( num )
-	local pl = getplaylist ( num )
+function clear ( id )
+	local pl , num = getpl ( id )
 	if not pl then
 		return ferror ( "'Clear playlist' called with invalid playlist" , 1 ) 
 	end
@@ -140,8 +154,8 @@ function clear ( num )
 	return true
 end
 
-function rename ( num , newname )
-	local pl = getplaylist ( num )
+function rename ( id , newname )
+	local pl , num = getpl ( id )
 	if not pl then
 		return ferror ( "'Rename playlist' called with invalid playlist" , 1 ) 
 	end
@@ -151,8 +165,8 @@ function rename ( num , newname )
 	return true
 end
 
-function randomise ( num )
-	local pl = getplaylist ( num )
+function randomise ( id )
+	local pl , num = getpl ( id )
 	if not pl then
 		return ferror ( "'Randomise playlist' called with invalid playlist" , 1 ) 
 	end
@@ -164,8 +178,8 @@ function randomise ( num )
 	return true
 end
 
-function sort ( num , eq )
-	local pl = getplaylist ( num )
+function sort ( id , eq )
+	local pl , num = getpl ( id )
 	if not pl then
 		return ferror ( "'Sort playlist' called with invalid playlist" , 1 )
 	end

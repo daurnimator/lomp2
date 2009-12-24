@@ -55,22 +55,26 @@ function addfile ( path , pl , pos )
 end
 
 -- Returns an array of items
-local function getdir ( path , recurse )
+local function getdir ( path , recurse , hiddenfiles )
 	local items = { }
 	
-	for entry in lfs.dir ( path ) do
-		local fullpath = path .. "/" .. entry
-		local mode = lfs.attributes ( fullpath , "mode" )
-		if mode == "file" then
-			local a , err = checkfileaccepted ( fullpath )
-			if a then
-				items [ #items + 1 ] = core.item.create ( "file" , fullpath )
-			else -- no return - keep going (even after a failure)
-				ferror ( err , 5 )
-			end
-		elseif mode == "directory" and entry ~= "." and entry ~= ".." then
-			if recurse > 0 then 
-				tblappend ( items , getdir ( fullpath , recurse - 1 ) )
+	local ok , iter = pcall ( lfs.dir , path )
+	if not ok then return ferror ( "Error reading directory: " .. iter , 2 ) end
+	for entry in iter do
+		if hiddenfiles or entry:sub(1,1) ~= "." then
+			local fullpath = path .. "/" .. entry
+			local mode = lfs.attributes ( fullpath , "mode" )
+			if mode == "file" then
+				local a , err = checkfileaccepted ( fullpath )
+				if a then
+					items [ #items + 1 ] = core.item.create ( "file" , fullpath )
+				else -- no return - keep going (even after a failure)
+					ferror ( err , 5 )
+				end
+			elseif mode == "directory" and entry ~= "." and entry ~= ".." then
+				if recurse > 0 then 
+					tblappend ( items , getdir ( fullpath , recurse - 1 , hiddenfiles ) )
+				end
 			end
 		end
 	end
@@ -78,7 +82,7 @@ local function getdir ( path , recurse )
 	return items
 end
 
-function addfolder ( path , pl , pos , recurse )
+function addfolder ( path , pl , pos , recurse , hiddenfiles )
 	if recurse then
 		if type ( recurse ) ~= "number" then
 			recurse = 500 -- Max 500 level deep recursion
@@ -93,13 +97,17 @@ function addfolder ( path , pl , pos , recurse )
 	if type ( pl ) ~= "number" or not vars.playlist [ pl ] then return ferror ( "'Add folder' called with invalid playlist" , 1 ) end
 	if type ( pos ) ~= "number" then pos = nil end
 	
-	updatelog ( "Adding folder '" .. path .. "' to playlist #" .. pl , 3 )
+	--updatelog ( "Adding folder '" .. path .. "' to playlist #" .. pl , 3 )
 	
-	local items = getdir ( path , recurse )
+	local items , err = getdir ( path , recurse , hiddenfiles )
+	if not items then return items , err
+	elseif #items == 0 then return true , nil , 0 end
 	
-	if #items == 0 then return true , nil , 0 end
-	
-	if config.sortcaseinsensitive then tblsort ( items , function ( a , b ) if a.source:lower ( ) < b.source:lower ( ) then return true end end ) end -- Put in alphabetical order of path (case insensitive) 
+	local comparefunc
+	if config.sortcaseinsensitive then
+		comparefunc = function ( a , b ) if a.source:lower ( ) < b.source:lower ( ) then return true end end -- Put in alphabetical order of path (case insensitive) 
+	end
+	tblsort ( items , comparefunc )
 	
 	local firstpos , err = core.item.additems ( pl , pos , items )
 	if firstpos then

@@ -40,8 +40,8 @@ function copyitem ( item )
 	return tblcopy ( item )
 end
 
-function additems ( playlistnum , position , objects )
-	local pl = core.playlist.getplaylist ( playlistnum )
+function additems ( plid , position , objects )
+	local pl , playlistnum = core.playlist.getpl ( plid )
 	if not pl then return ferror ( "'Add Item' called with invalid playlist" , 1 ) end
 	local pllength = pl.length
 	
@@ -71,8 +71,8 @@ function additem ( playlistnum , position , object )
 	return additems ( playlistnum , position , { object } )
 end
 
-function removeitem ( playlistnum , position )
-	local pl = core.playlist.getplaylist ( playlistnum )
+function removeitem ( plid , position )
+	local pl , playlistnum = core.playlist.getpl ( plid )
 	if not pl then return ferror ( "'Remove item' called with invalid playlist" , 1 ) end
 	if type ( position ) ~= "number" or not pl [ position ] then
 		return ferror ( "'Remove item' called with invalid item" , 1 ) 
@@ -93,10 +93,10 @@ function removeitem ( playlistnum , position )
 	return true
 end
 
-function copytoplaylist ( oldplnum , oldpos , newplnum , newpos )
-	local newpl = core.playlist.getplaylist ( newplnum )
+function copytoplaylist ( oldplid , oldpos , newplid , newpos )
+	local newpl , newplnum = core.playlist.getpl ( newplid )
 	if not newpl then return ferror ( "'Copy to playlist' called with invalid new playlist" , 1 ) end
-	local oldpl = core.playlist.getplaylist ( oldplnum )
+	local oldpl , oldplnum = core.playlist.getpl ( oldplid )
 	if not oldpl then return ferror ( "'Copy to playlist' called with invalid old playlist" , 1 ) end
 	if not oldpl [ pos ] then
 		return ferror ( "'Copy to playlist' called with invalid old item position" , 1 ) 
@@ -112,10 +112,10 @@ function copytoplaylist ( oldplnum , oldpos , newplnum , newpos )
 	return newpos
 end
 
-function movetoplaylist ( oldplnum , oldpos , newplnum , newpos )
-	local newpl = core.playlist.getplaylist ( newplnum )
+function movetoplaylist ( oldplid , oldpos , newplid , newpos )
+	local newpl , newplnum = core.playlist.getpl ( newplid )
 	if not newpl then return ferror ( "'Move to playlist' called with invalid new playlist" , 1 ) end
-	local oldpl = core.playlist.getplaylist ( oldplnum )
+	local oldpl , oldplnum = core.playlist.getpl ( oldplid )
 	if not oldpl then return ferror ( "'Move to playlist' called with invalid old playlist" , 1 ) end
 	
 	local object = oldpl [ oldpos ]

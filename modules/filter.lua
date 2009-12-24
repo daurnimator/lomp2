@@ -34,7 +34,7 @@ local function makeplaylist ( filterresults )
 	playlistfilters = playlistfilters + 1
 	
 	local playlistnum = core.playlist.new ( "Filter Results #" .. playlistfilters )
-	local pl =  core.playlist.getplaylist ( playlistnum )
+	local pl = core.playlist.getplaylist ( playlistnum )
 	core.playlist.newrevision ( pl , filterresults )
 	
 	return playlistnum
