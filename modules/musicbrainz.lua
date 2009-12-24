@@ -11,10 +11,15 @@
 
 require "general"
 
-local require = require
+local ipairs , pairs , require , type = ipairs , pairs , require , type
 local tblconcat = table.concat
-local print = print
+
 module ( "lomp.musicbrainz" , package.see ( lomp ) )
+
+local prefix = "musicbrainz.org/ws"
+local version = 1
+
+local baseurl = "http://" .. prefix .. "/" .. version .. "/"
 
 local http = require "socket.http"
 local ltn12 = require "ltn12"
@@ -22,17 +27,23 @@ local urlescape = require "socket.url".escape
 
 local lxp = require "lxp"
 
-function lookuptrack ( mbid , inc )
-	local url = { "http://musicbrainz.org/ws/1/track/" , mbid , "?type=xml&inc=tags" }
+local function lookup ( ft , mbid , inc )
+	local typ = ft.typ
+ 	local url = { baseurl , typ , "/" , mbid , "?type=xml&inc=tags" }
 	for i , v in ipairs ( inc or { } ) do
-		url [ i*2 + 2 ] = "+"
-		url [ i*2 + 3 ] = v
+		url [ i*2 + 4 ] = "+"
+		url [ i*2 + 5 ] = v
 	end
 	
-	local stack = { { } }
+	local result = { }
+	local stack = { result }
 	local parser = lxp.new ( {
 		StartElement = function ( parser , elementName , attributes )
-			stack [ #stack + 1 ] = { tag = elementName , attributes = attributes }
+			local t = { elementName = elementName }
+			for k , v in ipairs ( attributes ) do
+				t [ v ] = attributes [ v ]
+			end
+			stack [ #stack + 1 ] = t
 		end ;
 		EndElement = function ( parser , elementName )
 			local top = #stack
@@ -60,19 +71,25 @@ function lookuptrack ( mbid , inc )
 		end ;
 	}
 	
-	return unpack ( stack )
+	return result
 end
 
-function searchtrack ( fields )
-	local url = { "http://musicbrainz.org/ws/1/track/?type=xml" }
+local function search ( ft , fields )
+	local typ = ft.typ
+	local url = { baseurl .. typ .. "/?type=xml" }
 	for k , v in pairs ( fields ) do
 		url [ #url + 1 ] = urlescape ( k ) .. "=" .. urlescape ( v )
 	end
 	
-	local stack = { { } }
+	local result = { }
+	local stack = { result }
 	local parser = lxp.new ( {
 		StartElement = function ( parser , elementName , attributes )
-			stack [ #stack + 1 ] = { tag = elementName , attributes = attributes }
+			local t = { elementName = elementName }
+			for k , v in ipairs ( attributes ) do
+				t [ v ] = attributes [ v ]
+			end
+			stack [ #stack + 1 ] = t
 		end ;
 		EndElement = function ( parser , elementName )
 			local top = #stack
@@ -100,8 +117,22 @@ function searchtrack ( fields )
 		end ;
 	}
 	
-	return unpack ( stack )
+	if c == 200 then
+		return result
+	else
+		return false , c
+	end
 end
-	
---print(table.serialise(lomp.musicbrainz.searchtrack({artist="Daft Punk",title="Da Funk" } )))
+
+local function reg ( t )
+	_M [ t.typ ] = t
+end
+reg { search = search , lookup = lookup , typ = "artist" }
+reg { search = search , lookup = lookup , typ = "release-group" }
+reg { search = search , lookup = lookup , typ = "release" }
+reg { search = search , lookup = lookup , typ = "track" }
+reg { search = search , lookup = lookup , typ = "label" }
+reg { search = search , submision = nil , typ = "tag" } -- folksonomy
+
+--print(table.serialise(lomp.musicbrainz.search( "track" , {artist="Daft Punk",title="Da Funk" } )))
 --"162d8cc7-6e1c-41ba-b993-d5fb5bb974ae"
