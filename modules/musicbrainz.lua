@@ -71,7 +71,11 @@ local function lookup ( ft , mbid , inc )
 		end ;
 	}
 	
-	return result
+	if c == 200 then
+		return result [ 1 ] [ 1 ]
+	else
+		return false , c
+	end
 end
 
 local function search ( ft , fields )
@@ -118,7 +122,7 @@ local function search ( ft , fields )
 	}
 	
 	if c == 200 then
-		return result
+		return result [ 1 ] [ 1 ]
 	else
 		return false , c
 	end
