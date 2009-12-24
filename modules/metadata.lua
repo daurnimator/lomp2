@@ -9,9 +9,9 @@
 	You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ]]
 
-local prefix = (...):match("^(.-)[^%.]*$")
-
 require "general"
+
+local prefix = (...):match("^(.-)[^%.]*$")
 
 local ipairs , pairs , require , setmetatable , type , unpack = ipairs , pairs , require , setmetatable , type , unpack
 local osdate , ostime = os.date , os.time
