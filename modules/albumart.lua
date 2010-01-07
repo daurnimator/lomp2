@@ -15,7 +15,6 @@ local ipairs , pcall , require = ipairs , pcall , require
 
 module ( "lomp.albumart" , package.see ( lomp ) )
 
-pcall ( require , "luarocks.require" ) -- Activates luarocks if available.
 local lfs = require "lfs"
 
 local formats = {

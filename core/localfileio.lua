@@ -17,8 +17,6 @@ local ioopen = io.open
 
 module ( "lomp.core.localfileio" , package.see ( lomp ) )
 
-pcall ( require , "luarocks.require" ) -- Activates luarocks if available.
-
 local lfs = require "lfs"
 
 function checkfileaccepted ( path )
@@ -51,7 +49,8 @@ function addfile ( path , pl , pos )
 	if not fd then return ferror ( "Unable to add file: '" .. path .. "' : " .. err , 1 ) end
 	fd:close ( )
 	
-	return core.item.additem ( core.item.create ( "file" , path ) , pl , pos )
+	local item = core.item.create ( "file" , path )
+	return core.item.additem ( item , pl , pos )
 end
 
 -- Returns an array of items

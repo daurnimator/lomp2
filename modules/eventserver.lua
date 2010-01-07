@@ -18,7 +18,6 @@ local pairs = pairs
 
 module ( "eventserver" , package.see ( lomp ) )
 
-pcall ( require , "luarocks.require" ) -- Activates luarocks if available.
 local server = require "server"
 local Json = require "Json"
 

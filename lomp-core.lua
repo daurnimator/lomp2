@@ -106,7 +106,7 @@ end
 -- Misc Helper Functions
 
 function core.reloadlibrary ( )
-	local playlistnum = core.playlist.getnum ( vars.library )
+	local pl , playlistnum = core.playlist.getpl ( vars.library )
 	core.playlist.clear ( playlistnum )
 	for i , v in ipairs ( config.library ) do
 		core.localfileio.addfolder ( v , playlistnum , nil , true )
@@ -138,8 +138,11 @@ function core.setploffset ( num )
 	return num
 end
 
-function core.setsoftqueueplaylist ( num )
-	if type ( num ) ~= "number" or not vars.playlist [ num ] then 
+-- Returns the playlist's index, and the new playlist's length
+function core.setsoftqueueplaylist ( id )
+	local pl , num = core.playlist.getpl ( id )
+	
+	if type ( pl ) ~= "playlist" then 
 		return ferror ( "'Set soft queue playlist' called with invalid playlist" , 1 ) 
 	end
 	
@@ -148,7 +151,7 @@ function core.setsoftqueueplaylist ( num )
 		core.setploffset ( 0 )
 	end
 	
-	return num
+	return num , pl.length
 end
 
 do -- Restore State
@@ -165,21 +168,29 @@ do -- Restore State
 end
 
 -- Queue Stuff
-
+vars.currentsong = false
 vars.queue = setmetatable ( { } , {
 	__index = function ( t , k )
-		if type ( k ) ~= "number" or k < 1 then return nil end
-		if k <= vars.hardqueue.length then
-			return vars.hardqueue [ k ]
+		if type ( k ) ~= "number" or k < 0 then return nil end
+		if k == 0 then return vars.currentsong end
+		
+		local hardqueue = vars.hardqueue
+		if k <= hardqueue.length then
+			return hardqueue [ k ]
 		else
-			local softqueuelen = vars.playlist [ vars.softqueueplaylist ].length
-			if softqueuelen > 0 then
-				local insoft = vars.ploffset + k - vars.hardqueue.length
-				if insoft > softqueuelen and vars.loop and ( insoft - softqueuelen ) < vars.ploffset then
-					insoft = insoft - softqueuelen
-				end
-				return vars.playlist [ vars.softqueueplaylist ] [ insoft ] -- This could be an item OR nil
+			k = k - vars.hardqueue.length
+			local sqpl = core.playlist.getpl ( vars.softqueueplaylist )
+			
+			local sqpllen = sqpl.length
+			
+			if vars.loop then
+				vars.ploffset = vars.ploffset % sqpllen -- Enables looping behaviour
 			end
+			
+			return sqpl [ vars.ploffset + k ] -- This could be an item OR nil
 		end
+	end ;
+	__newindex = function ( t , k , v )
+		updatelog ( "Attempted newindex assignment on queue: " .. k , 1 )
 	end ;
 } )

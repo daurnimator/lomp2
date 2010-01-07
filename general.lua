@@ -9,7 +9,7 @@
 	You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ]]
 
-local assert , error , getmetatable , ipairs , pairs , rawget , setmetatable , tostring , type = assert , error , getmetatable , ipairs , pairs , rawget , setmetatable , tostring , type
+local assert , error , getmetatable , pairs , rawget , setmetatable , tostring , type = assert , error , getmetatable , pairs , rawget , setmetatable , tostring , type
 local tblconcat = table.concat
 local strformat = string.format
 local random , randomseed = math.random , math.randomseed
@@ -34,6 +34,7 @@ do
 			return rawpairs ( t )
 		end
 	end
+	_G.pairs = pairs
 	
 	local rawtype = type
 	function type ( t )
@@ -44,9 +45,10 @@ do
 			return rawtype ( t )
 		end
 	end
+	_G.type = type
 end
 
-function toboolean ( o , strmode )
+function _G.toboolean ( o , strmode )
 	if strmode and o == "false" then return false end
 	return not not o
 end
@@ -112,9 +114,12 @@ end
 -- Append a tbl to another
  -- newtbl is the table that will have tbl appended to it
 function table.append ( newtbl , tbl )
-	for i , v in ipairs ( tbl ) do
-		newtbl [ #newtbl + 1 ] = v
+	newtbl = newtbl or { }
+	local base = #newtbl
+	for i=1 , #tbl do
+		newtbl [ base + i ] = tbl [ i ]
 	end
+	return newtbl
 end
 
 -- Discards all values after the given index
@@ -123,15 +128,6 @@ end
 		t[i] = nil
 	end 
 	return t
-end
-
--- Filter a function throught it: it will discard the first "skip" number of arguments
- -- Sort of like select
-function packn ( skip , _ , ... ) 
-	if skip == 0 then
-		return { _ , ... }
-	else return packn ( skip - 1 , ... ) 
-	end
 end
 
 -- Randomise a table
@@ -176,22 +172,14 @@ function table.stablesort ( a , equalitycheck , newtable )
 	end
 end
 
--- Returns a shallow copy of tbl
-function table.copy ( tbl )
-	local t = { }
+-- Does a shallow copy of tbl, destination table is optional
+ -- returns the copy.
+function table.copy ( tbl , desttbl )
+	local desttbl = desttbl or { }
 	for k , v in pairs ( tbl ) do
-		t [ k ] = v
+		desttbl [ k ] = v
 	end
-	return t
-end
-
--- Returns a non-deep copy of numerical indexed values of tbl 
-function table.indexedcopy ( tbl )
-	local t = { }
-	for i , v in ipairs ( tbl ) do
-		t [ i ] = v
-	end
-	return t
+	return desttbl
 end
 
 -- Copy tbl2's values into tbl1 where the matching tbl1 key (or index) doesn't exist

@@ -20,30 +20,34 @@ require "core.triggers"
 
 function getplaylist ( playlistnum )
 	if type ( playlistnum ) ~= "number" or not vars.playlist [ playlistnum ] then
-		return ferror ( "getplaylist called with invalid playlist" , 3 )
+		return ferror ( "'getplaylist' called with invalid playlist index" , 3 )
 	else
 		return vars.playlist [ playlistnum ]
 	end	
 end
 
-function getnum ( playlist )
-	return playlist.index
+function getnum ( pl )
+	if type ( pl ) == "playlist" then
+		return playlist.index
+	else
+		return ferror ( "'getnum' called with invalid playlist" , 3 )
+	end
 end
 
 function getpl ( id )
 	local pl , num
 	if type ( id ) == "number" then
-		num = id
-		pl = getplaylist ( num )
+		pl = getplaylist ( id )
+		num = pl and id
 	elseif type ( id ) == "playlist" then
-		pl = id
-		num = getnum ( pl )
+		num = getnum ( id )
+		pl = num and id
 	end
-	return pl , num
+	return pl , num or "'getpl' called with invalid id"
 end
 
 local function playlistval ( revisions , k , latest , earliest )
-	if type ( k ) == "number" and k > playlistval ( revisions , "length" , latest , 0 ) then return nil end
+	if type ( k ) == "number" and k > playlistval ( revisions , "length" , latest , 0 ) then return nil end -- If trying to index past the length of the playlist
 	
 	for i = latest , earliest , -1 do
 		local r = revisions [ i ]
@@ -71,7 +75,7 @@ end
 
 function fetch ( id , latest , earliest )
 	local pl , num = getpl ( id )
-	if not pl then return ferror ( "Fetch called with invalid playlist" , 3 ) end
+	if type ( pl ) ~= "playlist" then return ferror ( "'fetch' called with invalid playlist" , 3 ) end
 	latest = latest or pl.revision
 	earliest = earliest or 0
 	if type ( latest ) ~= "number" or type ( earliest ) ~= "number" then return ferror ( "Fetch called with bad revision" , 3 ) end

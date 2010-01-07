@@ -29,10 +29,15 @@ require "modules.metadata"
 
 require "core.localfileio"
 
+types = {
+	file = true ;
+}
+
 function create ( typ , source , createdtime )
+	if not types [ typ ] then return ferror ( "Tried to create item with invalid type" , 1 ) end
 	return setmetatable ( 
 		{ typ = typ , source = source , laststarted = false , created = createdtime or ostime ( ) } ,
-		{ __index = function ( t , k ) return metadata.getdetails ( t.source ) [ k ] end }
+		{ __index = function ( t , k ) return metadata.getdetails ( t.typ , t.source ) [ k ] end }
 	)
 end
 
@@ -42,7 +47,7 @@ end
 
 function additems ( plid , position , objects )
 	local pl , playlistnum = core.playlist.getpl ( plid )
-	if not pl then return ferror ( "'Add Item' called with invalid playlist" , 1 ) end
+	if type ( pl ) ~= "playlist" then return ferror ( "'Add Item' called with invalid playlist" , 1 ) end
 	local pllength = pl.length
 	
 	if position and ( type ( position ) ~= "number" or position > ( pl.length + 1 ) ) then
@@ -73,7 +78,7 @@ end
 
 function removeitem ( plid , position )
 	local pl , playlistnum = core.playlist.getpl ( plid )
-	if not pl then return ferror ( "'Remove item' called with invalid playlist" , 1 ) end
+	if type ( pl ) ~= "playlist" then return ferror ( "'Remove item' called with invalid playlist" , 1 ) end
 	if type ( position ) ~= "number" or not pl [ position ] then
 		return ferror ( "'Remove item' called with invalid item" , 1 ) 
 	end
@@ -95,9 +100,9 @@ end
 
 function copytoplaylist ( oldplid , oldpos , newplid , newpos )
 	local newpl , newplnum = core.playlist.getpl ( newplid )
-	if not newpl then return ferror ( "'Copy to playlist' called with invalid new playlist" , 1 ) end
+	if type ( newpl ) ~= "playlist" then return ferror ( "'Copy to playlist' called with invalid new playlist" , 1 ) end
 	local oldpl , oldplnum = core.playlist.getpl ( oldplid )
-	if not oldpl then return ferror ( "'Copy to playlist' called with invalid old playlist" , 1 ) end
+	if type ( oldpl ) ~= "playlist" then return ferror ( "'Copy to playlist' called with invalid old playlist" , 1 ) end
 	if not oldpl [ pos ] then
 		return ferror ( "'Copy to playlist' called with invalid old item position" , 1 ) 
 	end
@@ -114,9 +119,9 @@ end
 
 function movetoplaylist ( oldplid , oldpos , newplid , newpos )
 	local newpl , newplnum = core.playlist.getpl ( newplid )
-	if not newpl then return ferror ( "'Move to playlist' called with invalid new playlist" , 1 ) end
+	if type ( newpl ) ~= "playlist" then return ferror ( "'Move to playlist' called with invalid new playlist" , 1 ) end
 	local oldpl , oldplnum = core.playlist.getpl ( oldplid )
-	if not oldpl then return ferror ( "'Move to playlist' called with invalid old playlist" , 1 ) end
+	if type ( oldpl ) ~= "playlist" then return ferror ( "'Move to playlist' called with invalid old playlist" , 1 ) end
 	
 	local object = oldpl [ oldpos ]
 	if type ( oldpos ) ~= "number" or not object then

@@ -13,14 +13,16 @@ require "general"
 
 local prefix = (...):match("^(.-)[^%.]*$")
 
-local ipairs , pairs , require , setmetatable , type , unpack = ipairs , pairs , require , setmetatable , type , unpack
+local rawset , require , setmetatable , type , unpack = rawset , require , setmetatable , type , unpack
 local osdate , ostime = os.date , os.time
+local tblcopy = table.copy
 
 require "SaveToTable"
 local tblload , tblsave = table.load , table.save
 
 module ( "lomp.metadata" , package.see ( lomp ) )
 
+local cache
 --[[
 Format:
 cache [ path ] = item
@@ -40,8 +42,6 @@ item.filesize
 item.extra = {...}
 --]]
 
-local cache
-
 local modules = {
 	"fileinfo.wavpack" ;
 	"fileinfo.mpeg" ;
@@ -52,16 +52,17 @@ local modules = {
 -- Make tables that map extensions to (de|en)coders
 local exttodec = { }
 local exttoenc = { }
-for i , v in ipairs ( modules ) do
-	v = prefix .. v
+for i = 1 , #modules do
+	local v = prefix .. modules [ i ]
 	local extensions , decoder , encoder = unpack ( require ( v ) )
-	for i , v in ipairs ( extensions ) do
-		exttodec [ v ] = decoder
-		exttoenc [ v ] = encoder
+	for j = 1 , #extensions do
+		local e = extensions [ j ]
+		exttodec [ e ] = decoder
+		exttoenc [ e ] = encoder
 	end
 end
 
-local function getitem ( path )
+local function getfileitem ( path )
 	local item = { 
 		path = path ;
 		filename = path:match ( "([^/]+)$" ) ;
@@ -78,59 +79,59 @@ local function getitem ( path )
 		updatelog ( "Unknown format: " .. item.extension , 3 )
 	end
 	
-	--[[setmetatable ( item.tags , { 
-		__index = function ( t , k )
-			if k:sub ( 1 , 1 ):match ( "%w" ) then
-				return { "Unknown " .. k }
-			end
-		end ,
-	} )--]]
-	
+	item.fetched = ostime ( )
 	return item
 end
 
-local function maketagcache ( tbl )
-	return setmetatable ( tbl , {
-		__index = function ( t , k )
-			local item = getitem ( k )
-			if item ~= nil then
-				item.fetched = ostime ( )
-				t [ k ] = item
-				return item
-			end
-		end ,
-	})
+local function editfile ( path , edits , inherit )
+	local item = getitem ( path )
+
+	local enc = exttoenc [ item.extension ]
+	local lostdata , err = enc ( item , edits , inherit )
+	if not err then
+		return true , lostdata
+	else	
+		return false , err
+	end
+end
+
+local function maketagcache ( )
+	return { 
+		file = setmetatable ( { } , {
+			__index = function ( t , source )
+				local item = getfileitem ( source )
+				if item ~= nil then
+					rawset ( t , k , item )
+					return item
+				end
+			end ,
+		} )
+	}
 end
 
 -- Public functions
-function getdetails ( path )
-	if type ( path ) ~= "string" then return ferror ( "metadata.getdetails called without valid path: " .. ( path or "" ) , 3 ) end
-	return cache [ path ]
+function getdetails ( typ , source )
+	local cachet = cache [ typ ]
+	if not cachet then return nil end
+	return cachet [ path ] -- Can be nil
 end
 
-function edittag ( path , edits , inherit )
-	-- "edits" is a table of tags & their respective changes
 
-	local item = getitem ( path )
+
+ -- edits is a table of tags & their respective changes
+ -- inherit is a boolean that indicates if old tags should be kept or if edits should override all tags
+function edittag ( typ , source , edits , inherit )
 	
-	local t = cache [ path ].tags	
-	for k , v in pairs ( edits ) do
-		t [ k ] = v -- Change in cache
-	end
+	tblcopy ( edits , cache [ typ ] [ source ].tags ) -- Change in cache
 	
 	if config.savetagedits then
-		local lostdata , err = exttoenc [ item.extension ] ( item , edits , inherit )
-		if not err then
-			if lostdata then
-				
-			else
-				return true
-			end
-		else
-			
-		end
+		if typ == "file" then return editfile ( source , edits , inherit )
+		else return ferror ( "Cannot save tags in item of type: " .. typ , 3 ) end
+	else
+		return true
 	end
 end
+
 
 function savecache ( )
 	local ok , err = tblsave ( {  lomp = core._VERSION , major = core._MAJ , minor = core._MIN , inc = core._INC , timesaved = osdate ( ) , cache = cache } , config.tagcachefile , "" , "" )
