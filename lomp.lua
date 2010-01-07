@@ -36,7 +36,7 @@ do
 
 	-- Output Loading Annoucement
 	local str = "LOMP is loading " .. osdate ( "%c" ) .. "\n"
-	iowrite ( "\n" , str , "\n" )
+	iostderr:write ( "\n" , str , "\n" )
 
 	-- Load Configuration
 	require "core.config"
