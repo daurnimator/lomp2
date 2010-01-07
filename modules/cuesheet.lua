@@ -21,7 +21,7 @@ module ( "lomp.cuesheet" , package.see ( lomp ) )
 -- All audio files (WAVE, AIFF, and MP3) must be in 44.1KHz 16-bit stereo format
 -- For AUDIO files, if the length of the data within the file is not an exact multiple of the CDROM sector size (2352 bytes), then the last sector will be padded with zeros when it is recorded to the blank disc.
 
---local lineparser , commentparser
+local lineparser , commentparser
 do
 	local lpeg = require "lpeg"
 	local C , Cc , P , R , S = lpeg.C , lpeg.Cc , lpeg.P , lpeg.R , lpeg.S
@@ -44,13 +44,13 @@ do
 	
 	local CDTEXTFILE = C "CDTEXTFILE" * space * str
 	
-	local filetype = C ( P "BINARY" + "MOTOROLA" + "AIFF" + "WAVE" + "MP3" ) + function ( _ , i ) error ( "Invalid filetype in cuesheet" ) end
+	local filetype = C ( P "BINARY" + "MOTOROLA" + "AIFF" + "WAVE" + "MP3" + "FLAC" ) + function ( _ , i ) error ( "Invalid filetype in cuesheet" ) end -- Note: "FLAC" isn't in spec
 	local FILE = C "FILE" * space * str * space * filetype
 	
 	local flag = C ( P "DCP" + "4CH" + "PRE" + "SCMS" ) + function ( _ , i ) error ( "Invalid flag in cuesheet" ) end
 	local FLAGS = C "FLAGS" * ( space * flag )^1
 	
-	local indexnumber = digit * digit^-1 / tonumber
+	local indexnumber = digit * digit^1 / tonumber -- Note: max 2 digits in spec
 	local INDEX = C "INDEX" * space * indexnumber * space * timestamp
 	
 	local isrccode = alphanumeric * alphanumeric * alphanumeric * alphanumeric * alphanumeric * digit * digit * digit * digit * digit * digit * digit / strupper
@@ -72,7 +72,7 @@ do
 	local datatype = C ( P "AUDIO" + "CDG" + "MODE1/2048" + "MODE1/2352" + "MODE2/2336" + "MODE2/2352" + "CDI/2336" + "CDI/2352" + "MODEx/2xxx" ) + function ( _ , i ) error ( "Invalid track datatype in cuesheet" ) end -- Note: "MODEx/2xxx" isn't in spec, it sometimes comes up for CD-Extra
 	local TRACK = C "TRACK" * space * indexnumber * space * datatype
 	
-	lineparser = P("\239\187\191" )^0 -- Some files get the utf bom... wtf!
+	lineparser = ( P "\239\187\191" )^-1 -- Some files get the utf BOM... wtf!
 		* space^0 * ( CATALOG + CDTEXTFILE + FILE + FLAGS + INDEX + ISRC + PERFORMER + POSTGAP + PREGAP + REM + SONGWRITER + TITLE + TRACK )^-1 
 		* space^0 * eos + function ( _ , i ) error ( "Invalid cuesheet" ) end
 	
@@ -240,7 +240,9 @@ local d = {
 	end ;
 }
 local function doline ( data , op , ... )
-	d [ op ] ( data , ... )
+	if type ( op ) ~= "number" then -- incase there were no captures (eg. blank lines)
+		d [ op ] ( data , ... )
+	end
 end
 
 function read ( path )
@@ -255,3 +257,4 @@ function read ( path )
 	
 	return data
 end
+
