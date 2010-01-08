@@ -44,17 +44,17 @@ Optional Dependencies:
 	luarocks					http://luarocks.org/
 	
 	lzlib	(for http gzip compression)		http://luaforge.net/projects/lzlib/
-		can be obtained via: 			apt-get install liblua5.1-zip0
-				or:			luarocks install lzlib
+		can be obtained via:			luarocks install lzlib
 
 	md5						http://www.inf.puc-rio.br/~roberto/md5/md5-5/md5.html
 		can be obtained via: 			apt-get install liblua5.1-md5-0
 				or:			luarocks install md5
 
 ==> Systems with apt-get should be able to get most of the dependencies with:
-apt-get install lua5.1 liblua5.1-socket2 liblua5.1-xmlrpc0 liblua5.1-expat0 liblua5.1-filesystem0 liblua5.1-lpeg2 liblua5.1-zip0 liblua5.1-md5-0
+apt-get install lua5.1 liblua5.1-socket2 liblua5.1-xmlrpc0 liblua5.1-expat0 liblua5.1-filesystem0 liblua5.1-lpeg2 liblua5.1-md5-0
 apt-get install luarocks
 luarocks install lua-iconv
+luarocks install lzlib
 apt-get install gstreamer0.10-plugins-base libgstreamer-plugins-base0.10-dev gstreamer0.10-plugins-good gstreamer0.10-plugins-bad gstreamer0.10-plugins-ugly
 
 

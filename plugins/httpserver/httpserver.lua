@@ -185,7 +185,7 @@ local function httpsend ( conn , session , responsedetails )
 	if session.Method == "HEAD" then body = "" end
 	do -- Zlib
 		local ok , zlib = pcall ( require , 'zlib' )
-		if ok and type ( zlib ) == "table" then 
+		if ok and type ( zlib ) == "table" and zlib.compress then -- Make sure its the correct zlib library
 			if #body > 32 then
 				local acceptencoding = ( session.headers [ "accept-encoding" ] or "" ):lower ( )
 				if ( strfind ( acceptencoding , "gzip" ) or strfind ( acceptencoding , "[^%w]*[^%w]" ) ) then

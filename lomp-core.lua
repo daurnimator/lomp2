@@ -53,7 +53,6 @@ local varsindex = {
 vars = setmetatable ( { } , {
 		__index = varsindex ;
 		__newindex = function ( t , k , v )
-			local val = vars [ k ]
 			rawset ( varsindex , k , v )
 			if triggeronchange [ k ] then
 				core.triggers.fire ( k , v )

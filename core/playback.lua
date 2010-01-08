@@ -164,6 +164,7 @@ function forward ( queueonly ) -- Moves forward one song in the queue
 			vars.ploffset = vars.ploffset + 1
 			success = true
 		else
+			currentsong = false
 			success = false
 			err = "No more songs."
 		end
