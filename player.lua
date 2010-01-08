@@ -62,7 +62,7 @@ function play ( typ , source , offset , offsetispercent )
 		pipeline:get_state ( -1 )
 	elseif GstStateChangeReturn == gst.STATE_CHANGE_SUCCESS then
 	elseif GstStateChangeReturn == gst.STATE_CHANGE_FAILURE then
-		return false
+		return false , "Failed pre set_state"
 	end
 	
 	pipeline:set ( "uri" , uri )
@@ -72,7 +72,7 @@ function play ( typ , source , offset , offsetispercent )
 		pipeline:get_state ( -1 )
 	elseif GstStateChangeReturn == gst.STATE_CHANGE_SUCCESS then
 	elseif GstStateChangeReturn == gst.STATE_CHANGE_FAILURE then
-		return false , "Failed set_state"
+		return false , "Failed post set_state"
 	end
 
 	if offset then
@@ -115,7 +115,12 @@ function seek ( offset , relative , percent )
 	
 	if offset > tracklength or offset < 0 then return false end
 	
-	return pipeline:seek_simple ( gst.FORMAT_TIME , offset )
+	local ok = pipeline:seek_simple ( gst.FORMAT_TIME , offset )
+	if ok then
+		return true
+	else
+		return false , "Could not seek"
+	end
 end
 
 function getstate ( )

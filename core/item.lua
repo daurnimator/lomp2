@@ -42,11 +42,11 @@ end
 
 function additems ( plid , position , objects )
 	local pl , playlistnum = core.playlist.getpl ( plid )
-	if type ( pl ) ~= "playlist" then return ferror ( "'Add Item' called with invalid playlist" , 1 ) end
+	if type ( pl ) ~= "playlist" then return ferror ( "'Add Items' called with invalid playlist" , 1 ) end
 	local pllength = pl.length
 	
 	if position and ( type ( position ) ~= "number" or position > ( pl.length + 1 ) ) then
-		return ferror ( "'Add Item' called with invalid position" , 1 ) 
+		return ferror ( "'Add Items' called with invalid position" , 1 ) 
 	else
 		position = position or ( pllength + 1 )
 	end

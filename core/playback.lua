@@ -40,7 +40,10 @@ function play ( fromoffset, offsetispercent )
 		offset = fromoffset
 	end
 	
-	if not player.play ( typ , source , offset , offsetispercent ) then return false , "Could not start playback" end
+	local ok , err = player.play ( typ , source , offset , offsetispercent )
+	if not ok then
+		return false , "Could not start playback: " .. err
+	end
 	
 	state = "playing"
 	currentsong.laststarted = ostime ( )

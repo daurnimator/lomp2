@@ -54,7 +54,7 @@ function addfile ( path , pl , pos )
 	fd:close ( )
 	
 	local item = createitem ( path )
-	return core.item.additem ( item , pl , pos )
+	return core.item.additem ( pl , pos , item )
 end
 
 -- Returns an array of items
