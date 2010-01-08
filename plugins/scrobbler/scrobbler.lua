@@ -79,13 +79,13 @@ function handshake ( user , md5pass , count )
 	end
 end	
 
-function nowplaying ( typ , songpath )
+function nowplaying ( typ , source )
 	if not sessionid then
 		local w , cap , err = handshake ( user , md5pass )
 		if not w then return ferror ( "Last.fm Handshake error: " .. err , 1 ) end
 	end
 	
-	local songdetails = lomp.metadata.getdetails ( songpath )
+	local songdetails = lomp.metadata.getdetails ( typ , source )
 	
 	local artistname = url.escape ( tblconcat ( songdetails.tags.artist or { "Unknown Artist" } , ", " ) )
 	local trackname = url.escape ( tblconcat ( songdetails.tags.title or { "Unknown Title" } , ", " ) )
@@ -104,7 +104,7 @@ function nowplaying ( typ , songpath )
 		elseif cap == "BADSESSION" then
 			updatelog ( "Bad last.fm session, re-handshaking" , 2 )
 			sessionid = nil
-			nowplaying ( songpath )
+			nowplaying ( source )
 		else
 			updatelog ( "Scrobbler wtf: " .. body , 1 )
 		end
@@ -152,8 +152,9 @@ function submissions ( )
 		end
 	end
 end
+
 function addtosubmissions ( typ , source )
-	local d = lomp.metadata.getdetails ( source )
+	local d = lomp.metadata.getdetails ( typ , source )
 	if not d.length or d.length <= 30 then return false end -- Has to be > 30 seconds in length to submit
 	local t = { }
 	t.artist = url.escape ( tblconcat ( d.tags.artist or { "Unknown Artist" } , ", " ) )
@@ -173,7 +174,7 @@ function enablescrobbler ( )
 	lomp.core.triggers.register ( "playback_startsong" , nowplaying , "Scrobbler Now-Playing" )
 	lomp.core.triggers.register ( "playback_startsong" , addtosubmissions , "Scrobbler Add Song To Submit Queue" )
 	lomp.core.triggers.register ( "playback_stop" , function ( typ , source , stopoffset ) 
-		local d = lomp.metadata.getdetails ( source )
+		local d = lomp.metadata.getdetails ( typ , source )
 		if stopoffset > 240 
 		or ( d and d.length and ( stopoffset / d.length ) > 0.5 ) then
 			submissions ( ) 
@@ -184,6 +185,7 @@ function enablescrobbler ( )
 	
 	enabled = true
 end
+
 function disablescrobbler ( )
 	lomp.core.triggers.unregister ( "playback_startsong" , "Scrobbler Now-Playing" )
 	lomp.core.triggers.unregister ( "playback_startsong" , "Scrobbler Add Song To Submit Queue" )

@@ -11,10 +11,16 @@
 
 require "general"
 
-local tonumber = tonumber
-local strlower , strupper = string.lower , string.upper
+local error, ipairs , pcall , require , tonumber , type = error, ipairs , pcall , require , tonumber , type
+local strupper = string.upper
+local iolines = io.lines
 
 module ( "lomp.cuesheet" , package.see ( lomp ) )
+
+local sourcetype = "cue"
+
+local lpeg = require "lpeg"
+
 -- Docs @ http://digitalx.org/cuesheetsyntax.php
 
 -- In cuesheets:
@@ -23,7 +29,6 @@ module ( "lomp.cuesheet" , package.see ( lomp ) )
 
 local lineparser , commentparser
 do
-	local lpeg = require "lpeg"
 	local C , Cc , P , R , S = lpeg.C , lpeg.Cc , lpeg.P , lpeg.R , lpeg.S
 	
 	local eos = P ( '\r' )^-1 * -P ( 1 )
@@ -118,7 +123,7 @@ local d = {
 					error ( "Invalid INDEX (" .. index .. ") in cuesheet" )
 				end
 				return
-			else
+			elseif index == 1 then  -- Non-compliant: allow a single track distributed over multiple files; limit to EAC's non compliant only (just index 0 in the previous track)
 				local lastfile = files [ #files - 1 ]
 				if lastfile then
 					local lasttracks = lastfile.tracks
@@ -126,7 +131,6 @@ local d = {
 					if lasttrack then
 						local indexes = lasttrack.indexes
 						if indexes [ index - 1 ] then
-							-- Non-compliant: but we allow a single track distributed over multiple files
 							data.noncompliant = true
 							
 							tracks.n = 1
@@ -251,10 +255,53 @@ function read ( path )
 		files = { }
 	}
 	
-	for line in io.lines ( path ) do
-		doline ( data , lineparser:match ( line ) )
+	for line in iolines ( path ) do
+		local ok , err = pcall ( doline , data , lineparser:match ( line ) )
+		if not ok then return ferror ( "Cuesheet.Reader: " .. err , 2 ) end
 	end
 	
 	return data
 end
+
+local function findtrack ( data , track , index )
+	local files = data.files
+	for i = 1 , #files do
+		local t = files [ i ].tracks [ track ]
+		if t then
+			local indexes = t.indexes
+			if index == 1 and indexes [ 0 ] and indexes [ 1 ] and indexes [ 1 ] < indexes [ 0 ] then -- We have a pregap appended to the previous track (non-compliant)
+				if files [ i + 1 ].tracks [ track ] == t then -- Use the next file instead
+					i = i +1
+				end
+			end
+			if indexes [ index ] then
+				return i
+			end
+		end
+	end
+	return false
+end
+
+local function createitem ( data , track , index )
+	return core.item.create ( sourcetype , {} )
+end
+
+function addtrack ( cuepath , track , index , pl , pos )
+	index = index or 1
+	
+	local d = read ( path )
+	local fileindex = findtrack ( d , track , index )
+	if fileindex then
+		
+		return createitem ( d )
+	else
+		return ferror ( "Unable to find track in cuesheet" , 3 )
+	end
+end
+
+function addcuesheet ( cuepath , pl , pos )
+	local d = read ( path )
+end
+
+core.item.types [ sourcetype ] = true
 

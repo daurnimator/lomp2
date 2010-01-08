@@ -28,7 +28,7 @@ end
 
 function getnum ( pl )
 	if type ( pl ) == "playlist" then
-		return playlist.index
+		return pl.index
 	else
 		return ferror ( "'getnum' called with invalid playlist" , 3 )
 	end

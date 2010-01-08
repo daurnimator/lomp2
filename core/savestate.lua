@@ -30,7 +30,7 @@ function core.savestate ( )
 	}
 	
 	local current = vars.queue [ 0 ]
-	if current then core.item.additem ( core.playlist.getnum ( vars.hardqueue ) , 1 , current ) end -- If currently playing a song, add to start of hardqueue so its first up
+	if current then core.item.additem ( vars.hardqueue , 1 , current ) end -- If currently playing a song, add to start of hardqueue so its first up
 	
 	-- Playlists
 	local i = -2
@@ -43,7 +43,7 @@ function core.savestate ( )
 		while true do
 			local item = pl [ j ]
 			if not item then break end
-			s [ #s + 1 ] = strformat ( "\tcic(%q,%q,%d);" , item.typ , item.source , item.created )
+			s [ #s + 1 ] = strformat ( "\tcic(%q,%q,%d,%d);" , item.typ , item.source , item.created , item.baseoffset )
 			j = j + 1
 		end
 		i = i + 1
@@ -56,7 +56,7 @@ function core.savestate ( )
 	if #vars.played > config.history then n = config.history else n = #vars.played end
 	for i = 1 , n do
 		local item = vars.played [ i ]
-		s [ #s + 1 ] = strformat ( "\tcic(%q,%q,%q);" , item.typ , item.source , item.created )
+		s [ #s + 1 ] = strformat ( "\tcic(%q,%q,%d,%d);" , item.typ , item.source , item.created , item.baseoffset )
 	end
 	s [ #s + 1 ] = "};"
 	

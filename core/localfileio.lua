@@ -19,6 +19,10 @@ module ( "lomp.core.localfileio" , package.see ( lomp ) )
 
 local lfs = require "lfs"
 
+local function createitem ( path )
+	return core.item.create ( "file" , path )
+end
+
 function checkfileaccepted ( path )
 	local extension = path:match ( "%.?([^%./]+)$" )
 	extension = extension:lower ( )
@@ -49,7 +53,7 @@ function addfile ( path , pl , pos )
 	if not fd then return ferror ( "Unable to add file: '" .. path .. "' : " .. err , 1 ) end
 	fd:close ( )
 	
-	local item = core.item.create ( "file" , path )
+	local item = createitem ( path )
 	return core.item.additem ( item , pl , pos )
 end
 
@@ -66,7 +70,7 @@ local function getdir ( path , recurse , hiddenfiles )
 			if mode == "file" then
 				local a , err = checkfileaccepted ( fullpath )
 				if a then
-					items [ #items + 1 ] = core.item.create ( "file" , fullpath )
+					items [ #items + 1 ] = createitem ( fullpath )
 				else -- no return - keep going (even after a failure)
 					ferror ( err , 5 )
 				end

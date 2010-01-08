@@ -100,8 +100,8 @@ function stop ( )
 end
 
 function seek ( offset , relative , percent )
-	local tracklength = select ( 3 , pipeline:query_duration( gst.FORMAT_TIME ) )
-	local currentposition = select ( 3 , pipeline:query_position( gst.FORMAT_TIME ) )
+	local tracklength = select ( 3 , pipeline:query_duration ( gst.FORMAT_TIME ) )
+	local currentposition = select ( 3 , pipeline:query_position ( gst.FORMAT_TIME ) )
 	
 	if percent then
 		offset = ( offset / 100 ) * tracklength 

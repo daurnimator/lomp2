@@ -101,7 +101,7 @@ local function maketagcache ( )
 			__index = function ( t , source )
 				local item = getfileitem ( source )
 				if item ~= nil then
-					rawset ( t , k , item )
+					rawset ( t , source , item )
 					return item
 				end
 			end ,
@@ -113,7 +113,7 @@ end
 function getdetails ( typ , source )
 	local cachet = cache [ typ ]
 	if not cachet then return nil end
-	return cachet [ path ] -- Can be nil
+	return cachet [ source ] -- Can be nil
 end
 
 

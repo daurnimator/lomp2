@@ -17,26 +17,21 @@ local ostime = os.time
 
 module ( "lomp.core.item" , package.see ( lomp ) )
 
---[[
-item = {}
-item.typ = "file" or "stream"
-item.source = source path
---]]
-
 require "core.triggers"
 require "core.playlist"
 require "modules.metadata"
-
-require "core.localfileio"
 
 types = {
 	file = true ;
 }
 
-function create ( typ , source , createdtime )
+require "modules.cuesheet"
+require "core.localfileio"
+
+function create ( typ , source , createdtime , baseoffset )
 	if not types [ typ ] then return ferror ( "Tried to create item with invalid type" , 1 ) end
-	return setmetatable ( 
-		{ typ = typ , source = source , laststarted = false , created = createdtime or ostime ( ) } ,
+	return setmetatable (
+		{ typ = typ , source = source , laststarted = false , created = createdtime or ostime ( ) , baseoffset = baseoffset or 0 } ,
 		{ __index = function ( t , k ) return metadata.getdetails ( t.typ , t.source ) [ k ] end }
 	)
 end

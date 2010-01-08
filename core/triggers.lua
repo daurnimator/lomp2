@@ -80,7 +80,7 @@ local processqueue = coroutinewrap ( function ( )
 	while true do
 		if i < qn then
 			local ok , err = pcall ( unpack ( queue [ i ] ) )
-			if not ok then updatelog ( err ,  3 ) end
+			if not ok then updatelog ( err ,  2 ) end
 			queue [ i ] = nil
 			i = i + 1
 		else
@@ -93,7 +93,7 @@ function fire ( callback , ... )
 	for i , v in ipairs ( callbacks [ callback ] ) do
 		if v.instant then -- Fire instant callbacks right now
 			local ok , err = pcall ( v.func , ... )
-			if not ok then updatelog ( err ,  3 ) end
+			if not ok then updatelog ( err ,  2 ) end
 		else -- Otherwise add them to the trigger queue
 			queue [ qn ] = { v.func , ... }
 			qn = qn + 1

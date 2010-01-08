@@ -13,8 +13,6 @@ require "general"
 
 local error , pcall , require , select , tonumber , type , unpack = error , pcall , require , select , tonumber , type , unpack
 local tblconcat = table.concat
-local print = print
-local pairs = pairs
 
 module ( "eventserver" , package.see ( lomp ) )
 

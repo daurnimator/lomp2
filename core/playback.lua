@@ -27,6 +27,7 @@ function play ( fromoffset, offsetispercent )
 	if not currentsong then
 		local r , err = forward ( )
 		if not r then return false , err end
+		currentsong = vars.currentsong
 	end
 	
 	local typ = currentsong.typ
@@ -43,7 +44,6 @@ function play ( fromoffset, offsetispercent )
 	
 	state = "playing"
 	currentsong.laststarted = ostime ( )
-	
 	core.triggers.fire ( "playback_startsong" , typ , source )
 	
 	return true
@@ -54,7 +54,7 @@ function stop ( )
 	local offset = player.getposition ( )
 	
 	if item then -- There shouldn't be anything playing if there is nothing in current playing slot....
-		item.offset = 0
+		item.offset = item.baseoffset
 		
 		local newstate = player.stop ( )
 		if newstate == "stopped" then

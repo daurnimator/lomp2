@@ -12,7 +12,8 @@
 require "general"
 
 local ipairs , loadstring , pairs , print , require , select , setfenv , tostring , type = ipairs , loadstring , pairs , print , require , select , setfenv , tostring , type
-local tblconcat = table.concat
+local tblconcat , tblserialise = table.concat , table.serialise
+local debugtraceback = debug.traceback
 
 module ( "lomp" )
 
@@ -127,7 +128,7 @@ function pv ( )
 	return true
 end
 function showtag ( pl , pos )
-	p ( table.serialise ( vars.pl[pl][pos] ) )
+	p ( tblserialise ( vars.pl[pl][pos] ) )
 end
 --[[function p (...)
 	if type ( select ( 1 , ... ) ) == "string" then 
@@ -137,10 +138,12 @@ end
 end--]] 
 
 p = print
+pp = function(o) print(tblserialise(o)) end
+pt = function() print(debugtraceback()) end
 
 core.triggers.register ( "playback_startsong" , function ( )
 		-- Print new song stats
-		local t = vars.queue [ 0 ]
+		local t = vars.currentsong
 		print( "--------------------Now playing file: ", t.filename )
 		for k , v in pairs ( t ) do
 			print ( "", k , v )
