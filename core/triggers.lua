@@ -11,7 +11,7 @@
 
 require "general"
 
-local ipairs , pairs , pcall , setmetatable , tostring , unpack = ipairs , pairs , pcall , setmetatable , tostring , unpack
+local ipairs , pairs , pcall , setmetatable , tostring , type , unpack = ipairs , pairs , pcall , setmetatable , tostring , type , unpack
 local tblremove = table.remove
 local coroutinewrap , coroutineyield = coroutine.wrap , coroutine.yield
 local ostime = os.time
