@@ -12,24 +12,36 @@
 package.path = package.path .. ";/usr/share/lua/5.1/?.lua;/usr/share/lua/5.1/?/init.lua;/usr/lib/lua/5.1/?.lua;/usr/lib/lua/5.1/?/init.lua;./libs/?.lua;./libs/?/init.lua;"
 package.cpath = package.cpath .. ";/usr/lib/lua/5.1/?.so;/usr/lib/lua/5.1/loadall.so;./libs/?.so"
 
-local tonumber , getmetatable , setmetatable = tonumber , getmetatable , setmetatable
+local tonumber , getmetatable , setmetatable , select , unpack = tonumber , getmetatable , setmetatable , select , unpack
 local tblconcat = table.concat
 local error = error
-local print = print
+
 pcall ( require , "luarocks.require" ) -- Activates luarocks if available.
 
 local socket = require "socket"
 local Json = require "Json"
-
+local p = print
 module ( "lompclient" )
 
-local function send ( ob , data )
+-- Lower Level interface
+local function send ( ob , opcode , ... )
+	local client = getmetatable ( ob ).client
+	if not client then error ( "Client not connected" ) end
+	
+	client:send ( tblconcat ( { opcode , ... } , " " ) )
+	client:send ( "\n" )
+	
+	return
+end
+
+local function rawsend ( ob , str )
 	local client = getmetatable ( ob ).client
 	if not client then error ( "Client not connected" ) end
 
-	client:send ( data .. "\n" )
+	client:send ( str )
 	return
 end
+
 local function receive ( ob )
 	local client = getmetatable ( ob ).client
 	if not client then return false , "Client not connected" end
@@ -40,31 +52,108 @@ local function receive ( ob )
 		else return false , err end
 	end
 	
-	local s , e , statuscode = line:find ( "^(%d+)%s*" )
+	local s , e , statuscode = line:find ( "^(%-?%d+)%s*" )
 	statuscode = tonumber ( statuscode )
+	
+	local var , length , alreadyread
 	if statuscode >= 0 then
-		local s , e , length , alreadyread = line:find ( "(%d+)%s*(.*)" , e + 1 )
-		if not length or length == "0" then return statuscode end
-		
-		length = tonumber ( length )
-		
-		local lefttoread = length - #alreadyread
-		local t = { ( alreadyread or "" ) }
-		repeat
-			local newdata = client:receive ( lefttoread )
-			t [ #t + 1 ] = newdata
-			lefttoread = lefttoread - # ( newdata or "" )
-		until lefttoread == 0
-		
-		local decoded = Json.Decode ( tblconcat ( t , "\n" ) )
-		return statuscode , nil , decoded
+		s , e , length , alreadyread = line:find ( "(%d+)%s*(.*)" , e + 1 )
 	elseif statuscode < 0 then
-		local s , e , var , length , alreadyread = line:find ( "(%S+)%s+(%d+)%s*(.*)" , e + 1 )
-		local data = ( alreadyread or "" ) .. client:receive ( length - # ( alreadyread or "" ) )
-		local decoded = Json.Decode ( data )
-		return statuscode , var , decoded
+		s , e , var , length , alreadyread = line:find ( "(%S+)%s+(%d+)%s*(.*)" , e + 1 )
 	else
-		return false , "Not valid"
+		return false , "Invalid Server Response"
+	end
+	length = tonumber ( length )
+	if not length or length == 0 then return statuscode , var , { } end
+	local lefttoread = length - #alreadyread	
+	
+	local data = { ( alreadyread or "" ) }
+	repeat
+		local newdata = client:receive ( lefttoread ) or ""
+		data [ #data + 1 ] = newdata
+		lefttoread = lefttoread - #newdata
+	until lefttoread == 0
+	data = tblconcat ( data , "\n" )
+	data = Json.Decode ( data )
+	
+	return statuscode , var , data
+end
+
+
+-- High level interface, do not use if you're using the low level interface
+local callbacks = { }
+local queue = { }
+local qi = 0 -- Highest index reponded to.
+local qn = 0 -- Highest taken index
+
+local function varargtojson ( ... )
+	local args = { ... }
+	local n = select ( "#" , ... )
+	for i = 1 , n do
+		local a = args [ i ]
+		if a == nil then args [ i ] = Json.Null
+		elseif a == "false" then args [ i ] = false
+		elseif a == "true" then args [ i ] = true
+		elseif tonumber ( a ) then args [ i ] = tonumber ( a )
+		end
+	end
+	return Json.Encode ( args )
+end
+
+local function CMD ( ob , cmd , callback , ... )
+	ob:send ( "CMD" , cmd , varargtojson ( ... ) )
+	
+	qn = qn + 1
+	queue [ qn ] = callback
+	return qn
+end
+
+local function SUBSCRIBE ( ob , event , callback , cb2 )
+	ob:send ( "SUBSCRIBE" , event )
+	local a = callbacks [ event ]
+	local i
+	if not a then
+		callbacks [ event ] = { cb2 }
+		i = 1
+	else
+		i = #a + 1
+		a [ i ] = cb2
+	end
+	qn = qn + 1
+	queue [ qn ] = callback
+	
+	return qn , i
+end
+
+local function UNSUBSCRIBE ( ob , event , index , callback )
+	ob:send ( "UNSUBSCRIBE" , event )
+	callbacks [ event ] [ index ] = nil
+	
+	qn = qn + 1
+	queue [ qn ] = callback
+	return qn
+end
+
+local function step ( ob )
+	local code , var , data = ob:receive ( )
+	if not code then return code , var end -- Will return nil if had nothing to read, false if an error
+	
+	if code == -1 then -- Event
+		local funcs = callbacks [ var ]
+		if funcs then
+			for i = 1 , #funcs do
+				funcs [ i ] ( unpack ( data ) )
+			end
+		end
+		return true
+	elseif code >= 0 then
+		qi = qi + 1
+		local cb = queue [ qi ]
+		if cb then
+			cb ( unpack ( data ) )
+			queue [ qi ] = nil
+		end
+		return qi
 	end
 end
 
@@ -84,7 +173,14 @@ function connect ( address , port )
 	
 	client:send ( "LOMP 1\n" )
 
-	local ob = setmetatable ( { } , { client = client , __index = { receive = receive , send = send , close = function ( ob ) local client = getmetatable ( ob ).client return client:close ( ) end } } ) 
+	local ob = setmetatable ( { } , { client = client , __index = { 
+		receive = receive ;
+		send = send ; rawsend = rawsend ;
+		close = function ( ob ) local client = getmetatable ( ob ).client return client:close ( ) end ;
+		settimeout = function ( ob , timeout ) local client = getmetatable ( ob ).client return client:settimeout ( timeout ) end ;
+		CMD = CMD ; SUBSCRIBE = SUBSCRIBE ; UNSUBSCRIBE = UNSUBSCRIBE ;
+		step = step ;
+	} } )
 
 	local code , str
 	repeat 

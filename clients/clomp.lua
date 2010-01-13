@@ -13,47 +13,29 @@
 require "general"
 
 local lompclient = require "clients.eventserverlib"
-local Json = require "Json"
 
 local client
 
 local function basiccmd ( cmd ) return function ( ... )
-	local args = { ... }
-	for i = 1 , select ( "#" , ... ) do
-		local a = args [ i ]
-		if a == nil then args [ i ] = Json.Null
-		elseif a == "false" then args [ i ] = false
-		elseif a == "true" then args [ i ] = true
-		elseif tonumber ( a ) then args [ i ] = tonumber ( a )
-		end
-	end
-	local encoded = Json.Encode ( args )
-	client:send ( table.concat ( { "CMD" , cmd , encoded } , " " ) )
-	while true do
-		local code , str , data = client:receive ( )
-		if code == false then
-			error ( "Error in lomp client: " .. str )
-		elseif code == nil then
-		elseif code == 0 then 
-			if data [ 1 ] then
-				print ( "Result(s):" )
-				for i , v in ipairs ( data ) do
-					if type ( v ) == "table" then
-						print ( table.serialise ( v ) )
-					else
-						print ( v )
-					end
+	local q = client:CMD ( cmd , function ( ... )
+		local data = { ... }
+		if data [ 1 ] then
+			print ( "Result(s):" )
+			for i , v in ipairs ( data ) do
+				if type ( v ) == "table" then
+					print ( table.serialise ( v ) )
+				else
+					print ( v )
 				end
-			else
-				print ( "Error in lomp server: " .. data [ 2 ] )
 			end
-			break
-		elseif code < 0 then
-		else 
-			print ( lompclient.codes [ code ] , str , unpack ( data ) ) 
+		else
+			print ( "Error in lomp server: " .. data [ 2 ] )
 		end
-	end
-	client:close ( )
+	end , ... )
+	
+	repeat
+		local ret = client:step ( )
+	until ret == q
 end end
 
 local translate
@@ -92,7 +74,7 @@ translate = {
 			if not waiting then
 				local line = io.read ( "*l" )
 				if line then
-					client:send ( line )
+					client:rawsend ( line )
 					waiting = true
 				end
 			end
