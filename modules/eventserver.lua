@@ -11,7 +11,7 @@
 
 require "general"
 
-local error , pcall , require , select , tonumber , type , unpack = error , pcall , require , select , tonumber , type , unpack
+local pairs , pcall , require , select , tonumber , type , unpack = pairs , pcall , require , select , tonumber , type , unpack
 local tblconcat = table.concat
 
 module ( "eventserver" , package.see ( lomp ) )
@@ -70,8 +70,7 @@ local function packobject ( session , ... )
 	if session.vars.dataencoding == "json" then
 		encoded = Json.Encode ( vararg )
 	else
-		encoded = "invalid data encoding"
-		error ( encoded )
+		return ferror ( "Eventserver: invalid data encoding" , 1 )
 	end
 	
 	return #encoded , encoded
@@ -129,10 +128,9 @@ local versions = {
 				local callbackname = params:match ( "^(%S+)" )
 				local subs = session.subscriptions
 				if subs [ callbackname ] then return ver.codes.ALREADY_SUBSCRIBED end
-				local pos = triggers.register ( callbackname , function ( ... )
+				local pos = core.triggers.register ( callbackname , function ( ... )
 						local result = { ver.codes.EVENT , callbackname , packobject ( session , ... ) }
-						result [ #result + 1 ] = "\n"
-						conn.write ( tblconcat ( result , " " ) )
+						conn.write ( tblconcat ( result , " " ) .. "\n")
 					end , "Event Client Subscription" )
 				if pos then
 					subs [ callbackname ] = pos					
@@ -146,7 +144,7 @@ local versions = {
 				if not callbackname then return ver.codes.BAD_FORMAT end
 				
 				local subs = session.subscriptions
-				if subs [ callbackname ] and triggers.unregister ( callbackname , subs [ callbackname ] ) then
+				if subs [ callbackname ] and core.triggers.unregister ( callbackname , subs [ callbackname ] ) then
 					subs [ callbackname ] = nil
 					return ver.codes.SUCCESS
 				else
@@ -196,6 +194,13 @@ function initiate ( host , port )
 	local s , err = server.addserver ( {
 			incoming = incoming ;
 			disconnect = function ( conn , err )
+				local session = connections [ conn ]
+				
+				-- Delete all subscriptions
+				for k , v in pairs ( session.subscriptions ) do
+					core.triggers.unregister ( k , v )
+				end
+				
 				connections [ conn ] = nil
 			end ;
 		} , port , host , "*l" ) 
