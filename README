@@ -6,11 +6,15 @@ Before running, you'll need to create a config file (called config in the lomp d
 If you run a debain based distro, head to the bottom of this file.
 
 Dependencies:
-	Lua >5.1.3					http://www.lua.org/
+	Lua >=5.1.3					http://www.lua.org/
 		download:				http://www.lua.org/ftp/lua-5.1.4.tar.gz
 		can be obtained via:			apt-get install lua5.1
 
 	Lgob (gstreamer module)				http://oproj.tuxfamily.org/wiki/doku.php?id=lgob
+		can be obtained via:			http://downloads.tuxfamily.org/oproj/bin/ubuntu32/lgob-9.11.2.deb
+	
+	GStreamer >=0.10.23 (with plugins)		http://gstreamer.freedesktop.org/
+		can be obtained via:			apt-get install gstreamer0.10-plugins-base gstreamer0.10-plugins-good gstreamer0.10-plugins-bad gstreamer0.10-plugins-ugly
 	
 	Lua-iconv					http://luaforge.net/projects/lua-iconv/
 		can be obtained via:			luarocks install lua-iconv
@@ -33,8 +37,9 @@ Dependencies:
 		can be obtained via: 			apt-get install liblua5.1-filesystem0
 						or:	luarocks install luafilesystem
 
-	Vstruct						http://www.funkyhorror.net/toxicfrog/projects/vstruct/
-		(now included)
+	Vstruct	>=1.1b1					http://www.funkyhorror.net/toxicfrog/projects/vstruct/
+		(now included in libs/ dir)
+	
 	LPEG						http://www.inf.puc-rio.br/~roberto/lpeg/lpeg.html
 		download:				http://www.inf.puc-rio.br/~roberto/lpeg/lpeg-0.9.tar.gz
 		can be obtained via:			apt-get install liblua5.1-lpeg2
@@ -50,12 +55,15 @@ Optional Dependencies:
 		can be obtained via: 			apt-get install liblua5.1-md5-0
 				or:			luarocks install md5
 
+
 ==> Systems with apt-get should be able to get most of the dependencies with:
-apt-get install lua5.1 liblua5.1-socket2 liblua5.1-xmlrpc0 liblua5.1-expat0 liblua5.1-filesystem0 liblua5.1-lpeg2 liblua5.1-md5-0
-apt-get install luarocks
-luarocks install lua-iconv
-luarocks install lzlib
-apt-get install gstreamer0.10-plugins-base libgstreamer-plugins-base0.10-dev gstreamer0.10-plugins-good gstreamer0.10-plugins-bad gstreamer0.10-plugins-ugly
-
-
-Lgob is a tricky install, and currently a very new library, you will have to install it manually. (see url above)
+sudo apt-get install lua5.1 liblua5.1-socket2 liblua5.1-xmlrpc0 liblua5.1-expat0 liblua5.1-filesystem0 liblua5.1-lpeg2 liblua5.1-md5-0
+sudo apt-get install luarocks
+sudo luarocks install lua-iconv
+sudo luarocks install lzlib
+# These are for the lgob/gstreamer backend:
+sudo apt-get install gstreamer0.10-plugins-base gstreamer0.10-plugins-good gstreamer0.10-plugins-bad gstreamer0.10-plugins-ugly
+# Note: libgstreamer-plugins-base0.10-dev is needed if you want to build lgob yourself
+wget http://downloads.tuxfamily.org/oproj/bin/ubuntu32/lgob-9.11.2.deb
+sudo dpkg -i lgob-9.11.2.deb
+rm lgob-9.11.2.deb
