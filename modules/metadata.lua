@@ -111,9 +111,12 @@ end
 
 -- Public functions
 function getdetails ( typ , source )
+	if type ( "typ" ) ~= "string" or not source then return ferror ( "Invalid type or source passed to metdata.getdetails" , 2 ) end
 	local cachet = cache [ typ ]
-	if not cachet then return nil end
-	return cachet [ source ] -- Can be nil
+	if not cachet then return ferror ( "Invalid type passed to metdata.getdetails" , 2 ) end
+	local item = cachet [ source ]
+	if not item then return ferror ( "Cannot fetch metadata" , 2 ) end
+	return item
 end
 
 

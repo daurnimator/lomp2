@@ -30,10 +30,15 @@ require "core.localfileio"
 
 function create ( typ , source , createdtime , baseoffset )
 	if not types [ typ ] then return ferror ( "Tried to create item with invalid type" , 1 ) end
-	return setmetatable (
-		{ typ = typ , source = source , laststarted = false , created = createdtime or ostime ( ) , baseoffset = baseoffset or 0 } ,
-		{ __index = function ( t , k ) return metadata.getdetails ( t.typ , t.source ) [ k ] end }
-	)
+	local mt = {
+		__index = function ( t , k )
+			local meta = metadata.getdetails ( typ , source )
+			if meta then
+				return meta [ k ]
+			end
+		end
+	}
+	return setmetatable ( { typ = typ , source = source , laststarted = false , created = createdtime or ostime ( ) , baseoffset = baseoffset or 0 } , mt )
 end
 
 function copyitem ( item )
