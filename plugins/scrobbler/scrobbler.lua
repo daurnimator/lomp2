@@ -33,12 +33,13 @@ local http = require "socket.http"
 local url = require "socket.url"
 local md5 = require "md5" 
 
-setfenv ( loadfile ( dir .. "config" ) , _M ) ( ) -- Load config
+local config = { }
+setfenv ( loadfile ( dir .. "config" ) , config ) ( ) -- Load config
+local enabled = config.enabled or false
 
 local clientid = "tst"
 local clientver = "1.0"
 
-local enabled = false
 local sessionid , nowplayingurl , submissionurl = false , false , false
 
 -- Handshake
@@ -81,7 +82,7 @@ end
 
 function nowplaying ( typ , source )
 	if not sessionid then
-		local w , cap , err = handshake ( user , md5pass )
+		local w , cap , err = handshake ( config.user , config.md5pass )
 		if not w then return ferror ( "Last.fm Handshake error: " .. err , 1 ) end
 	end
 	
@@ -116,7 +117,7 @@ end
 submissionsqueue = { }
 function submissions ( )
 	if not sessionid then 
-		local w , cap , err = handshake ( user , md5pass )
+		local w , cap , err = handshake ( config.user , config.md5pass )
 		if not w then return ferror ( "Last.fm Handshake error: " .. err , 1 ) end
 	end
 	if not submissionsqueue [ 1 ] then return true , "Nothing to submit" end
@@ -170,7 +171,7 @@ function addtosubmissions ( typ , source )
 	return true
 end
 
-function enablescrobbler ( )
+function enable ( )
 	lomp.core.triggers.register ( "playback_startsong" , nowplaying , "Scrobbler Now-Playing" )
 	lomp.core.triggers.register ( "playback_startsong" , addtosubmissions , "Scrobbler Add Song To Submit Queue" )
 	lomp.core.triggers.register ( "playback_stop" , function ( typ , source , stopoffset ) 
@@ -186,7 +187,7 @@ function enablescrobbler ( )
 	enabled = true
 end
 
-function disablescrobbler ( )
+function disable ( )
 	lomp.core.triggers.unregister ( "playback_startsong" , "Scrobbler Now-Playing" )
 	lomp.core.triggers.unregister ( "playback_startsong" , "Scrobbler Add Song To Submit Queue" )
 	lomp.core.triggers.unregister ( "playback_stop" , "Scrobbler Submissions" )
@@ -194,8 +195,8 @@ function disablescrobbler ( )
 	enabled = false
 end
 
-if enable then
-	enablescrobbler ( )
+if enabled then
+	enable ( )
 end
 
 return _NAME , _VERSION
