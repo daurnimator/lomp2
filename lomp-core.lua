@@ -126,10 +126,10 @@ core [ "repeat" ] = function ( bool ) -- repeat is a keyword
 end
 
 function core.setploffset ( num )
-	if type ( num ) ~= "number" or not vars.queue [ num + vars.hardqueue.length ] then
-		return ferror ( "'Set playlist offset' called with invalid offset" )
-	elseif num == nil then
+	if num == nil then
 		num = 0
+	elseif type ( num ) ~= "number" or num < 0 or num >= core.playlist.getpl ( vars.softqueueplaylist ).length then
+		return ferror ( "'Set playlist offset' called with invalid offset" )
 	end
 	
 	vars.ploffset = num
@@ -170,26 +170,34 @@ end
 vars.currentsong = false
 vars.queue = setmetatable ( { } , {
 	__index = function ( t , k )
-		if type ( k ) ~= "number" or k < 0 then return nil end
-		if k == 0 then return vars.currentsong end
+		if k == "length" then 
+			return vars.hardqueue.length + core.playlist.getpl ( vars.softqueueplaylist ).length
+		elseif type ( k ) ~= "number" or k < 0 then
+			return nil
+		elseif k == 0 then
+			return vars.currentsong
+		end
 		
 		local hardqueue = vars.hardqueue
-		if k <= hardqueue.length then
+		local hardqueuelen = hardqueue.length
+		if k <= hardqueuelen then
 			return hardqueue [ k ]
 		else
-			k = k - vars.hardqueue.length
+			k = k - hardqueuelen
+			
 			local sqpl = core.playlist.getpl ( vars.softqueueplaylist )
-			
-			local sqpllen = sqpl.length
-			
+			local ploffset = vars.ploffset
 			if vars.loop then
-				vars.ploffset = vars.ploffset % sqpllen -- Enables looping behaviour
+				ploffset = ploffset % sqpl.length -- Enables looping behaviour
 			end
 			
-			return sqpl [ vars.ploffset + k ] -- This could be an item OR nil
+			return sqpl [ ploffset + k ] -- This could be an item OR nil
 		end
 	end ;
 	__newindex = function ( t , k , v )
 		updatelog ( "Attempted newindex assignment on queue: " .. k , 1 )
+	end ;
+	__len = function ( t )
+		return t.length
 	end ;
 } )
