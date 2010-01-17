@@ -1,5 +1,5 @@
 -- Enable scrobbler on start
-enable = true
+enabled = true
 
 -- Please fill in your last.fm login details:
  -- Your last.fm username
