@@ -138,7 +138,7 @@ function delete ( id )
 	local name = pl.name
 	vars.playlist [ num ] = nil
 	vars.pl.revision = vars.pl.revision + 1
-	if pl == vars.queue.softqueueplaylist then vars.queue.softqueueplaylist = -1 end -- If deleted playlist was the soft queue
+	if pl == vars.softqueueplaylist then core.setsoftqueueplaylist ( vars.emptyplaylist ) end -- If deleted playlist was the soft queue
 	
 	core.triggers.fire ( "playlist_delete" , num )
 	

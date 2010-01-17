@@ -162,9 +162,8 @@ function forward ( queueonly ) -- Moves forward one song in the queue
 		core.item.removeitem ( vars.hardqueue , 1 )
 		success = true
 	else
-		if vars.queue [ 1 ] then -- Songs left in softqueue
+		if core.setploffset ( vars.ploffset + 1 ) then -- Songs left in softqueue
 			currentsong = vars.queue [ 1 ]
-			vars.ploffset = vars.ploffset + 1
 			success = true
 		else
 			currentsong = false
