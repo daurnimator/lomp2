@@ -52,6 +52,7 @@ plugins = {
 			"httpserver" ;
 			"scrobbler" ;
 			--"mpd" ;
+			"mpris" ;
 }
 
 -- Tagging

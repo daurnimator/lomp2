@@ -55,6 +55,8 @@ Optional Dependencies:
 		can be obtained via: 			apt-get install liblua5.1-md5-0
 				or:			luarocks install md5
 
+	ldbus	(for MPRIS plugin)			http://github.com/daurnimator/ldbus/
+
 
 ==> Systems with apt-get should be able to get most of the dependencies with:
 sudo apt-get install lua5.1 liblua5.1-socket2 liblua5.1-xmlrpc0 liblua5.1-expat0 liblua5.1-filesystem0 liblua5.1-lpeg2 liblua5.1-md5-0
