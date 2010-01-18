@@ -19,8 +19,12 @@ module ( "lomp.core.localfileio" , package.see ( lomp ) )
 
 local lfs = require "lfs"
 
+local function touri ( item )
+	return "file://" .. item.source
+end
+
 local function createitem ( path )
-	return core.item.create ( "file" , path )
+	return core.item.create ( "file" , path , touri )
 end
 
 function checkfileaccepted ( path )

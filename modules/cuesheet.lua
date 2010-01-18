@@ -282,6 +282,10 @@ local function findtrack ( data , track , index )
 	return false
 end
 
+local function touri ( item )
+	return "cue://"
+end
+
 local function createitem ( data , track , index )
 	return core.item.create ( sourcetype , {} )
 end
