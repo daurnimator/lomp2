@@ -38,7 +38,7 @@ function geturi ( typ , source )
 	if not typ or not source then return false , "Bad argument" end
 	
 	if typ == "file" then
-		return "file://" .. source:gsub ( "([^/A-Za-z0-9_])" , function ( c ) return ("%%%02x"):format ( c:byte ( ) ) end ) -- Escapes a file path (for uri)
+		return "file://" .. source:urlescape ( ) -- Escapes a file path (for uri)
 	else
 		return false , "Invalid file typ"
 	end

@@ -111,6 +111,12 @@ function string.ascii ( str , encoding )
 	return iconv.new ( "ISO-8859-1" ,  encoding ):iconv ( str )
 end
 
+-- Escapes a string so its safe in a uri... (not / though)
+function string.urlescape ( str )
+	return str:gsub ( "([^/A-Za-z0-9_])" ,
+		function ( c ) return ("%%%02x"):format ( c:byte ( ) ) end )
+end
+
 -- Append a tbl to another
  -- newtbl is the table that will have tbl appended to it
 function table.append ( newtbl , tbl )

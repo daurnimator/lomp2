@@ -20,7 +20,7 @@ module ( "lomp.core.localfileio" , package.see ( lomp ) )
 local lfs = require "lfs"
 
 local function touri ( item )
-	return "file://" .. item.source
+	return "file://" .. item.source:urlescape ( )
 end
 
 local function createitem ( path )
