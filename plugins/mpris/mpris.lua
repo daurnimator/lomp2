@@ -23,23 +23,12 @@ _NAME = "Lomp MPRIS Plugin"
 _VERSION = "0.1"
 
 local enabled = true
-local name = "org.mpris.lompa"
+local name = "org.mpris.lomp"
 
 local ldbus = require "ldbus"
 local memassert = function ( cond ) return assert ( cond , "Out of Memory" ) end
 
 local conn
-
---[[
-					local req = ldbus.message.iter.new ( )
-					assert ( msg:iter_init ( req ) , "No arguments" )
-					
-					local reply = memassert ( msg:new_method_return ( ) )
-					local ret = ldbus.message.iter.new ( )
-					reply:iter_init_append ( ret )
-					
-					return reply
---]]	
 
 local function packmetadata ( iter , details )
 	local arrayiter = ldbus.message.iter.new ( )
@@ -80,8 +69,7 @@ local function packmetadata ( iter , details )
 			memassert ( dictiter:open_container ( variantiter , ldbus.types.variant , ldbus.types.uint32 ) )
 				memassert ( variantiter:append_basic ( details.samplerate , ldbus.types.uint32 ) )
 			memassert ( dictiter:close_container ( variantiter ) )
-		memassert ( arrayiter:close_container ( dictiter ) )
-			
+		memassert ( arrayiter:close_container ( dictiter ) )	
 	memassert ( iter:close_container ( arrayiter ) )
 end
 
@@ -121,14 +109,13 @@ local method_calls = {
 					local pos = assert ( req:get_basic ( ) )
 					
 					local item = lomp.vars.queue [ pos ]
-					--if not item then return msg:newerror ( 
+					if not item then return memassert ( msg:newerror ( lbus.errors.InvalidArgs , "Could not fetch item" ) ) end
 					local details , err = lomp.metadata.getdetails ( item.typ , item.source )
-					-- if not details then return msg:newerror ( 
 					
 					local reply = memassert ( msg:new_method_return ( ) )
 					local ret = ldbus.message.iter.new ( )
 					reply:iter_init_append ( ret )
-					packmetadata ( ret , details )
+					packmetadata ( ret , details or { tags = { } } )
 					return reply
 				end ;
 				GetCurrentTrack = function ( msg )
@@ -237,14 +224,13 @@ local method_calls = {
 				end ;
 				GetMetadata = function ( msg )
 					local item = lomp.vars.currentsong
-					--if not item then return msg:newerror ( 
+					if not item then return memassert ( msg:newerror ( lbus.errors.InvalidArgs , "Could not fetch item" ) ) end
 					local details , err = lomp.metadata.getdetails ( item.typ , item.source )
-					-- if not details then return msg:newerror ( 
 					
 					local reply = memassert ( msg:new_method_return ( ) )
 					local ret = ldbus.message.iter.new ( )
 					reply:iter_init_append ( ret )
-					packmetadata ( ret , details )
+					packmetadata ( ret , details or { tags = { } } )
 					return reply
 				end ;
 				--[[GetCaps = function ( msg )
@@ -346,8 +332,7 @@ function enable ( )
 		sig:iter_init_append ( iter )
 		
 		local details , err = lomp.metadata.getdetails ( typ , source )
-		-- if not details then return msg:newerror (
-		packmetadata ( iter , details )
+		packmetadata ( iter , details or { tags = { } } )
 		
 		memassert ( conn:send ( sig ) )
 		conn:flush ( )
