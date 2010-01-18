@@ -15,6 +15,7 @@ local lomp = lomp
 local updatelog , ferror = lomp.updatelog , lomp.ferror
 
 local assert , ipairs , pairs , require = assert , ipairs , pairs , require
+local floor = math.floor
 
 module ( "mpris" )
 
@@ -40,13 +41,13 @@ local conn
 					return reply
 --]]	
 
-local function packmetadata ( iter , tags )
+local function packmetadata ( iter , details )
 	local arrayiter = ldbus.message.iter.new ( )
 	local dictiter = ldbus.message.iter.new ( )
 	local variantiter = ldbus.message.iter.new ( )
 	
 	memassert ( iter:open_container ( arrayiter , ldbus.types.array , "{sv}" ) )
-	for k , v in pairs ( tags ) do
+	for k , v in pairs ( details.tags ) do
 		for i , vv in ipairs ( v ) do
 			memassert ( arrayiter:open_container ( dictiter , ldbus.types.dict_entry ) )
 				memassert ( dictiter:append_basic ( k , ldbus.types.string ) )
@@ -56,6 +57,31 @@ local function packmetadata ( iter , tags )
 			memassert ( arrayiter:close_container ( dictiter ) )
 		end
 	end
+		memassert ( arrayiter:open_container ( dictiter , ldbus.types.dict_entry ) )
+			memassert ( dictiter:append_basic ( "time" , ldbus.types.string ) )
+			memassert ( dictiter:open_container ( variantiter , ldbus.types.variant , ldbus.types.uint32 ) )
+				memassert ( variantiter:append_basic ( floor ( details.length ) , ldbus.types.uint32 ) )
+			memassert ( dictiter:close_container ( variantiter ) )
+		memassert ( arrayiter:close_container ( dictiter ) )
+		memassert ( arrayiter:open_container ( dictiter , ldbus.types.dict_entry ) )
+			memassert ( dictiter:append_basic ( "mtime" , ldbus.types.string ) )
+			memassert ( dictiter:open_container ( variantiter , ldbus.types.variant , ldbus.types.uint32 ) )
+				memassert ( variantiter:append_basic ( details.length * 1000 , ldbus.types.uint32 ) )
+			memassert ( dictiter:close_container ( variantiter ) )
+		memassert ( arrayiter:close_container ( dictiter ) )
+		memassert ( arrayiter:open_container ( dictiter , ldbus.types.dict_entry ) )
+			memassert ( dictiter:append_basic ( "audio-bitrate" , ldbus.types.string ) )
+			memassert ( dictiter:open_container ( variantiter , ldbus.types.variant , ldbus.types.uint32 ) )
+				memassert ( variantiter:append_basic ( details.bitrate , ldbus.types.uint32 ) )
+			memassert ( dictiter:close_container ( variantiter ) )
+		memassert ( arrayiter:close_container ( dictiter ) )
+		memassert ( arrayiter:open_container ( dictiter , ldbus.types.dict_entry ) )
+			memassert ( dictiter:append_basic ( "audio-samplerate" , ldbus.types.string ) )
+			memassert ( dictiter:open_container ( variantiter , ldbus.types.variant , ldbus.types.uint32 ) )
+				memassert ( variantiter:append_basic ( details.samplerate , ldbus.types.uint32 ) )
+			memassert ( dictiter:close_container ( variantiter ) )
+		memassert ( arrayiter:close_container ( dictiter ) )
+			
 	memassert ( iter:close_container ( arrayiter ) )
 end
 
@@ -102,7 +128,7 @@ local method_calls = {
 					local reply = memassert ( msg:new_method_return ( ) )
 					local ret = ldbus.message.iter.new ( )
 					reply:iter_init_append ( ret )
-					packmetadata ( ret , details.tags )
+					packmetadata ( ret , details )
 					return reply
 				end ;
 				GetCurrentTrack = function ( msg )
@@ -202,10 +228,10 @@ local method_calls = {
 					reply:iter_init_append ( ret )
 					local structiter = ldbus.message.iter.new ( )
 					memassert ( ret:open_container ( structiter , ldbus.types.struct ) )
-					memassert ( ret:append_basic ( ( { playing = 0 ; paused = 1 ; stopped = 2 } ) [ lomp.core.playback.state ] , ldbus.types.int32 ) )
-					memassert ( ret:append_basic ( 0 , ldbus.types.int32 ) )
-					memassert ( ret:append_basic ( 0 , ldbus.types.int32 ) )
-					memassert ( ret:append_basic ( lomp.vars.loop , ldbus.types.int32 ) )
+					memassert ( structiter:append_basic ( ( { playing = 0 ; paused = 1 ; stopped = 2 } ) [ lomp.core.playback.state ] , ldbus.types.int32 ) )
+					memassert ( structiter:append_basic ( 0 , ldbus.types.int32 ) )
+					memassert ( structiter:append_basic ( 0 , ldbus.types.int32 ) )
+					memassert ( structiter:append_basic ( lomp.vars.loop , ldbus.types.int32 ) )
 					memassert ( ret:close_container ( structiter ) )
 					return reply
 				end ;
@@ -218,7 +244,7 @@ local method_calls = {
 					local reply = memassert ( msg:new_method_return ( ) )
 					local ret = ldbus.message.iter.new ( )
 					reply:iter_init_append ( ret )
-					packmetadata ( ret , details.tags )
+					packmetadata ( ret , details )
 					return reply
 				end ;
 				--[[GetCaps = function ( msg )
@@ -297,9 +323,8 @@ local function step ( )
 		if msgtype == "method_call" then
 			local reply = process_method_call ( msg , method_calls )
 			if not reply then reply = msg:new_error ( ldbus.errors.NoReply , error_message ) end
-			conn:send ( reply )
+			memassert ( conn:send ( reply ) )
 			conn:flush ( )
-		elseif msgtype == "signal" then
 		end
 	end
 	
@@ -312,11 +337,26 @@ function enable ( )
 	conn = assert ( ldbus.bus.get ( "session" ) )
 	local DBUS_REQUEST_NAME_REPLY = assert ( ldbus.bus.request_name ( conn , name , { replace_existing = true } ) )
 	updatelog ( "MPRIS: request_name reply: " .. DBUS_REQUEST_NAME_REPLY , 5 )
+	
 	lomp.addstep ( step )
+	
+	lomp.core.triggers.register ( "playback_startsong" , function ( typ , source )
+		local sig = memassert ( ldbus.message.new_signal ( "/Player" , "org.freedesktop.MediaChange" , "TrackChange" ) )
+		local iter = ldbus.message.iter.new ( )
+		sig:iter_init_append ( iter )
+		
+		local details , err = lomp.metadata.getdetails ( typ , source )
+		-- if not details then return msg:newerror (
+		packmetadata ( iter , details )
+		
+		memassert ( conn:send ( sig ) )
+		conn:flush ( )
+	end , "MPRIS /Player org.freedesktop.MediaChange TrackChange" )
 end
 
 function disable ( )
 	enabled = false
+	lomp.core.triggers.unregister ( "playback_startsong" , "MPRIS /Player org.freedesktop.MediaChange TrackChange" )
 end
 
 if enabled then
