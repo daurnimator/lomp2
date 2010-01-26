@@ -15,7 +15,7 @@ local loadstring , setfenv , tostring , tonumber , type = loadstring , setfenv ,
 local tblconcat = table.concat
 local ioopen = io.open
 local osdate = os.date
-local strdump , strfind , strformat = string.dump , string.find , string.format
+local strfind , strformat = string.find , string.format
 
 module ( "lomp" )
 
@@ -43,7 +43,7 @@ function core.savestate ( )
 		while true do
 			local item = pl [ j ]
 			if not item then break end
-			s [ #s + 1 ] = strformat ( "\tcic(%q,%q,loadstring(%q),%d,%d);" , item.typ , item.source , strdump ( item.touri ) , item.created , item.baseoffset )
+			s [ #s + 1 ] = strformat ( "\tcic(%q,%q,%d,%d);" , item.typ , item.source , item.created , item.baseoffset )
 			j = j + 1
 		end
 		i = i + 1
@@ -56,7 +56,7 @@ function core.savestate ( )
 	if #vars.played > config.history then n = config.history else n = #vars.played end
 	for i = 1 , n do
 		local item = vars.played [ i ]
-		s [ #s + 1 ] = strformat ( "\tcic(%q,%q,loadstring(%q),%d,%d);" , item.typ , item.source , strdump ( item.touri ) , item.created , item.baseoffset )
+		s [ #s + 1 ] = strformat ( "\tcic(%q,%q,%d,%d);" , item.typ , item.source , item.created , item.baseoffset )
 	end
 	s [ #s + 1 ] = "};"
 	
@@ -96,7 +96,7 @@ function core.restorestate ( )
 			if not f then
 				return ferror ( "Could not load state file: " .. err , 1 )
 			end
-			local t = { core = core , vars = vars , player = player , loadstring = loadstring } -- To make functions available - security issues?
+			local t = { core = core , vars = vars , player = player } -- To make functions available - security issues?
 			setfenv ( f , t )
 			f ( )
 		else

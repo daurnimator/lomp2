@@ -28,9 +28,8 @@ types = {
 require "modules.cuesheet"
 require "core.localfileio"
 
-function create ( typ , source , tourifunc , createdtime , baseoffset )
+function create ( typ , source , createdtime , baseoffset )
 	if not types [ typ ] then return ferror ( "'Create item' called with invalid type" , 1 ) end
-	if type ( tourifunc ) ~= "function" then return ferror ( "'Create item' called with invalid touri function" .. type ( tourifunc ) , 1 ) end
 	local mt = {
 		__index = function ( t , k )
 			local meta = metadata.getdetails ( typ , source )
@@ -39,7 +38,7 @@ function create ( typ , source , tourifunc , createdtime , baseoffset )
 			end
 		end
 	}
-	return setmetatable ( { typ = typ ; source = source ; touri = tourifunc ; laststarted = false ; created = createdtime or ostime ( ) ; baseoffset = baseoffset or 0 } , mt )
+	return setmetatable ( { typ = typ ; source = source ; laststarted = false ; created = createdtime or ostime ( ) ; baseoffset = baseoffset or 0 } , mt )
 end
 
 function copyitem ( item )
