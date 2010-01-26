@@ -12,10 +12,13 @@
 require "general"
 
 local ipairs , pcall , require , type , unpack = ipairs , pcall , require , type , unpack
+local strfind = string.find
 local tblsort , tblappend = table.sort , table.append
 local ioopen = io.open
 
 module ( "lomp.core.localfileio" , package.see ( lomp ) )
+
+require "core.item"
 
 local lfs = require "lfs"
 

@@ -11,7 +11,7 @@
 
 require "general"
 
-local ipairs , pcall , require = ipairs , pcall , require
+local ipairs , pairs , pcall , require = ipairs , pairs , pcall , require
 
 module ( "lomp.albumart" , package.see ( lomp ) )
 

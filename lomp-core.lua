@@ -11,7 +11,7 @@
 
 require "general"
 
-local ipairs , rawset , setmetatable , type , require = ipairs , rawset , setmetatable , type , require
+local ipairs , rawset , require , setmetatable , tostring , type = ipairs , rawset , require , setmetatable , tostring , type
 local ostime = os.time
 local strfind = string.find
 local tblremove = table.remove
@@ -26,7 +26,7 @@ core = {
 }
 
 core._VERSION = core._MAJ .. "." .. core._MIN .. "." .. core._INC 
-core._PROGRAM = _NAME .. " " .. core._VERSION
+core._PROGRAM = core._NAME .. " " .. core._VERSION
 
 require "core.triggers"
 
@@ -60,30 +60,6 @@ vars = setmetatable ( { } , {
 		end ;
 	}
 )
-
-function core.quit ( )
-	player.stop ( )
-	
-	core.triggers.fire ( "quit" , newoffset )
-	
-	if metadata.savecache then
-		local ok , err = metadata.savecache ( )
-	end
-	if core.savestate then 
-		local ok , err = core.savestate ( )
-	end
-	
-	addstep ( function ( ) mainloop:quit ( ) return false end )
-	return true
-end
-
-require "player"
-require "core.playback"
-require "core.playlist"
-require "core.item"
-require "core.info"
-
-require "core.savestate"
 
 -- History Stuff
 
@@ -153,6 +129,25 @@ function core.setsoftqueueplaylist ( id )
 	return num , pl.length
 end
 
+function core.quit ( )
+	core.triggers.fire ( "quit" )
+	
+	addstep ( function ( ) mainloop:quit ( ) return false end )
+	return true
+end
+
+require "core.info"
+require "core.item"
+require "core.localfileio"
+require "core.playback"
+require "core.playlist"
+require "core.savestate"
+
+require "modules.metadata"
+require "modules.cuesheet"
+
+require "player"
+
 do -- Restore State
 	local ok , err = core.restorestate ( )
 	if not ok then
@@ -201,3 +196,11 @@ vars.queue = setmetatable ( { } , {
 		return t.length
 	end ;
 } )
+
+core.triggers.register ( "quit", function ( ) updatelog ( "Quiting" , 4 ) end , false , true )
+core.triggers.register ( "loop", function ( loop ) updatelog ( "loop set to " .. tostring ( loop ) , 5 ) end , false , true )
+core.triggers.register ( "ploffset", function ( ploffset ) updatelog ( "ploffset set to " .. ploffset , 5 ) end , false , true )
+core.triggers.register ( "softqueueplaylist", function ( softqueueplaylist ) updatelog ( "softqueueplaylist set to playlist #" .. softqueueplaylist , 5 ) end , false , true )
+core.triggers.register ( "rpt", function ( rpt ) updatelog ( "repeat set to " .. tostring ( rpt ) , 5 ) end , false , true )
+
+core.triggers.register ( "playback_startsong", function ( typ , source ) vars.currentsong.laststarted = ostime ( ) end , true )

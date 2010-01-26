@@ -25,9 +25,6 @@ types = {
 	file = true ;
 }
 
-require "modules.cuesheet"
-require "core.localfileio"
-
 function create ( typ , source , createdtime , baseoffset )
 	if not types [ typ ] then return ferror ( "'Create item' called with invalid type" , 1 ) end
 	local mt = {
@@ -50,7 +47,7 @@ function additems ( plid , position , objects )
 	if type ( pl ) ~= "playlist" then return ferror ( "'Add Items' called with invalid playlist" , 1 ) end
 	local pllength = pl.length
 	
-	if position and ( type ( position ) ~= "number" or position > ( pl.length + 1 ) ) then
+	if position and ( type ( position ) ~= "number" or position < 1 or position > ( pl.length + 1 ) ) then
 		return ferror ( "'Add Items' called with invalid position" , 1 ) 
 	else
 		position = position or ( pllength + 1 )
@@ -103,7 +100,7 @@ function copytoplaylist ( oldplid , oldpos , newplid , newpos )
 	if type ( newpl ) ~= "playlist" then return ferror ( "'Copy to playlist' called with invalid new playlist" , 1 ) end
 	local oldpl , oldplnum = core.playlist.getpl ( oldplid )
 	if type ( oldpl ) ~= "playlist" then return ferror ( "'Copy to playlist' called with invalid old playlist" , 1 ) end
-	if not oldpl [ pos ] then
+	if not oldpl [ oldpos ] then
 		return ferror ( "'Copy to playlist' called with invalid old item position" , 1 ) 
 	end
 	if newpos and ( type ( newpos ) ~= "number" or newpos > ( newpl.length + 1 ) ) then
@@ -139,3 +136,6 @@ function movetoplaylist ( oldplid , oldpos , newplid , newpos )
 	
 	return newpos
 end
+
+core.triggers.register ( "item_add", function ( plnum , position , numobjects ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Added " .. numobjects .. " item(s) to playlist #" .. plnum .. " (" .. pl.name .. ") at position #" .. position , 4 ) end , false , true )
+core.triggers.register ( "item_remove", function ( plnum , position ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Removed item from playlist #" .. plnum .. " (" .. pl.name .. ") position #" .. position --[[.. " Source: " .. pl [ position ].source]]  , 4 ) end , false , true )

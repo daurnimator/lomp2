@@ -99,23 +99,8 @@ function stop ( )
 	return getstate ( )
 end
 
-function seek ( offset , relative , percent )
-	local tracklength = select ( 3 , pipeline:query_duration ( gst.FORMAT_TIME ) )
-	local currentposition = select ( 3 , pipeline:query_position ( gst.FORMAT_TIME ) )
-	
-	if percent then
-		offset = ( offset / 100 ) * tracklength 
-	else
-		offset = offset * 1000 -- Convert from seconds to milliseconds
-	end
-	
-	if relative then
-		offset = currentposition + offset
-	end
-	
-	if offset > tracklength or offset < 0 then return false end
-	
-	local ok = pipeline:seek_simple ( gst.FORMAT_TIME , offset )
+function seek ( offset )
+	local ok = pipeline:seek_simple ( gst.FORMAT_TIME , offset * 1000 )
 	if ok then
 		return true
 	else
@@ -170,6 +155,11 @@ function getposition ( )
 	return position / 1000 -- Convert from milliseconds to seconds
 end
 
+function getduration ( )
+	local r , t , duration = pipeline:query_duration ( gst.FORMAT_TIME )
+	return duration / 1000 -- Convert from milliseconds to seconds
+end
+
 --[[bus:connect ( "message::eof" , function ( )
 		playback.state = "stopped"
 	end )
@@ -180,3 +170,6 @@ bus:connect ( "message" , function ( ... ) print ("statechange" , ... ) end )
 pipeline:connect ( "about-to-finish" , function ( )
 		core.triggers.fire ( "player_abouttofinish" )
 	end )
+
+core.triggers.register ( "quit", player.stop )
+core.triggers.register ( "player_abouttofinish", function ( ) updatelog ( "About to finish song" , 5 ) end )

@@ -17,6 +17,8 @@ local tblinsert , tblremove = table.insert , table.remove
 
 module ( "lomp.core.playback" , package.see ( lomp ) )
 
+require "core.triggers"
+require "core.item"
 require "player"
 
 state = "stopped"
@@ -215,7 +217,14 @@ function seek ( offset , relative , percent )
 	local currentsong = vars.currentsong
 	if not currentsong then return false , "No item" end
 	
-	player.seek ( offset , relative , percent )
+	local tracklength = player.getduration ( )
+	local currentposition = player.getposition ( )
+	
+	if percent then offset = ( offset / 100 ) * tracklength end
+	if relative then offset = currentposition + offset end
+	if offset > tracklength or offset < 0 then return ferror ( "Seek out of range" , 2 ) end
+	
+	player.seek ( offset )
 	
 	local newoffset = player.getposition ( )
 	currentsong.offset = newoffset

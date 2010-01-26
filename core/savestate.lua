@@ -11,13 +11,15 @@
 
 require "general"
 
-local loadstring , setfenv , tostring , tonumber , type = loadstring , setfenv , tostring , tonumber , type
+local loadstring , require , setfenv , tostring , tonumber , type = loadstring , require , setfenv , tostring , tonumber , type
 local tblconcat = table.concat
 local ioopen = io.open
 local osdate = os.date
 local strfind , strformat = string.find , string.format
 
 module ( "lomp" )
+
+require "core.item"
 
 function core.savestate ( )
 	local s = { 
@@ -96,8 +98,7 @@ function core.restorestate ( )
 			if not f then
 				return ferror ( "Could not load state file: " .. err , 1 )
 			end
-			local t = { core = core , vars = vars , player = player } -- To make functions available - security issues?
-			setfenv ( f , t )
+			setfenv ( f , { core = core , vars = vars , player = player } ) -- To make functions available - security issues?
 			f ( )
 		else
 			file:close ( )
@@ -108,4 +109,5 @@ function core.restorestate ( )
 	end
 	return true
 end
-	
+
+core.triggers.register ( "quit", core.savestate )

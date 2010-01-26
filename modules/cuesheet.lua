@@ -17,6 +17,8 @@ local iolines = io.lines
 
 module ( "lomp.cuesheet" , package.see ( lomp ) )
 
+require "core.item"
+
 local sourcetype = "cue"
 
 local lpeg = require "lpeg"
@@ -40,19 +42,23 @@ do
 	
 	local str = '"' * C ( ( P ( 1 ) - '"')^0 ) * '"' -- Quoted string
 		+ C ( ( 1 - space - eos )^0 ) -- normal string
-		
-	local timestamp = ( C ( ( digit * digit ) / tonumber ) * ":" * C ( ( digit * digit ) / tonumber ) * ":" * C ( ( digit * digit ) / tonumber ) ) / function ( mins , secs , frames ) return frames + 75 * ( secs + 60 * mins ) end + function ( _ , i ) error ( "Invalid timestamp in cuesheet" ) end -- Returns number of frames
 	
+	local timesection = ( digit * digit ) / tonumber
+	local timestamp = ( timesection * ":" * timesection * ":" * timesection )
+		/ function ( mins , secs , frames ) return frames / 75 + secs + 60 * mins end -- Returns number of seconds
+		+ function ( _ , i ) error ( "Invalid timestamp in cuesheet" ) end
 	
 	local media_catalog_number = digit * digit * digit * digit * digit * digit * digit * digit * digit * digit * digit * digit * digit / tonumber -- 13 digit number
 	local CATALOG = C "CATALOG" * space * media_catalog_number
 	
 	local CDTEXTFILE = C "CDTEXTFILE" * space * str
 	
-	local filetype = C ( P "BINARY" + "MOTOROLA" + "AIFF" + "WAVE" + "MP3" + "FLAC" ) + function ( _ , i ) error ( "Invalid filetype in cuesheet" ) end -- Note: "FLAC" isn't in spec
+	local filetype = C ( P "BINARY" + "MOTOROLA" + "AIFF" + "WAVE" + "MP3" + "FLAC" ) -- Note: "FLAC" isn't in spec
+		+ function ( _ , i ) error ( "Invalid filetype in cuesheet" ) end
 	local FILE = C "FILE" * space * str * space * filetype
 	
-	local flag = C ( P "DCP" + "4CH" + "PRE" + "SCMS" ) + function ( _ , i ) error ( "Invalid flag in cuesheet" ) end
+	local flag = C ( P "DCP" + "4CH" + "PRE" + "SCMS" )
+		+ function ( _ , i ) error ( "Invalid flag in cuesheet" ) end
 	local FLAGS = C "FLAGS" * ( space * flag )^1
 	
 	local indexnumber = digit * digit^1 / tonumber -- Note: max 2 digits in spec
@@ -74,7 +80,8 @@ do
 	
 	local TITLE = C "TITLE" * space * str
 	
-	local datatype = C ( P "AUDIO" + "CDG" + "MODE1/2048" + "MODE1/2352" + "MODE2/2336" + "MODE2/2352" + "CDI/2336" + "CDI/2352" + "MODEx/2xxx" ) + function ( _ , i ) error ( "Invalid track datatype in cuesheet" ) end -- Note: "MODEx/2xxx" isn't in spec, it sometimes comes up for CD-Extra
+	local datatype = C ( P "AUDIO" + "CDG" + "MODE1/2048" + "MODE1/2352" + "MODE2/2336" + "MODE2/2352" + "CDI/2336" + "CDI/2352" + "MODEx/2xxx" ) -- Note: "MODEx/2xxx" isn't in spec, it sometimes comes up for CD-Extra
+		+ function ( _ , i ) error ( "Invalid track datatype in cuesheet" ) end
 	local TRACK = C "TRACK" * space * indexnumber * space * datatype
 	
 	lineparser = ( P "\239\187\191" )^-1 -- Some files get the utf BOM... wtf!
@@ -111,14 +118,14 @@ local d = {
 		end
 		error ( "FLAGS can only appear after TRACK in a cuesheet" )
 	end ;
-	INDEX = function ( data , index , frames )
+	INDEX = function ( data , index , offset )
 		local files = data.files
 		if #files > 0 then
 			local tracks = files [ #files ].tracks
 			if tracks.n > 0 then
 				local indexes = tracks [ tracks.n ].indexes
 				if ( #indexes == 0 and ( index == 0 or index == 1 ) ) or #indexes == ( index - 1 ) then
-					indexes [ index ] = frames
+					indexes [ index ] = offset
 				else
 					error ( "Invalid INDEX (" .. index .. ") in cuesheet" )
 				end
@@ -135,7 +142,7 @@ local d = {
 							
 							tracks.n = 1
 							tracks [ 1 ] = lasttrack
-							indexes [ index ] = frames
+							indexes [ index ] = offset
 							return
 						end
 					end
@@ -166,7 +173,7 @@ local d = {
 		end
 		data.performer = performer
 	end ;
-	POSTGAP = function ( data , frames )
+	POSTGAP = function ( data , offset )
 		local files = data.files
 		if #files > 0 then
 			local tracks = files [ #files ].tracks
@@ -175,14 +182,14 @@ local d = {
 				if track.postgap then
 					error ( "POSTGAP can only appear once for each TRACK" )
 				else
-					track.postgap = frames
+					track.postgap = offset
 					return
 				end
 			end
 		end
 		error ( "POSTGAP can only appear after TRACK in a cuesheet" )
 	end ;
-	PREGAP = function ( data , frames )
+	PREGAP = function ( data , offset )
 		local files = data.files
 		if #files > 0 then
 			local tracks = files [ #files ].tracks
@@ -191,7 +198,7 @@ local d = {
 				if track.pregap then
 					error ( "PREGAP can only appear once for each TRACK" )
 				else
-					track.pregap = frames
+					track.pregap = offset
 					return
 				end
 			end
@@ -243,6 +250,7 @@ local d = {
 		error ( "TRACK can only appear after FILE in a cuesheet" )
 	end ;
 }
+
 local function doline ( data , op , ... )
 	if type ( op ) ~= "number" then -- incase there were no captures (eg. blank lines)
 		d [ op ] ( data , ... )
@@ -250,7 +258,7 @@ local function doline ( data , op , ... )
 end
 
 function read ( path )
-	-- tracks can be a holey array. the maximum index stored at tracks.n
+	-- "files [ fileindex ].tracks" can be a holey array. the maximum index used is stored in tracks.n
 	local data = {
 		files = { }
 	}
@@ -270,38 +278,43 @@ local function findtrack ( data , track , index )
 		if t then
 			local indexes = t.indexes
 			if index == 1 and indexes [ 0 ] and indexes [ 1 ] and indexes [ 1 ] < indexes [ 0 ] then -- We have a pregap appended to the previous track (non-compliant)
-				if files [ i + 1 ].tracks [ track ] == t then -- Use the next file instead
+				if files [ i + 1 ].tracks [ track ] == t then -- If next file has the same track, use the next file instead.
 					i = i +1
 				end
 			end
-			if indexes [ index ] then
-				return i
+			local offset = indexes [ index ]
+			if offset then
+				return i , offset
 			end
 		end
 	end
 	return false
 end
 
-local function createitem ( data , track , index )
-	return core.item.create ( sourcetype , {} )
+local function createitem ( data , fileindex , baseoffset )
+	local file = data.files [ fileindex ]
+	return core.item.create ( sourcetype , file.path , false , baseoffset )
 end
 
 function addtrack ( cuepath , track , index , pl , pos )
 	index = index or 1
 	
-	local d = read ( path )
-	local fileindex = findtrack ( d , track , index )
+	local data , err = read ( cuepath )
+	if not data then return data , err end
+	
+	local fileindex , offset = findtrack ( data , track , index )
 	if fileindex then
-		
-		return createitem ( d )
+		local item = createitem ( data , fileindex , offset )
+		return core.item.additem ( pl , pos , item )
 	else
 		return ferror ( "Unable to find track in cuesheet" , 3 )
 	end
 end
 
 function addcuesheet ( cuepath , pl , pos )
-	local d = read ( path )
+	local data , err = read ( cuepath )
+	if not data then return data , err end
+	
 end
 
 core.item.types [ sourcetype ] = true
-

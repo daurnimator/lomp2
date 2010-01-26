@@ -22,8 +22,6 @@ local osdate , ostime = os.date , os.time
 local ioopen = io.open
 local pcall , unpack , require , loadfile , pairs , ipairs , setfenv , setmetatable , tonumber , tostring , type = pcall , unpack , require , loadfile , pairs , ipairs , setfenv , setmetatable , tonumber , tostring , type
 
-local p , ts = print , table.serialise
-
 module ( "httpserver" )
 
 _NAME = "Lomp HTTP Server"

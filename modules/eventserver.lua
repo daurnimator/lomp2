@@ -16,6 +16,8 @@ local tblconcat = table.concat
 
 module ( "eventserver" , package.see ( lomp ) )
 
+require "core.triggers"
+
 local server = require "server"
 local Json = require "Json"
 

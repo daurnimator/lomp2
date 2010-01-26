@@ -20,7 +20,7 @@ pcall ( require , "luarocks.require" ) -- Activates luarocks if available.
 
 local socket = require "socket"
 local Json = require "Json"
-local p = print
+
 module ( "lompclient" )
 
 -- Lower Level interface

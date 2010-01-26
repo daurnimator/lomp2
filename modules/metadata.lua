@@ -22,6 +22,8 @@ local tblload , tblsave = table.load , table.save
 
 module ( "lomp.metadata" , package.see ( lomp ) )
 
+require "core.triggers"
+
 local cache
 --[[
 Format:
@@ -159,3 +161,5 @@ end
 
 restorecache ( )
 cache = cache or maketagcache ( { } )
+
+core.triggers.register ( "quit", function ( ) if metadata.savecache then metadata.savecache ( ) end end )

@@ -11,9 +11,11 @@
 
 require "general"
 
-local pairs , type = pairs , type
+local pairs , require, type = pairs , require , type
 
 module ( "lomp.core.info" , package.see ( lomp ) )
+
+require "core.playlist"
 
 function getplaylistinfo ( id )
 	local pl , num = core.playlist.getpl ( id )
