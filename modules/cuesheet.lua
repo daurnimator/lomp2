@@ -271,8 +271,18 @@ function read ( path )
 	return data
 end
 
-local function findtrack ( data , track , index )
+local function createitem ( data , fileindex , baseoffset )
+	local file = data.files [ fileindex ]
+	return core.item.create ( sourcetype , file.path , false , baseoffset )
+end
+
+function addtrack ( cuepath , track , index , pl , pos )
+	index = index or 1
+	
+	local data , err = read ( cuepath )
+	if not data then return data , err end
 	local files = data.files
+	
 	for i = 1 , #files do
 		local t = files [ i ].tracks [ track ]
 		if t then
@@ -284,37 +294,24 @@ local function findtrack ( data , track , index )
 			end
 			local offset = indexes [ index ]
 			if offset then
-				return i , offset
+				local item = createitem ( data , i , offset )
+				return core.item.additem ( pl , pos , item )
 			end
 		end
 	end
-	return false
-end
-
-local function createitem ( data , fileindex , baseoffset )
-	local file = data.files [ fileindex ]
-	return core.item.create ( sourcetype , file.path , false , baseoffset )
-end
-
-function addtrack ( cuepath , track , index , pl , pos )
-	index = index or 1
-	
-	local data , err = read ( cuepath )
-	if not data then return data , err end
-	
-	local fileindex , offset = findtrack ( data , track , index )
-	if fileindex then
-		local item = createitem ( data , fileindex , offset )
-		return core.item.additem ( pl , pos , item )
-	else
-		return ferror ( "Unable to find track in cuesheet" , 3 )
-	end
+	return ferror ( "Unable to find track in cuesheet" , 3 )
 end
 
 function addcuesheet ( cuepath , pl , pos )
 	local data , err = read ( cuepath )
 	if not data then return data , err end
+	local files = data.files
 	
+	local items = { }
+	for i = 1 , #files do
+		items [ i ] = createitem ( data , i , 0 )
+	end
+	return core.item.additems ( pl , pos , items )
 end
 
 core.item.types [ sourcetype ] = true
