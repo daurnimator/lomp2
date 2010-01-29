@@ -195,7 +195,7 @@ function sort ( id , eq )
 end
 
 core.triggers.register ( "playlist_create", function ( plnum ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Created playlist #" .. plnum .. ": '" .. pl.name .. "'" , 4 ) end , false , true )
-core.triggers.register ( "playlist_delete", function ( plnum ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Deleted playlist #" .. plnum , 4 ) end , false , true )
+core.triggers.register ( "playlist_delete", function ( plnum ) updatelog ( "Deleted playlist #" .. plnum , 4 ) end , false , true )
 core.triggers.register ( "playlist_clear", function ( plnum ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Cleared playlist #" .. plnum .. " (" .. pl.name .. ")" , 4 ) end , false , true )
 core.triggers.register ( "playlist_sort", function ( plnum ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Sorted playlist #" .. plnum .. " (" .. pl.name .. ")" , 4 ) end , false , true )
 core.triggers.register ( "playlist_newrevision", function ( plnum , revision ) local pl = core.playlist.getplaylist ( plnum ); updatelog ( "Playlist #" .. plnum .. " (" .. pl.name .. ") has a new revision" , 4 ) end , false , true )
