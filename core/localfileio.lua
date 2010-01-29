@@ -64,9 +64,9 @@ end
 local function getdir ( path , recurse , hiddenfiles )
 	local items = { }
 	
-	local ok , iter = pcall ( lfs.dir , path )
+	local ok , iter , dir_obj = pcall ( lfs.dir , path )
 	if not ok then return ferror ( "Error reading directory: " .. iter , 2 ) end
-	for entry in iter do
+	for entry in iter , dir_obj do
 		if hiddenfiles or entry:sub(1,1) ~= "." then
 			local fullpath = path .. "/" .. entry
 			local mode = lfs.attributes ( fullpath , "mode" )
