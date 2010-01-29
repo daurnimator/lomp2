@@ -11,15 +11,13 @@
 
 require "general"
 
-local error, ipairs , pcall , require , tonumber , type = error, ipairs , pcall , require , tonumber , type
+local assert , error, ipairs , pcall , require , tonumber , type = assert , error, ipairs , pcall , require , tonumber , type
 local strupper = string.upper
 local iolines = io.lines
 
 module ( "lomp.cuesheet" , package.see ( lomp ) )
 
 require "core.item"
-
-local sourcetype = "cue"
 
 local lpeg = require "lpeg"
 
@@ -273,7 +271,7 @@ end
 
 local function createitem ( data , fileindex , baseoffset )
 	local file = data.files [ fileindex ]
-	return core.item.create ( sourcetype , file.path , false , baseoffset )
+	return assert ( core.item.create ( "file" , file.path , false , baseoffset ) )
 end
 
 function addtrack ( cuepath , track , index , pl , pos )
@@ -313,5 +311,3 @@ function addcuesheet ( cuepath , pl , pos )
 	end
 	return core.item.additems ( pl , pos , items )
 end
-
-core.item.types [ sourcetype ] = true
