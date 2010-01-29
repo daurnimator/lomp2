@@ -71,52 +71,6 @@ function core.listplayed ( )
 	return vars.played , tblconcat ( t , "\n"  )
 end
 
-function getvar ( varstring )
-	if type ( varstring ) ~= "string" then return false end
-	--[[local var = vars
-	for k in string.gmatch ( varstring , "(%w+)%." ) do
-		var = var [ k ]
-	end
-	var = var [ select ( 3 , string.find ( varstring , "([^%.]+)$" ) ) ]
-	if type ( var ) == "function" then return false
-	--]]
-	local f = loadstring ( "return " .. varstring )
-	setfenv ( f , vars )
-	return f ( )
-end
-
-function playsongfrompl ( pl , pos )
-	core.setsoftqueueplaylist ( pl )
-	core.clearhardqueue ( )
-	core.playback.goto ( pos )
-	core.playback.play ( )
-	return true
-end
-	
-function demo ( )
-	core.reloadlibrary ( )
-	local pl = core.playlist.new ( "Flac Files" )
-	core.localfileio.addfile ( '/media/sdc1/Random Downloaded/Andrew Desilva - Just Like Good Music (Quazimodo elctric disco 12.MP3' , pl )
-	--core.localfileio.addfile ( '/media/windows/Documents and Settings/Daurnimator/My Documents/My Music/Destroy Rock & Roll/Mylo - 5 in My Arms.mp3' , pl )
-	--core.localfileio.addfile ( '/media/windows/Documents and Settings/Daurnimator/My Documents/My Music/Destroy Rock & Roll/Mylo - Valley of the Dolls.mp3' , pl )
-	core.localfileio.addfile ( "/media/sdc1/Downloaded/Zombie Nation, Kernkraft 400 CDS/[03] Zombie Nation - Kernkraft 400.wv" , pl ) 
-	core.setsoftqueueplaylist ( 1 )
-	pv ( )
-	core.setsoftqueueplaylist ( 0 )
-
-	--core.playback.play ( )
-	core.playback.next ( )
-	--os.sleep ( 1 )
-	--print(player.getstate ( ))
-	core.playback.next ( )
-	core.playback.play ( )
-	--os.sleep ( 1 )
-	--playsongfrompl ( 0 , 2 )
-	--os.sleep ( 5 )
-	--core.quit ( )
-	return true
-end
-function a ( ... ) print ("testing!", ... ) return "test done" end
 function pv ( )
 	p ( "=========== PRINT OUT OF STATE: \n" )
 	p ( "Current State: " .. core.playback.state .. "\n")
@@ -127,13 +81,6 @@ function pv ( )
 	p ( "=========== END PRINT OUT" )
 	return true
 end
-
---[[function p (...)
-	if type ( select ( 1 , ... ) ) == "string" then 
-	print ( ... )
-	elseif type ( select ( 1 , ... ) ) == "table" then for k,v in pairs((...)) do p(...) end
-	end
-end--]] 
 
 p = print
 pp = function(o) print(tblserialise(o)) end
