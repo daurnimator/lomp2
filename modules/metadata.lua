@@ -76,7 +76,7 @@ local function getfileitem ( path )
 	local f = exttodec [ item.extension ]
 	if f then
 		local ok , err = f ( item )
-		if not ok then updatelog ( "Corrupt/Bad File: " .. item.path .. ":" .. ( err or "" ) , 3 ) end
+		if not ok then updatelog ( "Corrupt/Bad File: " .. item.path .. ": " .. ( err or "" ) , 3 ) end
 	else
 		updatelog ( "Unknown format: " .. item.extension , 3 )
 	end
@@ -97,9 +97,9 @@ local function editfile ( path , edits , inherit )
 	end
 end
 
-local function maketagcache ( )
-	return { 
-		file = setmetatable ( { } , {
+local function maketagcache ( obj )
+	local obj = obj or { }
+	obj [ "file" ] = setmetatable ( obj.file or { } , {
 			__index = function ( t , source )
 				local item = getfileitem ( source )
 				if item ~= nil then
@@ -108,7 +108,7 @@ local function maketagcache ( )
 				end
 			end ,
 		} )
-	}
+	return obj
 end
 
 -- Public functions
