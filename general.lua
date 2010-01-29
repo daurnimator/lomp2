@@ -155,7 +155,7 @@ end
  -- a is table to sort
  -- returns sorted table.
 function table.stablesort ( a , equalitycheck , newtable )
-	equalitycheck = equalitycheck or function ( e1 , e2 ) if e1 < e2 then return true else return false end end
+	equalitycheck = equalitycheck or function ( e1 , e2 ) return e1 < e2 end
 	
 	local n = #a
 	
@@ -173,9 +173,12 @@ function table.stablesort ( a , equalitycheck , newtable )
 	for i = 1 , n do index [ i ] = a [ index [ i ] ] end
 	
 	if newtable then a = { } end
+	
 	for i = 1 , n do
 		a [ i ] = index [ i ]
 	end
+	
+	return a
 end
 
 -- Does a shallow copy of tbl, destination table is optional
