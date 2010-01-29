@@ -127,9 +127,7 @@ function pv ( )
 	p ( "=========== END PRINT OUT" )
 	return true
 end
-function showtag ( pl , pos )
-	p ( tblserialise ( vars.pl[pl][pos] ) )
-end
+
 --[[function p (...)
 	if type ( select ( 1 , ... ) ) == "string" then 
 	print ( ... )
