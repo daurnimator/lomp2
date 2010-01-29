@@ -104,7 +104,7 @@ end
 function core.setploffset ( num )
 	if num == nil then
 		num = 0
-	elseif type ( num ) ~= "number" or num < 0 or num >= core.playlist.getpl ( vars.softqueueplaylist ).length then
+	elseif type ( num ) ~= "number" or num < 0 or num > core.playlist.getpl ( vars.softqueueplaylist ).length then
 		return ferror ( "'Set playlist offset' called with invalid offset" )
 	end
 	
