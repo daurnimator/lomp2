@@ -186,8 +186,8 @@ function sort ( id , eq )
 	if not pl then
 		return ferror ( "'Sort playlist' called with invalid playlist" , 1 )
 	end
-
-	newrevision ( pl , tblstablesort ( collapserev ( pl.revisions , pl.revision ) , eq , true ) )
+	
+	newrevision ( pl , tblstablesort ( collapserev ( pl.revisions , pl.revision ) , eq ) )
 	
 	core.triggers.fire ( "playlist_sort" , num )
 	

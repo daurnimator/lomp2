@@ -55,8 +55,6 @@
 
 ]]
 
-require "general"
-
 local assert , error , ipairs , pairs , setmetatable , tonumber , tostring , type = assert , error , ipairs , pairs , setmetatable , tonumber , tostring , type
 local floor , max = math.floor , math.max
 local tblconcat= table.concat

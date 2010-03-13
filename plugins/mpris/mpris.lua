@@ -320,7 +320,9 @@ local function step ( )
 end
 
 function enable ( )
-	conn = assert ( ldbus.bus.get ( "session" ) )
+	local cond , err = ldbus.bus.get ( "session" )
+	conn = assert ( cond , err:sub ( 1 , -2 ) ) -- Trim off the newline
+	
 	local DBUS_REQUEST_NAME_REPLY = assert ( ldbus.bus.request_name ( conn , name , { replace_existing = true } ) )
 	updatelog ( "MPRIS: request_name reply: " .. DBUS_REQUEST_NAME_REPLY , 5 )
 	
