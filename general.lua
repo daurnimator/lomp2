@@ -55,31 +55,18 @@ end
 
 -- Explodes a string on seperator
 function string.explode ( str , seperator , plain , fromend )
-	if seperator == "" then return false end
+	if type ( seperator ) ~= "string" or seperator == "" then return false , "Provide a valid seperator (a string of length >= 1)" end
 	local t , nexti = { } , 1
 	local pos = 1
 	while true do
 		local st , sp = str:find ( seperator , pos , plain )
-		if st then
-			if fromend then
-				local i = st + 1
-				local newst , newsp
-				while true do
-					newst , newsp = str:find ( seperator , i , plain )
-					i = ( newst or i ) + 1
-					if i > sp then break end
-				end
-				st = newst or st
-				sp = newsp or sp
-			end
-			if pos ~= st then
-				t [ nexti ] = str:sub ( pos , st - 1 ) -- Attach chars left of current divider
-				nexti = nexti + 1
-			end
-			pos = sp + 1 -- Jump past current divider
-		else
-			break
+		if not st then break end -- No more seperators found
+		
+		if pos ~= st then
+			t [ nexti ] = str:sub ( pos , st - 1 ) -- Attach chars left of current divider
+			nexti = nexti + 1
 		end
+		pos = sp + 1 -- Jump past current divider
 	end
 	t [ nexti ] = str:sub ( pos ) -- Attach chars right of last divider
 	return t
