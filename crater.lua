@@ -53,14 +53,14 @@ Yielding:
 			
 			local handle_resume 
 			
-			local h = function ( data , err , partial_read )
+			local h = function ( data , err , partial )
 				if data then
 					handle_resume ( coroutine_resume ( co , data ) )
 				elseif err == "closed" then
-					handle_resume ( coroutine_resume ( co , false , partial_read ) )
+					handle_resume ( coroutine_resume ( co , false , partial ) )
 				elseif err == "timeout" then
 				end
-				return data , err , partial_read
+				return data , err , partial
 			end
 					
 			handle_resume = function ( ok , need , extra )
@@ -81,18 +81,16 @@ Yielding:
 						end )
 					end
 				elseif need == "send" then
+					local ok , err
 					local partial_write = 0
 					watch_fd ( client , "w" , function ( loop  , io , client )
-							local ok , err
 							ok , err , partial_write = client:send ( extra , partial_write + 1 )
-							if ok then
+							
+							if err ~= "timeout" then
 								io:stop ( loop )
-								handle_resume ( coroutine_resume ( co , ok ) )
-							elseif err == "closed" then
-								io:stop ( loop )
-								handle_resume ( coroutine_resume ( co , false , partial_write ) )
-							elseif err == "timeout" then
 							end
+							
+							h ( ok , err , partial_write )
 						end )
 				elseif need == "yield" then
 				elseif need == "done" or need == true then
