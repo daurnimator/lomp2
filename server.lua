@@ -14,11 +14,11 @@ new_handler ( assert ( socket.bind ( config.host , config.port ) ) , function ( 
 		
 		local stream = new_stream ( )
 		local receive = stream.receive
-		local send = function ( s ) return stream.send ( s .. "\r\n" ) end
+		local write = function ( s ) return stream.write ( s .. "\r\n" ) end
 		
 		local version = assert ( receive ( "*l" ):match ( "^LOMP%s+(%d+)$" ) , "Not a LOMP client" )
 		log ( "Version" , version )
-		send ( "OK" )
+		write ( "OK" )
 		
 		log ( "Client disconnected." )
 		return "done"

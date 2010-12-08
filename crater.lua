@@ -10,8 +10,8 @@ local watch_fd = loop.watch_fd
 local new_stream = doc ( {
 	desc = [[Returns a threading socket like object]] ;
 	params = { } ;
-	returns = { { "table" , "has methods 'receive' and 'send'" , [[
-table with send and receieve functions that yield the current coroutine.
+	returns = { { "table" , "has methods 'receive' and 'write'" , [[
+table with write and receieve functions that yield the current coroutine.
 ]];
 	} } ;
 } , function ( )
@@ -20,8 +20,8 @@ table with send and receieve functions that yield the current coroutine.
 		receive = function ( format )
 			return assert ( coroutine_yield ( "receive" , format ) , "socket closed" )
 		end ;
-		send = function ( str )
-			return assert ( coroutine_yield ( "send" , str ) , "socket closed" )
+		write = function ( str )
+			return assert ( coroutine_yield ( "write" , str ) , "socket closed" )
 		end ;
 	}
 end )
@@ -29,14 +29,14 @@ end )
 local new_handler = doc ( {
 	desc = [[
 Registers a new watcher for ^master_socket^.
-^handler^ is a function that will be turned into a coroutine; it should use coroutine.yield ( "done" | true | "yield" | "send" | "receive" , extra )]];
+^handler^ is a function that will be turned into a coroutine; it should use coroutine.yield ( "done" | true | "yield" | "write" | "receive" , extra )]];
 	params = {
 		{ "master_socket" , "socket like object" } ;
 		{ "handler" , "coroutine callback" , [[
 ^handler^ function is turned into a coroutine, then called with the client socket as only argument.
 Yielding:
 	"done" | true	closes the socket.
-	"send"		does a client:send ( extra ), returns number of bytes written, or if the socket is closed: false , last byte written
+	"write"		does a client:send ( extra ), returns number of bytes written, or if the socket is closed: false , last byte written
 	"receive"		does a client:receive ( extra ) , returns data or if the socket is closed: false , partial_read
 ]] } ;
 	} ;
@@ -79,7 +79,7 @@ Yielding:
 							h ( data , err , partial_read )
 						end )
 					end
-				elseif need == "send" then
+				elseif need == "write" then
 					local ok , err
 					local partial_write = 0
 					watch_fd ( client , "w" , function ( loop  , io , client )
