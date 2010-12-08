@@ -36,7 +36,6 @@ Registers a new watcher for ^master_socket^.
 ^handler^ function is turned into a coroutine, then called with the client socket as only argument.
 Yielding:
 	"done" | true	closes the socket.
-	"yield"		does a normal yield.
 	"send"		does a client:send ( extra ), returns number of bytes written, or if the socket is closed: false , last byte written
 	"receive"		does a client:receive ( extra ) , returns data or if the socket is closed: false , partial_read
 ]] } ;
@@ -92,7 +91,6 @@ Yielding:
 							
 							h ( ok , err , partial_write )
 						end )
-				elseif need == "yield" then
 				elseif need == "done" or need == true then
 					client:close ( )
 				else
@@ -109,4 +107,3 @@ return {
 	new_stream = new_stream ;
 	new_handler = new_handler ;
 }
-
