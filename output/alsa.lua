@@ -12,26 +12,22 @@ local function new_buffer ( len )
 	return buffer
 end
 
-local formats = {
-	[16] = asound.SND_PCM_FORMAT_S16_LE ;
-}
-
-local function process_format ( format )
+--[[local function process_format ( format )
 	local bits_in_sample = asound.snd_pcm_format_physical_width(format)
 	local phys_bps = asound.snd_pcm_format_physical_width(format) / 8
 	local big_endian = asound.snd_pcm_format_big_endian(format) == 1
 	local to_unsigned = asound.snd_pcm_format_unsigned(format) == 1
-end
+end]]
 
-local function load_interleaved ( path , channels , rate , format )
+local function load_interleaved ( path , channels , rate )
 	local data = io.open(path):read("*a")
 	channels = channels or 2
-	local format = formats [ format or 16 ]
+
+	local format = asound.SND_PCM_FORMAT_S16
 	local samples = new_buffer ( #data )
 	ffi.copy(samples,data,#data)
 
 	local bits_in_sample = asound.snd_pcm_format_physical_width(format)
-	assert(bits_in_sample%8==0)
 	local numsamples = #data/(bits_in_sample/8)
 
 	return {
@@ -61,6 +57,7 @@ end
 
 local function set_params ( handle , options )
 	local resample = 1
+	local format = asound.SND_PCM_FORMAT_FLOAT
 	local access = asound.SND_PCM_ACCESS_RW_INTERLEAVED 
 	local buffer_time = .5*10^6 -- in us
 	local period_time = .1*10^6 -- in us
@@ -75,7 +72,7 @@ local function set_params ( handle , options )
 	aa( asound.snd_pcm_hw_params_any		 ( handle , hw_params ))
 	aa( asound.snd_pcm_hw_params_set_rate_resample	 ( handle , hw_params , resample ))
 	aa( asound.snd_pcm_hw_params_set_access		 ( handle , hw_params , access ))
-	aa( asound.snd_pcm_hw_params_set_format		 ( handle , hw_params , options.format ))
+	aa( asound.snd_pcm_hw_params_set_format		 ( handle , hw_params , format ))
 	aa( asound.snd_pcm_hw_params_set_channels	 ( handle , hw_params , options.channels ))
 	
 	local rrate = ffi.new( "unsigned int[1]" , rate)
@@ -116,24 +113,26 @@ local function set_params ( handle , options )
 	return options
 end
 
-local function getnext(options,maxinc)
-	local bits_in_sample = asound.snd_pcm_format_physical_width(options.format)
-	local base = options.buffer
+local function getnext(options,maxframes)
+	local src_base = options.buffer
+	local src_chans = options.channels
+	local src_bits_in_sample = asound.snd_pcm_format_physical_width(options.format)
+	local src_framesize = src_bits_in_sample/8*src_chans
+	local src_buffer_type = "int"..src_bits_in_sample.."_t*"
 
-	local enddata = ffi.cast("intptr_t",base)+(bits_in_sample/8)*(options.samples)
+	local nxt = ffi.cast("intptr_t",src_base)
+	local enddata = nxt+src_bits_in_sample/8*options.samples
 
-	maxinc = tonumber(maxinc) or error("Invalid increment")
-	local last = ffi.cast("intptr_t",base)
 	return function()
-		local nxtbase = last
+		local nxtbase = nxt
 
-		local len = math.min ( maxinc , tonumber(enddata - last) )
+		local len = math.min ( maxframes , tonumber(enddata - nxtbase)/src_framesize )
 		if len <= 0 then
 			return nil
 		end
-		last = last + len
+		nxt = nxt + len*src_framesize
 
-		return ffi.cast("void*",nxtbase) , len
+		return ffi.cast(src_buffer_type,nxtbase) , len
 	end
 end
 
@@ -157,28 +156,31 @@ local function xrunrecovery ( handle , err )
 end
 
 local function write_loop ( handle , options , sfx )
-	local chans = options.channels
-	local buffsize = options.buffer_size
-	local bits_in_sample = asound.snd_pcm_format_physical_width(options.format)
-	local framesize = bits_in_sample/8*chans
+	local src_chans = options.channels
+	
+	local dst_chans = 2
+	local dst_framesize = 4*dst_chans
+	local dst_buffer_type = "float*"
 
-	local buffer = ffi.cast("int"..bits_in_sample.."_t*",new_buffer(buffsize*framesize) )
+	local buffsize = tonumber(options.buffer_size)
+	local buffer = ffi.cast ( dst_buffer_type , new_buffer(buffsize*dst_framesize) )
+	ffi.fill(buffer,buffsize*dst_framesize,0)
 
-	for base , len in getnext(options,buffsize*framesize) do
---		ffi.copy(buffer,base,len)
-		local c = 0
-		for i=0,(len)/framesize-1 do
-			for c=0,(chans-1) do
-				local offset = i*chans+c
+	for base , frames in getnext(options,buffsize) do
+		--ffi.copy(buffer,base,len)
+		local foo = 0
+		for i=0,frames-1 do
+			for c=0,(src_chans-1) do
+				local offset = i*src_chans+c
 				--Get sample
-				local v = ffi.cast("int"..bits_in_sample.."_t*",base)[offset]
-				v=sfx(tonumber(v),c)
+				local v = base[offset]
+				v = sfx ( tonumber(v)/2^15 , c )
 				-- Put into buffer
-				ffi.cast("int"..bits_in_sample.."_t*",buffer)[offset]=v
+				buffer[offset]=v
 			end
 		end
 		local ptr = buffer
-		local cptr = len/framesize
+		local cptr = frames
 		while cptr > 0 do
 			local err	
 			repeat
@@ -190,7 +192,7 @@ local function write_loop ( handle , options , sfx )
 				end
 				break
 			end
-			ptr = ffi.cast("void*" , ffi.cast("intptr_t",ptr) + err * framesize )
+			ptr = ffi.cast("void*" , ffi.cast("intptr_t",ptr) + err * dst_framesize )
 			cptr = cptr - err
 		end
 	end
