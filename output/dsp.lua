@@ -21,17 +21,22 @@ local function channel ( chan , func )
 	end
 end
 
+local function multiply ( m )
+	return function(sample,...)
+			return m*sample
+		end
+end
+
 -- Convert on logarithmic scale.
-local function volume ( v )
+local function attenuate ( v )
 	v = tonumber(v)
 	assert(v and v>=0 and v<=1,"Invalid volume")
 	local base=2
 	local m=(base^(v)-1)/(base-1)
 
-	return function(sample,...)
-			return m*sample,...
-		end
+	return multiply ( m )
 end
+
 local function balance ( b )
 	b = tonumber(b)
 	assert(b and b>=0 and b<=1,"Invalid balance")
@@ -39,9 +44,9 @@ local function balance ( b )
 	local right 
 	if b == .5 then return ident
 	elseif b < .5 then -- Attenuate right
-		return channel(1,volume(b*2))
+		return channel(1,attenuate(b*2))
 	elseif b > .5 then -- Attenuate left
-		return channel(0,volume((1-b)*2))
+		return channel(0,attenuate((1-b)*2))
 	end
 end
 local function delay(d)
@@ -61,8 +66,9 @@ end
 return setmetatable({
 	dsp = dsp ;
 	channel = channel ;
-
-	volume = volume ;
+	
+	multiply = multiply ;
+	attenuate = attenuate ;
 	balance = balance ;
 
 	delay = delay ;
