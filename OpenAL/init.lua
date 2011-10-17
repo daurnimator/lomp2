@@ -1,3 +1,6 @@
+local assert , error = assert , error
+local setmetatable = setmetatable
+
 local rel_dir = ...
 
 -- FFI binding to OpenAL
@@ -32,11 +35,11 @@ ffi_process_defines( [[alc.h]], openal_defs )
 
 local openal_lib = ffi.load ( dynlibname )
 
-local openal = setmetatable({},{__index = function (t,k) return openal_defs[k] or openal_lib[k] end;})
+local openal = setmetatable ( { } , { __index = function ( t , k ) return openal_defs[k] or openal_lib[k] end ; } )
 
-local int = ffi.new("ALint[1]")
-local uint = ffi.new("ALuint[1]")
-local float = ffi.new("ALfloat[1]")
+local int = ffi.new ( "ALint[1]" )
+local uint = ffi.new ( "ALuint[1]" )
+local float = ffi.new ( "ALfloat[1]" )
 
 openal.sourcetypes = {
 	[openal_defs.AL_STATIC] 		= "static" ;
@@ -48,12 +51,12 @@ openal.format = {
 	MONO16 			= openal_defs.AL_FORMAT_MONO16 ;
 	STEREO8 		= openal_defs.AL_FORMAT_STEREO8 ;
 	STEREO16 		= openal_defs.AL_FORMAT_STEREO16 ;
-	MONO_FLOAT32 	= openal.alGetEnumValue("AL_FORMAT_MONO_FLOAT32") ;
-    STEREO_FLOAT32 	= openal.alGetEnumValue("AL_FORMAT_STEREO_FLOAT32") ;
-	["QUAD16"] 		= openal.alGetEnumValue("AL_FORMAT_QUAD16") ;
-	["51CHN16"] 	= openal.alGetEnumValue("AL_FORMAT_51CHN16") ;
-	["61CHN16"] 	= openal.alGetEnumValue("AL_FORMAT_61CHN16") ;
-	["71CHN16"] 	= openal.alGetEnumValue("AL_FORMAT_71CHN16") ;
+	MONO_FLOAT32 	= openal.alGetEnumValue ( "AL_FORMAT_MONO_FLOAT32" ) ;
+    STEREO_FLOAT32 	= openal.alGetEnumValue ( "AL_FORMAT_STEREO_FLOAT32" ) ;
+	["QUAD16"] 		= openal.alGetEnumValue ( "AL_FORMAT_QUAD16" ) ;
+	["51CHN16"] 	= openal.alGetEnumValue ( "AL_FORMAT_51CHN16" ) ;
+	["61CHN16"] 	= openal.alGetEnumValue ( "AL_FORMAT_61CHN16" ) ;
+	["71CHN16"] 	= openal.alGetEnumValue ( "AL_FORMAT_71CHN16" ) ;
 }
 reverse_lookup ( openal.format , openal.format )
 

@@ -41,7 +41,7 @@ local ffmpeg = {
 	avutil = avutil ;
 	avcodec = avcodec ;
 	avformat = avformat ;
-	}
+}
 
 ffmpeg.format_to_type = {
 	--[avutil.AV_SAMPLE_FMT_NONE] 	= nil ;

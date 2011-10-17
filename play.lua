@@ -31,7 +31,7 @@ local function setup ( )
 	local queue = new_fifo ( )
 	queue:setempty ( function ( f ) return empty_item end )
 
-	local BUFF_SIZE = 8192*4
+	local BUFF_SIZE = 8192*2
 	local source_data = ffi.new ( "char[?]" , BUFF_SIZE )
 
 	local alsource

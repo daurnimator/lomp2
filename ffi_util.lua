@@ -94,29 +94,9 @@ local function ffi_add_include_dir ( dir )
 end
 
 
--- Sleeps for the specified amount of time;
---  if no argument given, sleeps for smallest amount of time possible (gives up timeslice)
-local sleep
-if jit.os == "Windows" then
-	ffi.cdef[[void Sleep(int);]]
-	sleep = function ( x )
-		x = max ( 0 , x or 0 ) -- Prevent overflows
-		ffi.C.Sleep(x*1000)
-	end
-else --Assume posix
-	ffi.cdef[[void usleep(unsigned long usec);]]
-	sleep = function ( x )
-		x = max ( 0 , x or 1e-6 )
-		ffi.C.usleep( x * 1e6 )
-	end
-end
-
-
 return {
 	ffi_process_headers = ffi_process_headers ;
 	ffi_process_defines = ffi_process_defines ;
 	ffi_defs = ffi_defs ;
 	ffi_add_include_dir = ffi_add_include_dir ;
-
-	sleep = sleep ;
 }
