@@ -10,7 +10,7 @@ local handle = alsa.init("default")
 local options = {
 	channels = 2 ;
 	sample_rate = 44100 ;
-	source = source ;
+	source = io.open ( source , "r" ) ;
 	format = alsa.formats[16] ;
 	--samples =  ;
 }
