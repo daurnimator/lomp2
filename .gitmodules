@@ -1,0 +1,3 @@
+[submodule "OpenAL"]
+	path = OpenAL
+	url = git@github.com:daurnimator/openal-lua-ffi.git
