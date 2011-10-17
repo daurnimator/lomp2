@@ -8,7 +8,7 @@
   <style type="text/css">
     body {
       margin-top: 1.0em;
-      background-color: #00007E;
+      background-color: #0000AA;
       font-family: Helvetica, Arial, FreeSans, san-serif;
       color: #ffffff;
     }
@@ -16,12 +16,13 @@
       margin: 0 auto;
       width: 700px;
     }
-    h1 { font-size: 3.8em; color: #ffff81; margin-bottom: 3px; }
+    h1 { font-size: 3.8em; color: #ffff55; margin-bottom: 15px; }
     h1 .small { font-size: 0.4em; }
     h1 a { text-decoration: none }
-    h2 { font-size: 1.5em; color: #ffff81; }
-    h3 { text-align: center; color: #ffff81; }
+    h2 { font-size: 1.5em; color: #ffff55; }
+    h3 { text-align: center; color: #ffff55; }
     a { color: #ffff81; }
+	br { height: 20px; }
     .description { font-size: 1.2em; margin-bottom: 30px; margin-top: 30px; font-style: italic;}
     .download { float: right; }
     pre { background: #000; color: #fff; padding: 15px;}
@@ -31,8 +32,6 @@
 </head>
 
 <body>
-  <a href="http://github.com/daurnimator/lomp2"><img style="position: absolute; top: 0; right: 0; border: 0;" src="http://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub" /></a>
-
   <div id="container">
 
     <div class="download">
@@ -43,15 +42,19 @@
     </div>
 
     <h1><a href="http://github.com/daurnimator/lomp2"><img border="0" width="200" src="lomp.png"></a>
-      <span class="small">by <a href="http://github.com/daurnimator">daurnimator</a></span></h1>
+      <span class="small">A new iteration of lomp.</a></span></h1>
 
     <div class="description">
-      A new iteration of lomp.
-lomp (Lua Open Music Player) is a client/server media player written in lua.
+		<p>lomp (Lua Open Music Player) is a client/server media player written in lua.</p>
+		<p>This time the main loop will makes sense, and the output library takes priority.</p>
+		<p>With the same lomp aims of few external dependencies, great tag support, cross-platformness and client power.
+		lomp2 will utilise the power of luajit's ffi; along with common libraries such as OpenAl and FFmpeg to become the ultimate music server</p>
     </div>
 
     <h2>Dependencies</h2>
-<p>luajit 2 - http://luajit.org/</p>
+<p><a href="http://luajit.org/">luajit 2</a></p>
+<p>OpenAL</p>
+<p><a href="http://ffmpeg.org/">FFmpeg</a></p>
 <h2>Authors</h2>
 <p>daurnimator (quae@daurnimator.com)
 <br/>      </p>
