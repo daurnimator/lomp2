@@ -8,9 +8,10 @@ local ioopen , popen = io.open , io.popen
 local max = math.max
 
 -- FFI utils
+local escapechars = [["\]]
 local preprocessor = "gcc -E -P" --"cl /EP"
 local include_flag = " -I "
-local include_dirs = { }
+local include_dirs = {}
 local function ffi_process_headers ( headerfiles )
 	local input
 	if jit.os == "Windows" then
@@ -35,7 +36,7 @@ local function ffi_process_headers ( headerfiles )
 		preprocessor ;
 	}
 	for i , dir in ipairs(include_dirs) do
-		tblinsert ( cmdline , [[-I ]] .. dir )
+		tblinsert ( cmdline , [[-I"]] .. dir:gsub("[" .. escapechars .. "]",[[\%1]]) .. [["]] )
 	end
 	tblinsert ( cmdline , "-" ) -- Take input from stdin
 
@@ -48,7 +49,7 @@ local function ffi_process_headers ( headerfiles )
 	end
 
 	cmdline = tblconcat(cmdline," ")
-	local progfd = assert(popen(cmdline))
+    local progfd = assert(popen(cmdline))
 	local s = progfd:read("*a")
 	assert ( progfd:close() , "Could not process header files" )
 	return s
