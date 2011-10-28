@@ -90,14 +90,20 @@ local function ffi_defs ( defs_file , headers )
 	ffi.cdef(s)
 end
 
+local function ffi_clear_include_dir ( dir )
+	include_dirs = { }
+end
+
 local function ffi_add_include_dir ( dir )
 	tblinsert ( include_dirs , dir )
 end
 
 
 return {
-	ffi_process_headers = ffi_process_headers ;
-	ffi_process_defines = ffi_process_defines ;
-	ffi_defs = ffi_defs ;
-	ffi_add_include_dir = ffi_add_include_dir ;
+	ffi_process_headers 	= ffi_process_headers ;
+	ffi_process_defines 	= ffi_process_defines ;
+	ffi_defs 				= ffi_defs ;
+
+	ffi_clear_include_dir 	= ffi_clear_include_dir ;
+	ffi_add_include_dir 	= ffi_add_include_dir ;
 }
