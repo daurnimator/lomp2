@@ -12,10 +12,11 @@ local ffmpeg_source 	= sources.ffmpeg_file
 print("START")
 play.queue:push ( ffmpeg_source ( FILE ) )
 
---[[local item = raw_fd ( io.open("samples.raw","rb") )
+---[[
+local item = raw_fd ( io.open("samples.raw","rb") )
 item.from = 44100 ;
-item.to = 100000 ;
-play.queue:push ( item )--]]
+play.queue:push ( item )
+--]]
 
 local item = sine_source ( 800 )
 item.format = "STEREO8"

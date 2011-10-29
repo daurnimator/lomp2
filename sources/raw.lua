@@ -7,6 +7,7 @@ local assert = assert
 local min = math.min
 
 local ffi = require"ffi"
+local openal = require"OpenAL"
 
 local function raw_file ( fd )
 	local bytes_per_frame
