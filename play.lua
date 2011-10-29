@@ -1,3 +1,6 @@
+local assert = assert
+local floor = math.floor
+
 local general 			= require"general"
 local len 				= general.len
 local nearestpow2 		= general.nearestpow2
@@ -9,12 +12,13 @@ local ffi 				= require"ffi"
 local new_fifo 			= require"fifo"
 local openal 			= require"OpenAL"
 
-local int = ffi.new("ALint[1]") --temporary int to store crap in
-local dev = openal.opendevice()
-local ctx = openal.newcontext(dev)
-openal.alcMakeContextCurrent(ctx)
+local int = ffi.new ( "ALint[1]" ) --temporary int to store crap in
+local dev = openal.opendevice ( )
+local ctx = openal.newcontext ( dev )
+openal.alcMakeContextCurrent ( ctx )
 
-openal.alcGetIntegerv(dev,openal.ALC_FREQUENCY,1,int)
+-- Get native sample rate
+openal.alcGetIntegerv ( dev , openal.ALC_FREQUENCY , 1 , int )
 local native_sample_rate = int[0]
 
 local empty_item = sources.silent ( )
@@ -75,8 +79,8 @@ local function setup ( )
 				local channels = openal.format_to_channels [ format ]
 				ci_type = openal.format_to_type [ format ]
 				local type_size = ffi.sizeof ( ci_type )
-				ci_bytes_per_frame = channels*type_size
-				ci_fit_samples_in_buff = math.floor ( BUFF_SIZE/ci_bytes_per_frame )
+				ci_bytes_per_frame = channels * type_size
+				ci_fit_samples_in_buff = floor ( BUFF_SIZE / ci_bytes_per_frame )
 				ci_sample_rate = current_item.sample_rate
 
 				if queued == 1 then
