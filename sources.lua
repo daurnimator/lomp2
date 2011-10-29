@@ -1,3 +1,5 @@
+package.path = package.path .. [[;./sources/?/init.lua]]
+
 local silent 	= require"sources.silent"
 local sine 		= require"sources.sine"
 local raw 		= require"sources.raw"
