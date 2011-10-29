@@ -48,7 +48,7 @@ while true do -- for i=1,50000
 	if wait > 0.05 then
 		sleep(wait-0.05)
 	end
-	io.write("Now Playing: " , tostring(play.nowplaying()) , "\t" ,  i , "\r")
+	io.write("Now Playing: " , tostring(play.nowplaying()) , "\t" ,  i , "\t" , wait ,"\r")
 	i = i+1
 end
 
