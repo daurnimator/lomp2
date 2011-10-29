@@ -24,7 +24,7 @@ do
 	
 	watch_fd = doc ( {
 		desc = [[Adds a watcher on the file descriptor ^file^ for the actions in ^mask^ with callback ^callback^, then starts it on the main loop.]] ;
-		params = { 
+		params = {
 			{ "file" , 	[[file handle]] , [[such as returned by io.open or luasocket; must have `:getfd()` method.]] } ;
 			{ "mask" , 	[["read" or "write"]] } ;
 			{ "callback" , 	[[function]] , [[callback is called with ( loop , ^io^ , ^file^ , event_type ).]] } ;
@@ -32,7 +32,7 @@ do
 		returns = {
 			{ "io" , [[libev io object]] }
 		} ;
-	} ,  function ( file , mask , callback )
+	} , function ( file , mask , callback )
 		local fd = file:getfd ( )
 		local io = ev_IO_new ( function ( loop , io , revents )
 				return callback ( loop , io , fds [ io ] , revents % 2 == 1 and "read" or revents % 4 >= 2 and "write" or revents )

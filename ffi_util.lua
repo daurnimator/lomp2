@@ -28,15 +28,15 @@ local function ffi_process_headers ( headerfiles )
 		tblinsert ( input , "'" )
 		input = tblconcat ( input )
 	else
-		error("Unknown platform")
+		error ( "Unknown platform" )
 	end
 
 	local cmdline = {
 		input , "|";
 		preprocessor ;
 	}
-	for i , dir in ipairs(include_dirs) do
-		tblinsert ( cmdline , [[-I"]] .. dir:gsub("[" .. escapechars .. "]",[[\%1]]) .. [["]] )
+	for i , dir in ipairs ( include_dirs ) do
+		tblinsert ( cmdline , [[-I"]] .. dir:gsub ( "[" .. escapechars .. "]" , [[\%1]] ) .. [["]] )
 	end
 	tblinsert ( cmdline , "-" ) -- Take input from stdin
 
@@ -45,18 +45,18 @@ local function ffi_process_headers ( headerfiles )
 	elseif jit.os == "Linux" or jit.os == "OSX" or jit.os == "POSIX" or jit.os == "BSD" then
 		tblinsert( cmdline ,  [[&2>/dev/null]] )
 	else
-		error("Unknown platform")
+		error ( "Unknown platform" )
 	end
 
-	cmdline = tblconcat(cmdline," ")
-    local progfd = assert(popen(cmdline))
-	local s = progfd:read("*a")
-	assert ( progfd:close() , "Could not process header files" )
+	cmdline = tblconcat ( cmdline , " " )
+    local progfd = assert ( popen ( cmdline ) )
+	local s = progfd:read ( "*a" )
+	assert ( progfd:close ( ) , "Could not process header files" )
 	return s
 end
 
 local function ffi_process_defines ( headerfile , defines )
-	defines = defines or {}
+	defines = defines or { }
 	local fd = ioopen ( headerfile ) -- Look in current dir first
 	for i , dir in ipairs ( include_dirs ) do
 		if fd then break end
@@ -65,12 +65,11 @@ local function ffi_process_defines ( headerfile , defines )
 	assert ( fd , "Can't find header: " .. headerfile )
 
 	--TODO: unifdef
-	for line in fd:lines() do
-		local n ,v = line:match("#define%s+(%S+)%s+([^/]+)")
+	for line in fd:lines ( ) do
+		local n ,v = line:match ( "#define%s+(%S+)%s+([^/]+)" )
 		if n then
-			v = defines[v] or v
-			v = tonumber(v) or v
-			defines[n] = v
+			v = defines [ v ] or tonumber ( v ) or v
+			defines [ n ] = v
 		end
 	end
 	return defines
@@ -87,7 +86,7 @@ local function ffi_defs ( defs_file , headers )
 		assert ( fd:write ( s ) )
 	end
 	fd:close ( )
-	ffi.cdef(s)
+	ffi.cdef ( s )
 end
 
 local function ffi_clear_include_dir ( dir )
