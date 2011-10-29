@@ -10,7 +10,7 @@ local sine_source 		= sources.sinusoidal
 local ffmpeg_source 	= sources.ffmpeg_file
 
 print("START")
-play.queue:push ( ffmpeg_source ( FILE ) )
+--play.queue:push ( ffmpeg_source ( FILE ) )
 
 ---[[
 local item = raw_fd ( io.open("samples.raw","rb") )

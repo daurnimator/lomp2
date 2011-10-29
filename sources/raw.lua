@@ -22,7 +22,7 @@ local function raw_file ( fd )
 				assert ( self.to > self.from )
 				pos = self.from
 				bytes_per_frame = openal.format_to_channels [ self.format ] * ffi.sizeof ( openal.format_to_type [ self.format ] )
-				assert ( fd:seek ( "set" , pos*bytes_per_frame ) )
+				assert ( fd:seek ( "set" ) )
 			end
 
 			local frames_read = min ( self.to - pos , len )
