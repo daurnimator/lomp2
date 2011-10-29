@@ -71,6 +71,11 @@ local function add_dependancy ( ob , dep )
 	t[ob] = true
 end
 
+local function current_script_dir ( )
+	return debug.getinfo ( 2 , S ).source:match ( [=[^@(.-)[^/\]*$]=] )
+end
+
+
 local function pretty ( t , prefix )
 	prefix = prefix or ""
 
@@ -180,6 +185,7 @@ return {
 	reverse_lookup = reverse_lookup ;
 	save__index = save__index ;
 	add_dependancy = add_dependancy ;
+	current_script_dir = current_script_dir ;
 	pretty_print = pretty_print ;
 
 	urlescape = urlescape ;
