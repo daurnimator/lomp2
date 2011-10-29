@@ -5,14 +5,14 @@ local sleep = general.sleep
 local play = require"play"()
 
 local sources 			= require"sources"
-local raw_file 			= sources.raw
+local raw_fd 			= sources.raw_fd
 local sine_source 		= sources.sinusoidal
 local ffmpeg_source 	= sources.ffmpeg_file
 
 print("START")
 play.queue:push ( ffmpeg_source ( FILE ) )
 
---[[local item = raw_file ( io.open("samples.raw","rb") )
+--[[local item = raw_fd ( io.open("samples.raw","rb") )
 item.from = 44100 ;
 item.to = 100000 ;
 play.queue:push ( item )--]]

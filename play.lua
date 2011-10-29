@@ -3,6 +3,7 @@ local len 				= general.len
 local nearestpow2 		= general.nearestpow2
 local generatesinusoid 	= general.generatesinusoid
 local sleep 			= general.sleep
+local sources			= require"sources"
 
 local ffi 				= require"ffi"
 local new_fifo 			= require"fifo"
@@ -16,15 +17,8 @@ openal.alcMakeContextCurrent(ctx)
 openal.alcGetIntegerv(dev,openal.ALC_FREQUENCY,1,int)
 local native_sample_rate = int[0]
 
-local empty_item = { from = 0 , to = math.huge , format = "STEREO16" , sample_rate = native_sample_rate ,
-	source = function ( self , dest , len )
-		local channels = 2
-		for i=0,(len*channels)-1 do
-			dest[i] = 0
-		end
-		return true , len
-	end
-}
+local empty_item = sources.silent ( )
+empty_item.sample_rate = native_sample_rate
 
 local function setup ( )
 	-- Create source queue
