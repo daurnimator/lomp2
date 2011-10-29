@@ -29,29 +29,32 @@ end )
 local new_handler = doc ( {
 	desc = [[
 Registers a new watcher for ^master_socket^.
-^handler^ is a function that will be turned into a coroutine; it should use coroutine.yield ( "done" | true | "yield" | "write" | "receive" , extra )]];
+^handler^ is a function that will be turned into a coroutine; it should use coroutine.yield ( "done" | true | "yield" | "write" | "receive" , extra )
+]] ;
 	params = {
 		{ "master_socket" , "socket like object" } ;
 		{ "handler" , "coroutine callback" , [[
 ^handler^ function is turned into a coroutine, then called with the client socket as only argument.
+
 Yielding:
 	"done" | true	closes the socket.
-	"write"		does a client:send ( extra ), returns number of bytes written, or if the socket is closed: false , last byte written
+	"write"			does a client:send ( extra ), returns number of bytes written, or if the socket is closed: false , last byte written
 	"receive"		does a client:receive ( extra ) , returns data or if the socket is closed: false , partial_read
 ]] } ;
 	} ;
 	returns = { } ;
 } , function ( master_socket , handler )
 	assert ( handler , "No handler function" )
-	
+
+
 	watch_fd ( master_socket , "r" , function ( loop , io , master_socket )
 			local client = master_socket:accept ( )
 			client:settimeout ( 0 )
-			
+
 			local co = coroutine_create ( handler )
-			
-			local handle_resume 
-			
+
+			local handle_resume
+
 			local h = function ( data , err , partial )
 				if data then
 					handle_resume ( coroutine_resume ( co , data ) )
@@ -61,7 +64,7 @@ Yielding:
 				end
 				return data , err , partial
 			end
-					
+
 			handle_resume = function ( ok , need , extra )
 				if not ok then
 					error ( need , 3 )
@@ -71,11 +74,11 @@ Yielding:
 					if err == "timeout" then
 						watch_fd ( client , "r" , function ( loop , io , client )
 							data , err , partial_read = client:receive ( extra , partial_read )
-							
+
 							if err ~= "timeout" then
 								io:stop ( loop )
 							end
-							
+
 							h ( data , err , partial_read )
 						end )
 					end
@@ -84,11 +87,11 @@ Yielding:
 					local partial_write = 0
 					watch_fd ( client , "w" , function ( loop  , io , client )
 							ok , err , partial_write = client:send ( extra , partial_write + 1 )
-							
+
 							if err ~= "timeout" then
 								io:stop ( loop )
 							end
-							
+
 							h ( ok , err , partial_write )
 						end )
 				elseif need == "done" or need == true then
@@ -97,8 +100,7 @@ Yielding:
 					error ( "Coroutine yielded incorrectly (reached end of body?)" )
 				end
 			end
-			
-			
+
 			handle_resume ( coroutine_resume ( co , client ) )
 		end )
 end )
