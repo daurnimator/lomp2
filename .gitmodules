@@ -4,3 +4,6 @@
 [submodule "sources/FFmpeg"]
 	path = sources/FFmpeg
 	url = git@github.com:daurnimator/ffmpeg-lua-ffi.git
+[submodule "sources/WavPack"]
+	path = sources/WavPack
+	url = git@github.com:daurnimator/wavpack-lua-ffi.git
