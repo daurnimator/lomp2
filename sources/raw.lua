@@ -15,14 +15,15 @@ local function raw_file ( fd )
 	return {
 		from = 0 ;
 		to = fd:seek ( "end" ) ;
-		sample_rate = 44100 ;
-		format = "STEREO16" ;
+		sample_rate = 44100 ; -- This should be changed by the calling func
+		format = "STEREO16" ; -- This should be changed by the calling func
+
 		source = function ( self , dest , len )
 			if not pos then
 				assert ( self.to > self.from )
 				pos = self.from
 				bytes_per_frame = openal.format_to_channels [ self.format ] * ffi.sizeof ( openal.format_to_type [ self.format ] )
-				assert ( fd:seek ( "set" ) )
+				assert ( fd:seek ( "set" , pos*bytes_per_frame ) )
 			end
 
 			local frames_read = min ( self.to - pos , len )
@@ -33,8 +34,13 @@ local function raw_file ( fd )
 
 			return pos < self.to , frames_read
 		end ;
+
 		progress = function ( self )
 			return pos
+		end ;
+
+		seek = function ( self , pos )
+			pos = pos
 		end ;
 	}
 end

@@ -8,6 +8,8 @@ local tonumber = tonumber
 local ffi 		= require"ffi"
 local ffmpeg 	= require"FFmpeg"
 
+local frame_size = ffi.new ( "int[1]" )
+
 local function ffmpeg_file ( filename )
 	local formatctx = ffmpeg.openfile ( filename )
 	local audioctx = assert ( ffmpeg.findaudiostreams ( formatctx ) [ 1 ] , "No Audio Stream Found" )
@@ -18,15 +20,14 @@ local function ffmpeg_file ( filename )
 	local channels = audioctx.channels
 	local bytes_per_frame = ffmpeg.avutil.av_get_bytes_per_sample ( audioctx.sample_fmt ) * channels
 	local output_type = ffmpeg.format_to_type [ audioctx.sample_fmt ]
-	local frame_size = ffi.new ( "int[1]" )
 
 	local format = ( ( channels == 1 and "MONO" )
 					or ( channels == 2 and "STEREO" )
-					or error() )
+					or error( ) )
 				.. ( (output_type == "int16_t" and "16")
 					or (output_type == "int8_t" and "8")
 					or ( output_type == "float" and "_FLOAT32" )
-					or error() )
+					or error( ) )
 
 	--assert ( bytes_per_frame == sizeof ( output_type ) )
 
@@ -37,6 +38,7 @@ local function ffmpeg_file ( filename )
 		to = formatctx.duration ;
 		sample_rate = audioctx.sample_rate ;
 		format = format ;
+
 		source = function ( self , dest , len )
 			--ffmpeg.avAssert ( ffmpeg.avcodec.avcodec_decode_audio3 ( audioctx , dest , frame_size , packet ) )
 			local d = 0
@@ -46,16 +48,21 @@ local function ffmpeg_file ( filename )
 
 				frame_size[0] = len * bytes_per_frame
 
-				ffmpeg.avAssert ( audioctx.codec.decode(audioctx,dest+d*channels,frame_size,packet) )
+				ffmpeg.avAssert ( audioctx.codec.decode ( audioctx , dest+d*channels , frame_size , packet ) )
 				local size = tonumber ( frame_size[0] ) / bytes_per_frame -- frame_size is in bytes
 
 				d = d + size
-			until d+size > len
+			until d+size > len -- Stop if the next iteration might go over
 
 			return true , d
 		end ;
+
 		progress = function ( self )
 			return error("NYI")
+		end ;
+
+		seek = function ( self , pos )
+			error("NYI")
 		end ;
 	}
 end

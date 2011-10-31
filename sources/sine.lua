@@ -28,17 +28,27 @@ local function sine ( pitch )
 
 			local sine = generatesinusoid ( pitch , sample_rate )
 
+			if sini + len > self.to then
+				len = self.to - sini
+			end
+
 			for i=0 , len-1 do
 				local v = scale*sine(i+sini)+0.5 --Add half so it rounds instead of truncating
 				for j=0 , channels-1 do
 					dest[i*2+j] = v
 				end
 			end
-			sini = sini+len
-			return sini <= self.to , len + min ( 0 , self.to - sini )
+			sini = sini + len
+
+			return  sini ~= self.to , len
 		end ;
+
 		progress = function ( self )
 			return sini
+		end ;
+
+		seek = function ( self , pos )
+			sini = pos
 		end ;
 	}
 end

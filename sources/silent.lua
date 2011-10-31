@@ -18,12 +18,20 @@ local function silent_source ( )
 				channels = openal.format_to_channels [ self.format ]
 			end
 
-			for i=0,(len*channels)-1 do
-				dest[i] = 0
+			for j=0 , (len*channels)-1 do
+				dest[j] = 0
 			end
 
 			i = i+len
 			return i <= self.to , len + min ( 0 , self.to - i )
+		end ;
+
+		progress = function ( self )
+			return i
+		end ;
+
+		seek = function ( self , pos )
+			i = pos
 		end ;
 	}
 end
