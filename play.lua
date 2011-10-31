@@ -33,17 +33,18 @@ local function setup ( )
 	local source_data = ffi.new ( "char[?]" , BUFF_SIZE )
 
 	local alsource
+	local current_item_complete = true
 	local current_item, ci_bytes_per_frame , ci_fit_samples_in_buff , ci_format , ci_sample_rate , ci_type
 
 	local function grab ( buff )
-		local hasmore , done = current_item:source ( ffi.cast(ci_type .. "*",source_data) , ci_fit_samples_in_buff )
+		local hasmore , done = current_item:source ( ffi.cast ( ci_type .. "*" , source_data ) , ci_fit_samples_in_buff )
 
 		local size = done*ci_bytes_per_frame -- Find out size (in bytes) of data
-		openal.alBufferData( buff , ci_format , source_data , size , ci_sample_rate )
+		openal.alBufferData ( buff , ci_format , source_data , size , ci_sample_rate )
 		assert(openal.checkforerror())
 
 		if not hasmore then
-			current_item = nil -- no data left in source; clear item.
+			current_item_complete = true -- no data left in source; clear item.
 			return false
 		end
 		return true
@@ -55,7 +56,7 @@ local function setup ( )
 	local function step ( )
 		local guess_length
 --print("PRE",current_item,alsource and alsource:buffers_queued ( ),alsource and alsource:buffers_processed())
-		if current_item == nil then
+		if current_item_complete then
 			-- Make sure buffers are empty before we start a new item.
 			local queued = 0
 			if alsource then
@@ -72,6 +73,7 @@ local function setup ( )
 --print("QUEUED",queued)
 			if queued <= 1 then
 				current_item = queue:pop ( ) -- Get new item
+				current_item_complete = false
 --print("POP",current_item,current_item.from,current_item.to)
 				local format = current_item.format
 				ci_format = openal.format [ format ]
