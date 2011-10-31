@@ -7,3 +7,6 @@
 [submodule "sources/WavPack"]
 	path = sources/WavPack
 	url = git@github.com:daurnimator/wavpack-lua-ffi.git
+[submodule "sources/MAD"]
+	path = sources/MAD
+	url = git@github.com:daurnimator/mad-lua-ffi.git
