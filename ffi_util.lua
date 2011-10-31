@@ -66,7 +66,7 @@ local function ffi_process_defines ( headerfile , defines )
 
 	--TODO: unifdef
 	for line in fd:lines ( ) do
-		local n ,v = line:match ( "#define%s+(%S+)%s+([^/]+)" )
+		local n ,v = line:match ( "#%s*define%s+(%S+)%s+([^/]+)" )
 		if n then
 			v = defines [ v ] or tonumber ( v ) or v
 			defines [ n ] = v
