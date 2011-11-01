@@ -78,7 +78,7 @@ local function ffi_process_defines ( headerfile , defines )
 	return defines
 end
 
-local function ffi_defs ( defs_file , headers )
+local function ffi_defs ( defs_file , headers , skipcdef )
 	local fd = ioopen ( defs_file )
 	local s
 	if fd then
@@ -89,7 +89,12 @@ local function ffi_defs ( defs_file , headers )
 		assert ( fd:write ( s ) )
 	end
 	fd:close ( )
-	ffi.cdef ( s )
+
+	if not skipcdef then
+		ffi.cdef ( s )
+	end
+
+	return s
 end
 
 local function ffi_clear_include_dir ( dir )
