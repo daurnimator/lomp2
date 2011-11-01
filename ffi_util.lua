@@ -8,7 +8,10 @@ local ioopen , popen = io.open , io.popen
 local max = math.max
 
 -- FFI utils
-local escapechars = [["\]]
+local escapechars = [["\>|&]]
+local function escape ( x )
+	return ( x:gsub ( "[" .. escapechars .. "]" , [[\%1]] ) )
+end
 local preprocessor = "gcc -E -P" --"cl /EP"
 local include_flag = " -I "
 local include_dirs = {}
@@ -17,13 +20,13 @@ local function ffi_process_headers ( headerfiles )
 	if jit.os == "Windows" then
 		input = { }
 		for i , v in ipairs ( headerfiles ) do
-			tblinsert ( input , [[echo #include "]] .. v ..'"'		)
+			tblinsert ( input , [[echo #include "]] .. escape ( v ) ..'"'		)
 		end
 		input = "(" .. tblconcat ( input , "&" ) .. ")"
 	elseif jit.os == "Linux" or jit.os == "OSX" or jit.os == "POSIX" or jit.os == "BSD" then
 		input = { "echo '"}
 		for i , v in ipairs ( headerfiles ) do
-			tblinsert ( input , [[#include "]] .. v ..'"\n' )
+			tblinsert ( input , [[#include "]] .. escape ( v ) ..'"\n' )
 		end
 		tblinsert ( input , "'" )
 		input = tblconcat ( input )
@@ -36,7 +39,7 @@ local function ffi_process_headers ( headerfiles )
 		preprocessor ;
 	}
 	for i , dir in ipairs ( include_dirs ) do
-		tblinsert ( cmdline , [[-I"]] .. dir:gsub ( "[" .. escapechars .. "]" , [[\%1]] ) .. [["]] )
+		tblinsert ( cmdline , [[-I"]] .. escape ( dir ) .. [["]] )
 	end
 	tblinsert ( cmdline , "-" ) -- Take input from stdin
 
