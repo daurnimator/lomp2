@@ -23,28 +23,38 @@ local function ffmpeg_file ( filename )
 
 	local format = ( ( channels == 1 and "MONO" )
 					or ( channels == 2 and "STEREO" )
-					or error( ) )
-				.. ( (output_type == "int16_t" and "16")
-					or (output_type == "int8_t" and "8")
+					or error ( ) )
+				.. ( ( output_type == "int16_t" and "16" )
+					or ( output_type == "int8_t" and "8" )
 					or ( output_type == "float" and "_FLOAT32" )
-					or error( ) )
+					or error ( ) )
 
 	--assert ( bytes_per_frame == sizeof ( output_type ) )
 
 	local iter , const , packet = ffmpeg.read_frames ( formatctx )
+	local pos
 
 	return {
 		from = 0 ;
-		to = formatctx.duration ;
-		sample_rate = audioctx.sample_rate ;
+		to = tonumber ( formatctx.duration / ffmpeg.AV_TIME_BASE * audioctx.sample_rate ) ;
+		sample_rate = tonumber ( audioctx.sample_rate ) ;
 		format = format ;
 
 		source = function ( self , dest , len )
+			if not pos then -- First time
+				pos = self.from
+				if pos ~= 0 then
+					self:seek ( pos )
+				end
+			end
 			--ffmpeg.avAssert ( ffmpeg.avcodec.avcodec_decode_audio3 ( audioctx , dest , frame_size , packet ) )
 			local d = 0
 			repeat
 				packet = iter ( const , packet )
-				if not packet then return false , 0 end
+				if not packet then -- End of file
+					pos = pos + d
+					return false , d
+				end
 
 				frame_size[0] = len * bytes_per_frame
 
@@ -54,15 +64,19 @@ local function ffmpeg_file ( filename )
 				d = d + size
 			until d+size > len -- Stop if the next iteration might go over
 
+			pos = pos + d
+
 			return true , d
 		end ;
 
-		progress = function ( self )
-			return error("NYI")
+		position = function ( self )
+			return pos
 		end ;
 
-		seek = function ( self , pos )
-			error("NYI")
+		seek = function ( self , newpos )
+			local ts = newpos * ffmpeg.AV_TIME_BASE / self.sample_rate
+			ffmpeg.avAssert ( ffmpeg.avformat.av_seek_frame ( formatctx , -1 , ts , 0 ) )--ffmpeg.avutil.AVSEEK_FLAG_BACKWARD +  ffmpeg.avutil.AVSEEK_FLAG_ANY + ffmpeg.avutil.AVSEEK_FLAG_FRAME ) )
+			pos = newpos
 		end ;
 	}
 end
