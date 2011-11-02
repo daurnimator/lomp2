@@ -43,7 +43,7 @@ local function sine ( pitch )
 			return  sini ~= self.to , len
 		end ;
 
-		progress = function ( self )
+		position = function ( self )
 			return sini
 		end ;
 

@@ -52,14 +52,19 @@ while true do -- for i=1,50000
 	if wait > 0.05 then
 		sleep(wait-0.05)
 	end
+	local np = play.nowplaying ( )
 	io.write(string.format(
-		"Loop #%04d\tWait: %0.3f s\tFormat: %s\tPos: %d/%d\n" ,
+		"Loop #%04d  Wait: %0.3f  Format: %s  At: %d From: %d To: %d\n" ,
 		i ,	wait ,
-		play.nowplaying().format ,
-		play.nowplaying():progress() ,
-		play.nowplaying().to-play.nowplaying().from
+		np.format ,
+		np:position ( ) ,
+		np.from ,
+		np.to
 	))
-	i = i+1
+	if i ==  50 then play.nowplaying():seek ( 149000 ) end
+	if i == 60 then play.nowplaying():seek ( 149000 ) end
+	if i == 100 then play.nowplaying():seek ( 3000000 ) end
+	i = i + 1
 end
 
 

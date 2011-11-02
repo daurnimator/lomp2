@@ -28,7 +28,7 @@ local source = function ( self , dest , len )
 	return true , n
 end
 
-local progress = function ( self )
+local position = function ( self )
 	return self.wc:pos ( )
 end
 
@@ -41,7 +41,7 @@ local function wavpack_file ( filename )
 	local info = wc:getinfo ( )
 	local format = 	( ( info.channels == 1 and "MONO" )
 					or ( info.channels == 2 and "STEREO" )
-					or error( ) ) .. "16"
+					or error ( ) ) .. "16"
 
 	return {
 		from = 0 ;
@@ -50,7 +50,7 @@ local function wavpack_file ( filename )
 		format = format ;
 
 		source = source ;
-		progress = progress ;
+		position = position ;
 		seek = seek ;
 
 		wc = wc ;

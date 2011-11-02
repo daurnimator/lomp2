@@ -35,7 +35,7 @@ local function raw_file ( fd )
 			return pos < self.to , frames_read
 		end ;
 
-		progress = function ( self )
+		position = function ( self )
 			return pos
 		end ;
 

@@ -26,7 +26,7 @@ local function silent_source ( )
 			return i <= self.to , len + min ( 0 , self.to - i )
 		end ;
 
-		progress = function ( self )
+		position = function ( self )
 			return i
 		end ;
 
