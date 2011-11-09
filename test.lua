@@ -14,7 +14,6 @@ local ffmpeg_source 	= sources.ffmpeg_file
 print("START")
 --[[
 local wv = wavpack_source ( FILE )
-wv.to = 44100
 play.queue:push ( wv )
 --]]
 --[[
@@ -56,6 +55,12 @@ play.queue:push ( item )
 
 local time = os.time()
 --play.setvolume (1.414)
+local function pretty_time ( x )
+	local sec = x % 60
+	local min = math.floor ( x / 60 )
+	return string.format ( "%02d:%2.2f" , min , sec )
+end
+
 local i = 0
 while true do
 	local wait = play:step()
@@ -66,14 +71,14 @@ while true do
 	if i == 2 then play:seek ( 10000000 ) end
 
 	local np = play.nowplaying ( )
-	local info1 = string.format ( "%04d W=%0.2f %8.0f|" , i , wait , np.from )
+	local info1 = string.format ( "%04d W=%0.2f  %s|" , i , wait , pretty_time ( np.from / np.sample_rate ) )
 	local pos = play:position ( )
-	local info2 = tostring ( pos )
-	local info3= string.format ( "|%8.0f" , np.to )
+	local info2 = pretty_time ( pos / np.sample_rate )
+	local info3= "|" .. pretty_time ( np.to / np.sample_rate )
 
 	local percent = (pos - np.from)/(np.to - np.from)
 	local size = 80 - 1 - #info1 - #info2 - #info3
-	local line = info1 .. string.rep ( "-" , size*percent ) .. info2 .. string.rep ( "-" , size*(1-percent) ) .. info3 .. "\n"
+	local line = info1 .. string.rep ( "=" , size*percent ) .. info2 .. string.rep ( "=" , size*(1-percent) ) .. info3 .. "\n"
 	io.stderr:write ( line )
 
 	if wait >= 0 then
