@@ -74,7 +74,7 @@ local function mad_file ( filename , duration )
 
 		local i = -skip
 
-		local frames = floor ( (len-i)/frame_length )
+		local frames = floor ( (len-skip)/frame_length )
 		for f = 0 , frames - 1 do
 			local pcm , stream
 			header , stream , pcm = iter ( const , header )
