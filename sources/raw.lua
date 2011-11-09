@@ -9,21 +9,27 @@ local min , huge = math.min , math.huge
 local ffi = require"ffi"
 local openal = require"OpenAL"
 
-local function raw_file ( fd )
+local function raw_file ( fd , headersize )
+	headersize = headersize or 0
+
 	local bytes_per_frame
 	local pos
+
 	return {
 		from = 0 ;
-		to = math.huge ;
+		to = huge ;
 		sample_rate = 44100 ; -- This should be changed by the calling func
 		format = "STEREO16" ; -- This should be changed by the calling func
 
 		source = function ( self , dest , len )
 			if not pos then
-				assert ( self.to > self.from )
 				pos = self.from
 				bytes_per_frame = openal.format_to_channels [ self.format ] * ffi.sizeof ( openal.format_to_type [ self.format ] )
-				assert ( self.fd:seek ( "set" , pos*bytes_per_frame ) )
+				if self.to == huge then
+					self.to = self.fd:seek ( "end" ) / bytes_per_frame
+				end
+				assert ( self.to > self.from )
+				assert ( self.fd:seek ( "set" , pos*bytes_per_frame + self.headersize ) )
 			end
 
 			local frames_read = min ( self.to - pos , len )
@@ -45,10 +51,11 @@ local function raw_file ( fd )
 
 		seek = function ( self , newpos )
 			pos = newpos
-			assert ( self.fd:seek ( "set" , pos*bytes_per_frame ) )
+			assert ( self.fd:seek ( "set" , pos*bytes_per_frame + self.headersize ) )
 		end ;
 
 		fd = fd ;
+		headersize = headersize ;
 	}
 end
 
