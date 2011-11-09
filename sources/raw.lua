@@ -4,7 +4,7 @@
 --  a file descriptor
 
 local assert = assert
-local min = math.min
+local min , huge = math.min , math.huge
 
 local ffi = require"ffi"
 local openal = require"OpenAL"
@@ -14,7 +14,7 @@ local function raw_file ( fd )
 	local pos
 	return {
 		from = 0 ;
-		to = fd:seek ( "end" ) / 4 ; -- Only a guess
+		to = math.huge ;
 		sample_rate = 44100 ; -- This should be changed by the calling func
 		format = "STEREO16" ; -- This should be changed by the calling func
 
@@ -29,9 +29,14 @@ local function raw_file ( fd )
 			local frames_read = min ( self.to - pos , len )
 			pos = pos + frames_read
 
-			local data = self.fd:read ( frames_read*bytes_per_frame )
-			ffi.copy ( dest , data , frames_read*bytes_per_frame )
-			return pos < self.to , frames_read
+			local data = assert ( self.fd:read ( frames_read*bytes_per_frame ) )
+			ffi.copy ( dest , data , #data )
+
+			if #data ~= frames_read*bytes_per_frame then
+				return false , #data
+			else
+				return pos < self.to , frames_read
+			end
 		end ;
 
 		position = function ( self )
