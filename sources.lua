@@ -3,9 +3,9 @@ package.path = package.path .. [[;./sources/?/init.lua]]
 local silent 	= require"sources.silent"
 local sine 		= require"sources.sine"
 local raw 		= require"sources.raw"
-local wavpack 	= require"sources.wavpack"
-local mad 		= require"sources.mad"
-local ffmpeg 	= require"sources.ffmpeg"
+local wavpack 	= require"sources.WavPack"
+local mad 		= require"sources.MAD"
+local ffmpeg 	= require"sources.FFmpeg"
 
 
 return {

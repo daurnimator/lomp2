@@ -48,8 +48,8 @@ item.sample_rate = 48000
 play.queue:push ( item )
 
 local item = sine_source ( 440 )
-item.from = 30000
-item.to = 70000
+item.from = 20000
+item.to = 60000
 play.queue:push ( item )
 
 --play.queue:foreach(print)
@@ -68,7 +68,7 @@ while true do
 	local np = play.nowplaying ( )
 	io.write(
 	string.format(
-		"Loop #%04d  Wait %0.3f  Format %s  At %d Range %d-%d\n" ,
+		"Loop #%04d  Wait %0.3f  Format %s  At %d Range %.0f-%.0f\n" ,
 		i ,	wait ,
 		np.format ,
 		play:position ( ) ,
