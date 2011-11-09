@@ -66,21 +66,18 @@ while true do
 	if i == 2 then play:seek ( 10000000 ) end
 
 	local np = play.nowplaying ( )
-	io.write(
-	string.format(
-		"Loop #%04d  Wait %0.3f  Format %s  At %d Range %.0f-%.0f\n" ,
-		i ,	wait ,
-		np.format ,
-		play:position ( ) ,
-		np.from ,
-		np.to
-	))
+	local info1 = string.format ( "#%04d W=%0.2f %8.0f|" , i , wait , np.from )
+	local pos = play:position ( )
+	local info2 = tostring ( pos )
+	local info3= string.format ( "|%8.0f" , np.to )
+	local percent = (pos - np.from)/(np.to - np.from)
+	local size = 80 - 1 - #info1 - #info2 - #info3
+	local line = info1 .. string.rep ( "-" , size*percent ) .. info2 .. string.rep ( "-" , size*(1-percent) ) .. info3 .. "\n"
+	io.stderr:write ( line )
 
 	if wait >= 0 then
 		sleep(wait)
 	end
-
-	--print("POS after wait",play:position ( ) )
 
 	i = i + 1
 end
