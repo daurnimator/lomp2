@@ -30,7 +30,6 @@ local function setup ( )
 	local queue = new_fifo ( )
 	queue:setempty ( function ( f )
 		finished = true
-		coroutine.yield ( false )
 		return empty_item
 	end )
 
@@ -92,6 +91,10 @@ local function setup ( )
 		if sourcequeue [ source_from ].alsource:buffers_queued ( ) == 0 then
 			sourcequeue [ source_from ] = nil
 			source_from = source_from + 1
+
+			if finished and source_from == source_to then
+				coroutine.yield ( false )
+			end
 		end
 
 		-- Fill up the buffer
@@ -108,13 +111,13 @@ local function setup ( )
 		end
 	end
 
-	local step = coroutine.wrap ( function ( ) while true do
+	local step = coroutine.wrap ( function ( )
 		source_from = 1 -- Source to unqueue from
 		source_to = 1 -- Source to queue to
 
 		init_buffers ( sourcequeue [ source_from ].item )
 
-		while not finished do
+		while true do
 			local processed = sourcequeue [ source_from ].alsource:buffers_processed ( )
 			if processed > 0 then
 				for i = 1 , processed do
@@ -136,7 +139,6 @@ local function setup ( )
 			end
 
 			coroutine.yield ( comeback )
-		end
 		end
 	end )
 
