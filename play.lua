@@ -25,9 +25,14 @@ local empty_item = sources.silent ( )
 empty_item.sample_rate = native_sample_rate
 
 local function setup ( )
+	local finished = false
 	-- Create source queue
 	local queue = new_fifo ( )
-	queue:setempty ( function ( f ) return empty_item end )
+	queue:setempty ( function ( f )
+		finished = true
+		coroutine.yield ( false )
+		return empty_item
+	end )
 
 	local BUFF_SIZE = 192000
 	local NUM_BUFFERS = 3
@@ -103,13 +108,13 @@ local function setup ( )
 		end
 	end
 
-	local step = coroutine.wrap ( function ( )
+	local step = coroutine.wrap ( function ( ) while true do
 		source_from = 1 -- Source to unqueue from
 		source_to = 1 -- Source to queue to
 
 		init_buffers ( sourcequeue [ source_from ].item )
 
-		while true do
+		while not finished do
 			local processed = sourcequeue [ source_from ].alsource:buffers_processed ( )
 			if processed > 0 then
 				for i = 1 , processed do
@@ -131,6 +136,7 @@ local function setup ( )
 			end
 
 			coroutine.yield ( comeback )
+		end
 		end
 	end )
 

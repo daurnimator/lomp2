@@ -59,17 +59,18 @@ local time = os.time()
 local i = 0
 while true do
 	local wait = play:step()
+	if not wait then break end
 
-	-- for i=1,50000
 	--if i == 4 then play:seek ( 149000 ) end
 	--if i == 6 then play:seek ( 149000 ) end
 	if i == 2 then play:seek ( 10000000 ) end
 
 	local np = play.nowplaying ( )
-	local info1 = string.format ( "#%04d W=%0.2f %8.0f|" , i , wait , np.from )
+	local info1 = string.format ( "%04d W=%0.2f %8.0f|" , i , wait , np.from )
 	local pos = play:position ( )
 	local info2 = tostring ( pos )
 	local info3= string.format ( "|%8.0f" , np.to )
+
 	local percent = (pos - np.from)/(np.to - np.from)
 	local size = 80 - 1 - #info1 - #info2 - #info3
 	local line = info1 .. string.rep ( "-" , size*percent ) .. info2 .. string.rep ( "-" , size*(1-percent) ) .. info3 .. "\n"
@@ -93,3 +94,4 @@ collectgarbage("step")
 collectgarbage("step")
 collectgarbage("step")
 collectgarbage("step")
+print("DONE")
