@@ -8,17 +8,27 @@ local sources 			= require"sources"
 local raw_fd 			= sources.raw_fd
 local sine_source 		= sources.sinusoidal
 local wavpack_source 	= sources.wavpack_file
+local mad_file 			= sources.mad_file
 local ffmpeg_source 	= sources.ffmpeg_file
 
 print("START")
+--[[
 local wv = wavpack_source ( FILE )
 wv.to = 44100
 play.queue:push ( wv )
---play.queue:push ( ffmpeg_source ( FILE ) )
-
+--]]
+--[[
+local ff = ffmpeg_source ( FILE )
+play.queue:push ( ff )
+--]]
+--[[
+local m = mad_file ( FILE )
+m.from = m.to*9/10
+play.queue:push ( m )
+--]]
 ---[[
 local item = raw_fd ( io.open("samples.raw","rb") )
---play.queue:push ( item )
+play.queue:push ( item )
 --]]
 
 local item = sine_source ( 800 )
@@ -47,23 +57,31 @@ play.queue:push ( item )
 local time = os.time()
 --play.setvolume (1.414)
 local i = 0
-while true do -- for i=1,50000
-	local wait = play.step()
-	if wait > 0.05 then
-		sleep(wait-0.05)
-	end
+while true do
+	local wait = play:step()
+
+	-- for i=1,50000
+	--if i == 4 then play:seek ( 149000 ) end
+	--if i == 6 then play:seek ( 149000 ) end
+	if i == 2 then play:seek ( 10000000 ) end
+
 	local np = play.nowplaying ( )
-	io.write(string.format(
-		"Loop #%04d  Wait: %0.3f  Format: %s  At: %d From: %d To: %d\n" ,
+	io.write(
+	string.format(
+		"Loop #%04d  Wait %0.3f  Format %s  At %d Range %d-%d\n" ,
 		i ,	wait ,
 		np.format ,
-		np:position ( ) ,
+		play:position ( ) ,
 		np.from ,
 		np.to
 	))
-	if i ==  50 then play.nowplaying():seek ( 149000 ) end
-	if i == 60 then play.nowplaying():seek ( 149000 ) end
-	if i == 100 then play.nowplaying():seek ( 3000000 ) end
+
+	if wait >= 0 then
+		sleep(wait)
+	end
+
+	--print("POS after wait",play:position ( ) )
+
 	i = i + 1
 end
 
