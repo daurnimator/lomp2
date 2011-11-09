@@ -1,10 +1,11 @@
 -- Source raw from file descripor
 
-local huge , min = math.huge , math.min
+local huge , max = math.huge , math.max
 
 local openal = require"OpenAL"
 
 local function silent_source ( )
+	local alreadydone
 	local i , channels
 
 	return {
@@ -13,9 +14,14 @@ local function silent_source ( )
 		format = "STEREO16" ;
 		sample_rate = 44100 ;
 		source = function ( self , dest , len )
-			if i == nil then
-				i = self.from
+			if not alreadydone then
+				alreadydone = true
+				i = i or self.from
 				channels = openal.format_to_channels [ self.format ]
+			end
+
+			if i + len > self.to then
+				len = max ( 0 , self.to - i )
 			end
 
 			for j=0 , (len*channels)-1 do
@@ -23,7 +29,8 @@ local function silent_source ( )
 			end
 
 			i = i+len
-			return i <= self.to , len + min ( 0 , self.to - i )
+
+			return i <= self.to , len
 		end ;
 
 		position = function ( self )

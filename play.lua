@@ -91,16 +91,16 @@ local function setup ( )
 
 		-- Fill up the buffer
 		local hasmore , time
-		repeat
-			local hasmore
+		while true do
 			hasmore , time = add_to_buffer ( sourcequeue [ source_to ].item , buffer[0] )
+			if time > 0 then
+				sourcequeue [ source_to ].alsource:queue ( 1 , buffer )
+			end
 			if not hasmore then
 				source_to = source_to + 1
 			end
-		until time > 0
-
-		-- Add buffer to queue
-		sourcequeue [ source_to - (hasmore and 1 or 0) ].alsource:queue ( 1 , buffer )
+			if time > 0 then break end
+		end
 	end
 
 	local step = coroutine.wrap ( function ( )
@@ -112,13 +112,11 @@ local function setup ( )
 		while true do
 			local processed = sourcequeue [ source_from ].alsource:buffers_processed ( )
 			if processed > 0 then
-				repeat
+				for i = 1 , processed do
 					requeue ( )
-					processed = sourcequeue [ source_from ].alsource:buffers_processed ( )
-				until processed == 0
-
+				end
 				-- Did all buffers run out and hence cause state to stop playing?
-				if sourcequeue [ source_from ].alsource:state ( ) ~= openal.AL_PLAYING then
+				if sourcequeue [ source_from ].alsource:state ( ) ~= "playing" then
 					sourcequeue [ source_from ].alsource:play ( )
 				end
 			end
@@ -137,8 +135,14 @@ local function setup ( )
 	end )
 
 	local seek = function ( self , newpos )
-		local np = self:nowplaying ( )
-		np:seek ( newpos )
+		-- Seek the current item
+		sourcequeue [ source_from ].item:seek ( newpos )
+
+		-- Seek all files buffered back to their starts...
+		for i = (source_from + 1) , source_to do
+			local item = sourcequeue [ i ].item
+			item:seek ( item.from )
+		end
 
 		-- Clear all sources
 		sourcequeue [ source_from ].alsource:rewind ( )
@@ -146,12 +150,14 @@ local function setup ( )
 			sourcequeue [ i ].alsource:clear ( )
 		end
 
+		source_to = source_from
+
 		-- Put all the buffers back in the queue
 		init_buffers ( sourcequeue [ source_from ].item )
 
-		repeat
+		for i = 1 , sourcequeue [ source_from ].alsource:buffers_processed ( ) do
 			requeue ( )
-		until sourcequeue [ source_from ].alsource:buffers_processed ( ) == 0
+		end
 
 		sourcequeue [ source_from ].alsource:play ( )
 	end
@@ -160,14 +166,12 @@ local function setup ( )
 		local np = self:nowplaying ( )
 		local r = np:position ( )
 
-		---------------------- TODO: This is incorrect -------------------------------
 		local frames_queued = 0
 		for i = 1 , sourcequeue [ source_from ].alsource:buffers_queued ( ) do
 			local buff = buffers [ ( buff_to_index [ buffer[0] ] + i ) % NUM_BUFFERS ]
 			local info = openal.buffer_info ( buff )
 			frames_queued = frames_queued + info.frames
 		end
-		------------------------------------------------------------------------------
 
 		local openal_played = sourcequeue [ source_from ].alsource:position ( )
 
