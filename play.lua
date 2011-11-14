@@ -48,9 +48,12 @@ local function setup ( )
 	local time_buffered = 0 -- Keep as total of the above table
 
 	local sourcequeue = setmetatable ( { } , { __index = function ( t , k )
+			local item = queue:pop ( )
+			item:reset ( )
 			local v = {
-				item = queue:pop ( ) ;
+				item = item ;
 				alsource = openal.newsource ( ) ;
+				buffers = { } ; -- A set of buffers attached to this source
 			}
 			t [ k ] = v
 			return v
@@ -154,8 +157,7 @@ local function setup ( )
 
 		-- Seek all files buffered back to their starts...
 		for i = (source_from + 1) , source_to do
-			local item = sourcequeue [ i ].item
-			item:seek ( item.from )
+			sourcequeue [ i ].item:reset ( )
 		end
 
 		-- Clear all sources
