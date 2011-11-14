@@ -40,13 +40,12 @@ local function ffmpeg_file ( filename )
 		sample_rate = tonumber ( audioctx.sample_rate ) ;
 		format = format ;
 
+		reset = function ( self )
+			pos = self.from
+			self:seek ( pos )
+		end ;
+
 		source = function ( self , dest , len )
-			if not pos then -- First time
-				pos = self.from
-				if pos ~= 0 then
-					self:seek ( pos )
-				end
-			end
 			--ffmpeg.avAssert ( ffmpeg.avcodec.avcodec_decode_audio3 ( audioctx , dest , frame_size , packet ) )
 			local d = 0
 			repeat

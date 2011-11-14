@@ -12,45 +12,44 @@ local generatesinusoid = general.generatesinusoid
 local openal = require"OpenAL"
 
 local function sine ( pitch )
-	local alreadydone
-	local sini , channels , scale , sample_rate
+	local channels , scale , sample_rate
 	return {
 		from = 0 ;
 		to = huge ;
 		sample_rate = 44100 ;
 		format = "STEREO16" ;
-		source = function ( self , dest , len )
-			if not alreadydone then
-				alreadydone = true
-				sini = self.from
-				sample_rate = self.sample_rate
-				channels = openal.format_to_channels [ self.format ]
-				scale = 2^( (tonumber(self.format:match("(%d+)$")) or 2) - 1 ) - 1
-			end
 
+		reset = function ( self )
+			self.pos = self.from
+			sample_rate = self.sample_rate
+			channels = openal.format_to_channels [ self.format ]
+			scale = 2^( (tonumber(self.format:match("(%d+)$")) or 2) - 1 ) - 1
+		end ;
+
+		source = function ( self , dest , len )
 			local sine = generatesinusoid ( pitch , sample_rate )
 
-			if sini + len > self.to then
-				len = max ( 0 , self.to - sini )
+			if len > self.to - self.pos then
+				len = max ( 0 , self.to - self.pos )
 			end
 
 			for i=0 , len-1 do
-				local v = scale * sine ( i + sini ) + 0.5 --Add half so it rounds instead of truncating
+				local v = scale * sine ( self.pos ) + 0.5 --Add half so it rounds instead of truncating
 				for j=0 , channels - 1 do
 					dest [ i*2 + j ] = v
 				end
+				self.pos = self.pos + 1
 			end
-			sini = sini + len
 
-			return sini < self.to , len
+			return self.pos < self.to , len
 		end ;
 
 		position = function ( self )
-			return sini
+			return self.pos
 		end ;
 
-		seek = function ( self , pos )
-			sini = pos
+		seek = function ( self , newpos )
+			self.pos = newpos
 		end ;
 	}
 end

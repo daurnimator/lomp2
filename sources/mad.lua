@@ -1,7 +1,7 @@
 -- Source using libmad
 
 local assert , error = assert , error
-local floor , huge , min = math.floor , math.huge , math.min
+local floor , huge , max = math.floor , math.huge , math.max
 local ioopen = io.open
 
 local mad = require"mad"
@@ -41,8 +41,9 @@ local function mad_file ( filename , duration )
 					or ( channels == 2 and "STEREO" )
 					or error ( ) ) .. "16"
 
-	local pos , seektable = 0 , { }
-	local skip = 0
+	local pos = 0
+	local skip
+	local seektable = { }
 
 	local seek = function ( self , newpos )
 		local framenum = floor ( newpos / frame_length )
@@ -61,39 +62,43 @@ local function mad_file ( filename , duration )
 		header = iter ( const , header )
 		if not header then error ( "Unexpected EOF" ) end
 
-		skip = newpos - framenum*frame_length
+		skip = floor ( newpos - framenum*frame_length )
 		pos = framenum
 	end
 
-	local first = true
-	local source = function ( self , dest , len )
-		if first then
-			self:seek ( self.from )
-			first = false
-		end
+	local reset = function ( self )
+		pos = 0
+		skip = 0
+		self:seek ( self.from )
+	end
 
-		local i = -skip
+	local source = function ( self , dest , len )
+		local i = 0
 
 		local frames = floor ( (len-skip)/frame_length )
 		for f = 0 , frames - 1 do
 			local pcm , stream
 			header , stream , pcm = iter ( const , header )
-			if not header then return false , i end
+			if not header then
+				local d = max ( 0 , i - skip )
+				skip = 0
+				return false , d
+			end
 
 			seektable [ pos ] = seektable [ pos ] or lastpos + ( stream.this_frame - m.buffer )
 			pos = pos + 1
 
 			for j = 0 , frame_length - 1 do
 				for c = 0 , channels - 1 do
-					dest [ (i + j + skip)*channels + c ] = mad.to16bit ( pcm.samples[c][j] )
+					dest [ (i + j)*channels + c ] = mad.to16bit ( pcm.samples[c][j] )
 				end
 			end
 			i = i + frame_length
 		end
 
+		local d = max ( 0 , i - skip )
 		skip = 0
-
-		return true , i
+		return true , d
 	end
 
 	if not duration then
@@ -113,9 +118,10 @@ local function mad_file ( filename , duration )
 		sample_rate = header.samplerate ;
 		format = format ;
 
+		reset = reset ;
 		source = source ;
 		position = function ( self )
-			return pos * frame_length-skip
+			return pos * frame_length - skip
 		end ;
 		seek = seek ;
 	}

@@ -5,7 +5,6 @@ local huge , max = math.huge , math.max
 local openal = require"OpenAL"
 
 local function silent_source ( )
-	local alreadydone
 	local i , channels
 
 	return {
@@ -13,13 +12,13 @@ local function silent_source ( )
 		to = math.huge ;
 		format = "STEREO16" ;
 		sample_rate = 44100 ;
-		source = function ( self , dest , len )
-			if not alreadydone then
-				alreadydone = true
-				i = i or self.from
-				channels = openal.format_to_channels [ self.format ]
-			end
 
+		reset = function ( self )
+			i = i or self.from
+			channels = openal.format_to_channels [ self.format ]
+		end ;
+
+		source = function ( self , dest , len )
 			if i + len > self.to then
 				len = max ( 0 , self.to - i )
 			end

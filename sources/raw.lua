@@ -21,17 +21,17 @@ local function raw_file ( fd , headersize )
 		sample_rate = 44100 ; -- This should be changed by the calling func
 		format = "STEREO16" ; -- This should be changed by the calling func
 
-		source = function ( self , dest , len )
-			if not pos then
-				pos = self.from
-				bytes_per_frame = openal.format_to_channels [ self.format ] * ffi.sizeof ( openal.format_to_type [ self.format ] )
-				if self.to == huge then
-					self.to = self.fd:seek ( "end" ) / bytes_per_frame
-				end
-				assert ( self.to > self.from )
-				assert ( self.fd:seek ( "set" , pos*bytes_per_frame + self.headersize ) )
+		reset = function ( self )
+			pos = self.from
+			bytes_per_frame = openal.format_to_channels [ self.format ] * ffi.sizeof ( openal.format_to_type [ self.format ] )
+			if self.to == huge then
+				self.to = self.fd:seek ( "end" ) / bytes_per_frame
 			end
+			assert ( self.to > self.from )
+			assert ( self.fd:seek ( "set" , pos*bytes_per_frame + self.headersize ) )
+		end ;
 
+		source = function ( self , dest , len )
 			local frames_read = min ( self.to - pos , len )
 			pos = pos + frames_read
 
