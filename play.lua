@@ -67,6 +67,7 @@ local function setup ( )
 			time_in_buffers [ buffers[i] ] = 0
 			buff_to_index [ buffers[i] ] = i
 			openal.alBufferData ( buffers[i] , openal.format [ item.format ] , source_data , 0 , item.sample_rate )
+			openal.assert ( )
 		end
 		sourcequeue [ source_from ].alsource:queue ( NUM_BUFFERS , buffers )
 		sourcequeue [ source_from ].alsource:play ( )
@@ -80,6 +81,7 @@ local function setup ( )
 		local hasmore , done = item:source ( ffi.cast ( ci_type .. "*" , source_data ) , ci_fit_samples_in_buff )
 
 		openal.alBufferData ( buff , openal.format [ format ] , source_data , done * ci_bytes_per_frame , item.sample_rate )
+		openal.assert ( )
 
 		local duration = done / item.sample_rate
 		time_buffered = time_buffered + duration - time_in_buffers [ buff ]
