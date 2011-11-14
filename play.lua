@@ -162,6 +162,33 @@ local function setup ( )
 		end
 	end )
 
+	-- Goes forward n tracks (n defaults to 1)
+	local next = function ( self , n )
+		n = n or 1
+
+		-- Fill in all the sources between current item and destination item
+		for i = source_from , math.max ( source_from + 1 , source_to ) - 1 do
+			source_to = source_to + 1
+			sourcequeue [ source_to ].nonexistantkey = nil -- Fire the __index
+		end
+
+		-- Clear+retreive+fill buffers between current item and destination item
+		sourcequeue [ source_from ].alsource:rewind ( )
+		for i = 1 , n do
+			sourcequeue [ source_from ].alsource:clear ( )
+
+			for buff in pairs ( sourcequeue [ source_from ].buffers ) do
+				buffer[0] = buff
+				fill_and_queue ( buffer )
+			end
+
+			sourcequeue [ source_from ] = nil
+			source_from = source_from + 1
+		end
+
+		play = true
+	end
+
 	local seek = function ( self , newpos )
 		-- Seek the current item
 		sourcequeue [ source_from ].item:seek ( newpos )
@@ -213,6 +240,7 @@ local function setup ( )
 
 		step = step ;
 		nowplaying = function ( self ) return sourcequeue [ source_from ].item end ;
+		next = next ;
 
 		seek = seek ;
 		position = position ;
