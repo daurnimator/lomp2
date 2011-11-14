@@ -13,45 +13,46 @@ local ffmpeg_source 	= sources.ffmpeg_file
 
 print("START")
 --[[
-local wv = wavpack_source ( FILE )
-play.queue:push ( wv )
+play:push ( wavpack_source ( FILE ) )
+play:push ( wavpack_source ( FILE ) )
 --]]
 --[[
 local ff = ffmpeg_source ( FILE )
-play.queue:push ( ff )
+play:push ( ff )
 --]]
 --[[
 local m = mad_file ( FILE )
 m.from = m.to*9/10
-play.queue:push ( m )
+play:push ( m )
+play:push ( m )
 --]]
----[[
+--[[
 local item = raw_fd ( io.open("samples.raw","rb") )
-play.queue:push ( item )
+play:push ( item )
 --]]
 
 local item = sine_source ( 800 )
 item.format = "STEREO8"
 item.to = 90000
-play.queue:push ( item )
+play:push ( item )
 
 local item = sine_source ( 1000 )
 item.from = 30000
 item.to = 40000
-play.queue:push ( item )
+play:push ( item )
 
 local item = sine_source ( 440 )
 item.from = 30000
 item.to = 70000
 item.sample_rate = 48000
-play.queue:push ( item )
+play:push ( item )
 
 local item = sine_source ( 440 )
 item.from = 20000
 item.to = 60000
-play.queue:push ( item )
+play:push ( item )
 
---play.queue:foreach(print)
+--play:foreach(print)
 
 local time = os.time()
 --play.setvolume (1.414)

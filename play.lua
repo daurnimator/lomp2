@@ -33,6 +33,10 @@ local function setup ( )
 		return empty_item
 	end )
 
+	local push = function ( self , item )
+		queue:push ( item )
+	end
+
 	local BUFF_SIZE = 192000
 	local NUM_BUFFERS = 3
 	local buffers = openal.newbuffers ( NUM_BUFFERS )
@@ -187,7 +191,8 @@ local function setup ( )
 	end
 
 	return {
-		queue = queue ;
+		push = push ;
+
 		step = step ;
 		nowplaying = function ( self ) return sourcequeue [ source_from ].item end ;
 
