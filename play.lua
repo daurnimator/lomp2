@@ -71,6 +71,7 @@ local function setup ( )
 			buff_to_index [ buffers[i] ] = i
 			openal.alBufferData ( buffers[i] , openal.format [ item.format ] , source_data , 0 , item.sample_rate )
 			openal.assert ( )
+			sourcequeue [ source_from ].buffers [ buffers[i] ] = true
 		end
 		sourcequeue [ source_from ].alsource:queue ( NUM_BUFFERS , buffers )
 		sourcequeue [ source_from ].alsource:play ( )
@@ -96,6 +97,7 @@ local function setup ( )
 	local function requeue ( )
 		-- Get our buffer back
 		sourcequeue [ source_from ].alsource:unqueue ( 1 , buffer )
+		sourcequeue [ source_from ].buffers [ buffer[0] ] = nil
 
 		if sourcequeue [ source_from ].alsource:buffers_queued ( ) == 0 then
 			sourcequeue [ source_from ] = nil
@@ -112,6 +114,7 @@ local function setup ( )
 			hasmore , time = add_to_buffer ( sourcequeue [ source_to ].item , buffer[0] )
 			if time > 0 then
 				sourcequeue [ source_to ].alsource:queue ( 1 , buffer )
+				sourcequeue [ source_to ].buffers [ buffer[0] ] = true
 			end
 			if not hasmore then
 				source_to = source_to + 1
@@ -164,6 +167,7 @@ local function setup ( )
 		sourcequeue [ source_from ].alsource:rewind ( )
 		for i = source_from , source_to do
 			sourcequeue [ i ].alsource:clear ( )
+			sourcequeue [ i ].buffers = { }
 		end
 
 		source_to = source_from
@@ -183,8 +187,9 @@ local function setup ( )
 		local r = np:position ( )
 
 		local frames_queued = 0
-		for i = 1 , sourcequeue [ source_from ].alsource:buffers_queued ( ) do
-			local buff = buffers [ ( buff_to_index [ buffer[0] ] + i ) % NUM_BUFFERS ]
+		for buff in pairs ( sourcequeue [ source_from ].buffers ) do
+		--for i = 1 , sourcequeue [ source_from ].alsource:buffers_queued ( ) do
+		--	local buff = buffers [ ( buff_to_index [ buffer[0] ] + i ) % NUM_BUFFERS ]
 			local info = openal.buffer_info ( buff )
 			frames_queued = frames_queued + info.frames
 		end
