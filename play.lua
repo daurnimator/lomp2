@@ -125,6 +125,8 @@ local function setup ( )
 		end
 	end
 
+	local play = true
+
 	local step = coroutine.wrap ( function ( self )
 		source_from = 1 -- Source to unqueue from
 		source_to = 1 -- Source to queue to
@@ -140,19 +142,22 @@ local function setup ( )
 				end
 				-- Did all buffers run out and hence cause state to stop playing?
 				if sourcequeue [ source_from ].alsource:state ( ) ~= "playing" then
-					sourcequeue [ source_from ].alsource:play ( )
+					play = true
 				end
 			end
 
 			-- Wait the amount of time in the currently playing buffer
 			local current_buffer = buffers [ ( buff_to_index [ buffer[0] ] + 1 ) % NUM_BUFFERS ]
 			local comeback = time_in_buffers [ current_buffer ]
-
 			-- If this is the last buffer on a source; take off the current progress in the buffer
 			if sourcequeue [ source_from ].alsource:buffers_queued ( ) == 1 then
 				comeback = comeback - sourcequeue [ source_from ].alsource:position_seconds ( )
 			end
 
+			if play then
+				sourcequeue [ source_from ].alsource:play ( )
+				play = false
+			end
 			coroutine.yield ( comeback )
 		end
 	end )
@@ -183,7 +188,7 @@ local function setup ( )
 			fill_and_queue ( buffer )
 		end
 
-		sourcequeue [ source_from ].alsource:play ( )
+		play = true
 	end
 
 	local position = function ( self )
