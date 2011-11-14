@@ -219,8 +219,7 @@ local function setup ( )
 	end
 
 	local position = function ( self )
-		local np = self:nowplaying ( )
-		local r = np:position ( )
+		local r = sourcequeue [ source_from ].item:position ( )
 
 		local frames_queued = 0
 		for buff in pairs ( sourcequeue [ source_from ].buffers ) do
@@ -231,7 +230,7 @@ local function setup ( )
 		end
 
 		local openal_played = sourcequeue [ source_from ].alsource:position ( )
-
+--print(" POSITION",r,frames_queued,openal_played,"FROM",sourcequeue [ source_from ].item.from , "TO",sourcequeue [ source_from ].item.to)
 		return r - frames_queued + openal_played
 	end
 
@@ -239,7 +238,10 @@ local function setup ( )
 		push = push ;
 
 		step = step ;
-		nowplaying = function ( self ) return sourcequeue [ source_from ].item end ;
+		nowplaying = function ( self )
+			return sourcequeue [ source_from ].item
+		end ;
+
 		next = next ;
 
 		seek = seek ;
