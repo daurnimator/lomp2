@@ -60,14 +60,14 @@ local time = os.time()
 local function pretty_time ( x )
 	local sec = x % 60
 	local min = math.floor ( x / 60 )
-	return string.format ( "%02d:%2.2f" , min , sec )
+	return string.format ( "%02d:%05.2f" , min , sec )
 end
 io.stderr:setvbuf ( "no" )
 local np
 
 local i = 0
 while true do
-	local wait = play:step()
+	local wait = play:step ( )
 	if not wait then break end
 
 	if wait >= 0 then
@@ -77,15 +77,21 @@ while true do
 			if nnp ~= np then io.stderr:write ( "\n" ) end
 			np = nnp
 
-			local info1 = string.format ( "%04d W=%0.2f  %s|" , i , wait , pretty_time ( np.from / np.sample_rate ) )
+			local info1 = string.format ( "%04d W=%.2f  %s|" , i , wait , pretty_time ( np.from / np.sample_rate ) )
 			local pos = play:position ( )
 			local info2 = pretty_time ( pos / np.sample_rate )
-			local info3= "|" .. np.to --pretty_time ( np.to / np.sample_rate )
+			local info3= "|" .. pretty_time ( np.to / np.sample_rate )
 
 			local percent = (pos - np.from)/(np.to - np.from)
 			local size = 80 - 1 - #info1 - #info2 - #info3
+
+			if not ( pos >= np.from and pos <= np.to ) then
+				error ( "Position out of range: " .. np.from .. "/" .. pos .. "/" .. np.to )
+			end
+
 			local line = "\r" .. info1 .. string.rep ( "=" , size*percent ) .. info2 .. string.rep ( "=" , size*(1-percent) ) .. info3
 			io.stderr:write ( line )
+
 			sleep ( 0.03 )
 		until os.clock ( ) > w + wait
 	end
