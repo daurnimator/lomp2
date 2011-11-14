@@ -94,8 +94,8 @@ local function setup ( )
 		return hasmore , duration
 	end
 
-	local function requeue ( )
-		-- Get our buffer back
+	local function dequeue ( buffer )
+		-- Get buffer back
 		sourcequeue [ source_from ].alsource:unqueue ( 1 , buffer )
 		sourcequeue [ source_from ].buffers [ buffer[0] ] = nil
 
@@ -104,11 +104,13 @@ local function setup ( )
 			source_from = source_from + 1
 
 			if finished and source_from == source_to then
-				coroutine.yield ( false )
+				return false
 			end
 		end
+		return true
+	end
 
-		-- Fill up the buffer
+	local function fill_and_queue ( buffer )
 		local hasmore , time
 		while true do
 			hasmore , time = add_to_buffer ( sourcequeue [ source_to ].item , buffer[0] )
@@ -119,11 +121,11 @@ local function setup ( )
 			if not hasmore then
 				source_to = source_to + 1
 			end
-			if time > 0 then break end
+			if time > 0 then return end
 		end
 	end
 
-	local step = coroutine.wrap ( function ( )
+	local step = coroutine.wrap ( function ( self )
 		source_from = 1 -- Source to unqueue from
 		source_to = 1 -- Source to queue to
 
@@ -133,7 +135,8 @@ local function setup ( )
 			local processed = sourcequeue [ source_from ].alsource:buffers_processed ( )
 			if processed > 0 then
 				for i = 1 , processed do
-					requeue ( )
+					if not dequeue ( buffer ) then coroutine.yield ( false ) end
+					fill_and_queue ( buffer )
 				end
 				-- Did all buffers run out and hence cause state to stop playing?
 				if sourcequeue [ source_from ].alsource:state ( ) ~= "playing" then
@@ -176,7 +179,8 @@ local function setup ( )
 		init_buffers ( sourcequeue [ source_from ].item )
 
 		for i = 1 , sourcequeue [ source_from ].alsource:buffers_processed ( ) do
-			requeue ( )
+			dequeue ( buffer )
+			fill_and_queue ( buffer )
 		end
 
 		sourcequeue [ source_from ].alsource:play ( )
