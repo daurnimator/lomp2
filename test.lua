@@ -12,6 +12,24 @@ local wavpack_source 	= sources.wavpack_file
 local mad_file 			= sources.mad_file
 local ffmpeg_source 	= sources.ffmpeg_file
 
+
+local function pretty_time ( x )
+	local sec = x % 60
+	local min = math.floor ( x / 60 )
+	return string.format ( "%02d:%05.2f" , min , sec )
+end
+
+io.stderr:setvbuf ( "no" )
+
+play:set_new_song ( function ( item )
+	local line = "Now Playing: " ..
+		pretty_time ( item.from / item.sample_rate ) ..
+		" - " ..
+		pretty_time ( item.to / item.sample_rate )
+
+	io.stderr:write ( "\r" , line , string.rep ( " " , 80 - 1 - #line ) , "\n" )
+end )
+
 print("START")
 --[[
 play:push ( wavpack_source ( FILE ) )
@@ -60,14 +78,6 @@ play:push ( item )
 local time = os.time()
 --play.setvolume (1.414)
 
-local function pretty_time ( x )
-	local sec = x % 60
-	local min = math.floor ( x / 60 )
-	return string.format ( "%02d:%05.2f" , min , sec )
-end
-io.stderr:setvbuf ( "no" )
-local np
-
 local i = 0
 while true do
 	local wait = play:step ( )
@@ -76,24 +86,22 @@ while true do
 	if wait >= 0 then
 		local w = os.clock ( )
 		repeat
-			local nnp = play:nowplaying ( )
-			if nnp ~= np then io.stderr:write ( "\n" ) end
-			np = nnp
-
-			local info1 = string.format ( "%04d W=%.2f  %s|" , i , wait , pretty_time ( np.from / np.sample_rate ) )
+			local np = play:nowplaying ( )
 			local pos = play:position ( )
-			local info2 = pretty_time ( pos / np.sample_rate )
-			local info3= "|" .. pretty_time ( np.to / np.sample_rate )
-
 			local percent = (pos - np.from)/(np.to - np.from)
-			local size = 80 - 1 - #info1 - #info2 - #info3
 
 			if not ( pos >= np.from and pos <= np.to ) then
 				error ( "Position out of range: " .. np.from .. "/" .. pos .. "/" .. np.to )
 			end
 
-			local line = "\r" .. info1 .. string.rep ( "=" , size*percent ) .. info2 .. string.rep ( "=" , size*(1-percent) ) .. info3
-			io.stderr:write ( line )
+			local pre = string.format ( "%04d W=%.5f  |" , i , wait )
+			local mid = pretty_time ( pos / np.sample_rate )
+			local post = "|"
+
+			local size = 80 - 1 - #pre - #mid - #post
+
+			local line = pre .. string.rep ( "=" , size*percent ) .. mid .. string.rep ( "=" , size*(1-percent) ) .. post
+			io.stderr:write ( "\r" , line )
 
 			sleep ( 0.03 )
 		until os.clock ( ) > w + wait
