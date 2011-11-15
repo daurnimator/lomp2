@@ -83,7 +83,7 @@ while true do
 	local wait = play:step ( )
 	if not wait then break end
 
-	if wait >= 0 then
+	if wait > 0 then
 		local w = os.clock ( )
 		repeat
 			local np = play:nowplaying ( )
