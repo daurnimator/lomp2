@@ -1,5 +1,8 @@
 local assert = assert
-local floor = math.floor
+local pairs , setmetatable , tonumber = pairs , setmetatable , tonumber
+local floor , huge , max = math.floor , math.huge , math.max
+local cowrap , coyield = coroutine.wrap , coroutine.yield
+
 
 local general 			= require"general"
 local len 				= general.len
@@ -12,7 +15,9 @@ local ffi 				= require"ffi"
 local new_fifo 			= require"fifo"
 local openal 			= require"OpenAL"
 
-local int = ffi.new ( "ALint[1]" ) --temporary int to store crap in
+local int = ffi.new ( "ALint[1]" )
+local uint = ffi.new ( "ALuint[1]" )
+
 local dev = openal.opendevice ( )
 local ctx = openal.newcontext ( dev )
 openal.alcMakeContextCurrent ( ctx )
@@ -23,6 +28,8 @@ local native_sample_rate = int[0]
 
 local empty_item = sources.silent ( )
 empty_item.sample_rate = native_sample_rate
+
+
 
 local function setup ( )
 	local finished = false
@@ -40,26 +47,31 @@ local function setup ( )
 	local BUFF_SIZE = 192000
 	local NUM_BUFFERS = 3
 	local buffers = openal.newbuffers ( NUM_BUFFERS )
-	local buffer = ffi.new ( "ALuint[1]" )
 	local source_data = ffi.new ( "char[?]" , BUFF_SIZE )
-	local buff_to_index = { }
 
 	local time_in_buffers = { }
 	local time_buffered = 0 -- Keep as total of the above table
 
 	local sourcequeue = setmetatable ( { } , { __index = function ( t , k )
+			finished = false
 			local item = queue:pop ( )
 			item:reset ( )
+
 			local v = {
 				item = item ;
 				alsource = openal.newsource ( ) ;
-				buffers = { } ; -- A set of buffers attached to this source
+				buffers = { } ; -- The set of buffers attached to this source
+				buffer_i = 1 ;
 			}
 			t [ k ] = v
 			return v
 		end } )
 	local source_from , source_to
 
+	local function add_empty_buff ( item , buff )
+		openal.alBufferData ( buff , openal.format [ item.format ] , source_data , 0 , item.sample_rate )
+		openal.assert ( )
+	end
 
 	local function init_buffers ( item )
 		-- Queue 0 length data in all buffers
@@ -68,13 +80,11 @@ local function setup ( )
 		-- also make a reverse index of buffers
 		for i = 0 , NUM_BUFFERS - 1 do
 			time_in_buffers [ buffers[i] ] = 0
-			buff_to_index [ buffers[i] ] = i
-			openal.alBufferData ( buffers[i] , openal.format [ item.format ] , source_data , 0 , item.sample_rate )
-			openal.assert ( )
-			sourcequeue [ source_from ].buffers [ buffers[i] ] = true
+			add_empty_buff ( item , buffers[i] )
+			sourcequeue [ source_from ].buffers [ buffers[i] ] = sourcequeue [ source_from ].buffer_i
+			sourcequeue [ source_from ].buffer_i = sourcequeue [ source_from ].buffer_i + 1
 		end
 		sourcequeue [ source_from ].alsource:queue ( NUM_BUFFERS , buffers )
-		sourcequeue [ source_from ].alsource:play ( )
 	end
 
 	local function add_to_buffer ( item , buff )
@@ -94,71 +104,83 @@ local function setup ( )
 		return hasmore , duration
 	end
 
-	local function dequeue ( buffer )
-		-- Get buffer back
-		sourcequeue [ source_from ].alsource:unqueue ( 1 , buffer )
-		sourcequeue [ source_from ].buffers [ buffer[0] ] = nil
-
-		if sourcequeue [ source_from ].alsource:buffers_queued ( ) == 0 then
-			sourcequeue [ source_from ] = nil
-			source_from = source_from + 1
-
-			if finished and source_from == source_to then
-				return false
-			end
-		end
-		return true
-	end
-
-	local function fill_and_queue ( buffer )
+	local function fill_and_queue ( buff )
 		local hasmore , time
 		while true do
-			hasmore , time = add_to_buffer ( sourcequeue [ source_to ].item , buffer[0] )
-			if time > 0 then
-				sourcequeue [ source_to ].alsource:queue ( 1 , buffer )
-				sourcequeue [ source_to ].buffers [ buffer[0] ] = true
+			if finished then
+				add_empty_buff ( sourcequeue [ source_to ].item , buff )
+				break
+			else
+				hasmore , time = add_to_buffer ( sourcequeue [ source_to ].item , buff )
+				if time > 0 then
+					uint[0] = buff
+					sourcequeue [ source_to ].alsource:queue ( 1 , uint )
+					sourcequeue [ source_to ].buffers [ buff ] = sourcequeue [ source_to ].buffer_i
+					sourcequeue [ source_to ].buffer_i = sourcequeue [ source_to ].buffer_i + 1
+				end
+				if not hasmore then
+					source_to = source_to + 1
+				end
+				if time > 0 then
+					break
+				end
 			end
-			if not hasmore then
-				source_to = source_to + 1
-			end
-			if time > 0 then return end
 		end
 	end
 
 	local play = true
 
-	local step = coroutine.wrap ( function ( self )
+	local step = cowrap ( function ( self )
 		source_from = 1 -- Source to unqueue from
 		source_to = 1 -- Source to queue to
 
 		init_buffers ( sourcequeue [ source_from ].item )
 
 		while true do
-			local processed = sourcequeue [ source_from ].alsource:buffers_processed ( )
-			if processed > 0 then
-				for i = 1 , processed do
-					if not dequeue ( buffer ) then coroutine.yield ( false ) end
-					fill_and_queue ( buffer )
-				end
-				-- Did all buffers run out and hence cause state to stop playing?
-				if sourcequeue [ source_from ].alsource:state ( ) ~= "playing" then
-					play = true
-				end
-			end
-
-			-- Wait the amount of time in the currently playing buffer
-			local current_buffer = buffers [ ( buff_to_index [ buffer[0] ] + 1 ) % NUM_BUFFERS ]
-			local comeback = time_in_buffers [ current_buffer ]
-			-- If this is the last buffer on a source; take off the current progress in the buffer
-			if sourcequeue [ source_from ].alsource:buffers_queued ( ) == 1 then
-				comeback = comeback - sourcequeue [ source_from ].alsource:position_seconds ( )
-			end
-
 			if play then
 				sourcequeue [ source_from ].alsource:play ( )
 				play = false
 			end
-			coroutine.yield ( comeback )
+
+			local processed = sourcequeue [ source_from ].alsource:buffers_processed ( )
+			if processed > 0 then
+				for i = 1 , processed do
+					-- Get buffer back
+					sourcequeue [ source_from ].alsource:unqueue ( 1 , uint )
+					sourcequeue [ source_from ].buffers [ uint[0] ] = nil
+
+					if sourcequeue [ source_from ].alsource:buffers_queued ( ) == 0 then -- Source done; move on
+						sourcequeue [ source_from ] = nil
+						source_from = source_from + 1
+
+					end
+
+					-- Loop/yield until queue has something in it
+					if finished and source_from == source_to then
+						local newob
+						repeat
+							coyield ( false )
+							sourcequeue [ source_from ] = nil
+							newob = sourcequeue [ source_from ]
+						until newob.item ~= empty_item
+					end
+
+					-- Fill up empty buffer
+					fill_and_queue ( uint[0] )
+				end
+				-- Did all buffers run out and hence cause state to stop playing?
+				if sourcequeue [ source_from ].alsource:state ( ) ~= "playing" then
+					sourcequeue [ source_from ].alsource:play ( )
+				end
+			end
+
+			local current_buffer = sourcequeue [ source_from ].alsource:current_buffer ( )
+			local current_progress = sourcequeue [ source_from ].alsource:position_seconds ( )
+			local comeback = time_in_buffers [ current_buffer ] - current_progress
+
+			assert ( comeback >= 0 , comeback )
+
+			coyield ( comeback )
 		end
 	end )
 
@@ -167,21 +189,20 @@ local function setup ( )
 		n = n or 1
 
 		-- Fill in all the sources between current item and destination item
-		for i = source_from , math.max ( source_from + 1 , source_to ) - 1 do
+		for i = source_from , max ( source_from , source_to - 1 ) do
 			source_to = source_to + 1
-			sourcequeue [ source_to ].nonexistantkey = nil -- Fire the __index
+			if sourcequeue [ source_to ].item == empty_item then -- Important to fire the __index
+				error ( [[Not enough items to "next" through]] )
+			end
 		end
 
 		-- Clear+retreive+fill buffers between current item and destination item
 		sourcequeue [ source_from ].alsource:rewind ( )
 		for i = 1 , n do
 			sourcequeue [ source_from ].alsource:clear ( )
-
 			for buff in pairs ( sourcequeue [ source_from ].buffers ) do
-				buffer[0] = buff
-				fill_and_queue ( buffer )
+				fill_and_queue ( buff )
 			end
-
 			sourcequeue [ source_from ] = nil
 			source_from = source_from + 1
 		end
@@ -210,11 +231,6 @@ local function setup ( )
 		-- Put all the buffers back in the queue
 		init_buffers ( sourcequeue [ source_from ].item )
 
-		for i = 1 , sourcequeue [ source_from ].alsource:buffers_processed ( ) do
-			dequeue ( buffer )
-			fill_and_queue ( buffer )
-		end
-
 		play = true
 	end
 
@@ -223,14 +239,11 @@ local function setup ( )
 
 		local frames_queued = 0
 		for buff in pairs ( sourcequeue [ source_from ].buffers ) do
-		--for i = 1 , sourcequeue [ source_from ].alsource:buffers_queued ( ) do
-		--	local buff = buffers [ ( buff_to_index [ buffer[0] ] + i ) % NUM_BUFFERS ]
 			local info = openal.buffer_info ( buff )
 			frames_queued = frames_queued + info.frames
 		end
 
 		local openal_played = sourcequeue [ source_from ].alsource:position ( )
---print(" POSITION",r,frames_queued,openal_played,"FROM",sourcequeue [ source_from ].item.from , "TO",sourcequeue [ source_from ].item.to)
 		return r - frames_queued + openal_played
 	end
 
