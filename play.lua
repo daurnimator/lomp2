@@ -160,38 +160,41 @@ local function setup ( )
 				play = false
 			end
 
-			local processed = sourcequeue [ source_from ].alsource:buffers_processed ( )
-			if processed > 0 then
-				for i = 1 , processed do
-					-- Get buffer back
-					sourcequeue [ source_from ].alsource:unqueue ( 1 , uint )
-					sourcequeue [ source_from ].played = sourcequeue [ source_from ].played + openal.buffer_info ( uint[0] ).frames
-					sourcequeue [ source_from ].buffers [ uint[0] ] = nil
+			while true do
+				local processed = sourcequeue [ source_from ].alsource:buffers_processed ( )
+				if processed == 0 then break
+				else
+					for i = 1 , processed do
+						-- Get buffer back
+						sourcequeue [ source_from ].alsource:unqueue ( 1 , uint )
+						sourcequeue [ source_from ].played = sourcequeue [ source_from ].played + openal.buffer_info ( uint[0] ).frames
+						sourcequeue [ source_from ].buffers [ uint[0] ] = nil
 
-					if next ( sourcequeue [ source_from ].buffers ) == nil then -- Source done; move on
-						sourcequeue [ source_from ] = nil
-						source_from = source_from + 1
-
-						new_song ( sourcequeue [ source_from ].item )
-					end
-
-					-- Loop/yield until queue has something in it
-					if finished and source_from == source_to then
-						local newob
-						repeat
-							coyield ( false )
+						if next ( sourcequeue [ source_from ].buffers ) == nil then -- Source done; move on
 							sourcequeue [ source_from ] = nil
-							newob = sourcequeue [ source_from ]
-						until newob.item ~= empty_item
-						new_song ( sourcequeue [ source_from ].item )
-					end
+							source_from = source_from + 1
 
-					-- Fill up empty buffer
-					fill_and_queue ( uint[0] )
-				end
-				-- Did all buffers run out and hence cause state to stop playing?
-				if sourcequeue [ source_from ].alsource:state ( ) ~= "playing" then
-					sourcequeue [ source_from ].alsource:play ( )
+							new_song ( sourcequeue [ source_from ].item )
+						end
+
+						-- Loop/yield until queue has something in it
+						if finished and source_from == source_to then
+							local newob
+							repeat
+								coyield ( false )
+								sourcequeue [ source_from ] = nil
+								newob = sourcequeue [ source_from ]
+							until newob.item ~= empty_item
+							new_song ( sourcequeue [ source_from ].item )
+						end
+
+						-- Fill up empty buffer
+						fill_and_queue ( uint[0] )
+					end
+					-- Did all buffers run out and hence cause state to stop playing?
+					if sourcequeue [ source_from ].alsource:state ( ) ~= "playing" then
+						sourcequeue [ source_from ].alsource:play ( )
+					end
 				end
 			end
 
