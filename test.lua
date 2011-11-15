@@ -6,6 +6,7 @@ local play = require"play"()
 
 local sources 			= require"sources"
 local raw_fd 			= sources.raw_fd
+local wav_fd 			= sources.wav_fd
 local sine_source 		= sources.sinusoidal
 local wavpack_source 	= sources.wavpack_file
 local mad_file 			= sources.mad_file
@@ -29,6 +30,8 @@ play:push ( m )
 --[[
 local item = raw_fd ( io.open("samples.raw","rb") )
 play:push ( item )
+--]]
+play:push ( wav_fd ( io.open ( FILE ,"rb" ) ) )
 --]]
 
 local item = sine_source ( 800 )
