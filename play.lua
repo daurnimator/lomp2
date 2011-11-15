@@ -259,22 +259,7 @@ local function setup ( )
 	end
 
 	local position = function ( self )
-		local song_pos = sourcequeue [ source_from ].item:position ( )
-
-		-- Build data on buffers
-		local frames_queued = -sourcequeue [ source_from ].played
-		local buff_count = 0
-		for buff , i in pairs ( sourcequeue [ source_from ].buffers ) do
-			frames_queued = frames_queued + openal.buffer_info ( buff ).frames
-			buff_count = buff_count + 1
-		end
-
-		local openal_played = sourcequeue [ source_from ].alsource:position ( )
-
-		local ret = song_pos - frames_queued + openal_played
-		ret = min ( ret , song_pos ) -- Don't let position go over the song_pos
-
-		return ret
+		return sourcequeue [ source_from ].played + sourcequeue [ source_from ].alsource:position ( )
 	end
 
 	return {

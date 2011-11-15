@@ -88,16 +88,16 @@ while true do
 		repeat
 			local np = play:nowplaying ( )
 			local pos = play:position ( )
-			local percent = (pos - np.from)/(np.to - np.from)
 
-			if not ( pos >= np.from and pos <= np.to ) then
-				error ( "Position out of range: " .. np.from .. "/" .. pos .. "/" .. np.to )
+			if not ( pos >= 0 and pos <= ( np.to - np.from ) ) then
+				error ( "Position out of range: " .. pos )
 			end
 
 			local pre = string.format ( "%04d W=%.5f  |" , i , wait )
 			local mid = pretty_time ( pos / np.sample_rate )
 			local post = "|"
 
+			local percent = pos/(np.to - np.from)
 			local size = 80 - 1 - #pre - #mid - #post
 
 			local line = pre .. string.rep ( "=" , size*percent ) .. mid .. string.rep ( "=" , size*(1-percent) ) .. post
