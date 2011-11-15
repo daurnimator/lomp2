@@ -1,6 +1,8 @@
-local assert = assert
-local pairs , setmetatable , tonumber = pairs , setmetatable , tonumber
-local floor , huge , max = math.floor , math.huge , math.max
+local assert , error = assert , error
+local next , pairs = next , pairs
+local setmetatable , tonumber = setmetatable , tonumber
+local floor , huge = math.floor , math.huge
+local min, max = math.min , math.max
 local cowrap , coyield = coroutine.wrap , coroutine.yield
 
 
@@ -29,7 +31,20 @@ local native_sample_rate = int[0]
 local empty_item = sources.silent ( )
 empty_item.sample_rate = native_sample_rate
 
-
+-- Indexed by [sample_rate][format]
+local sources = setmetatable ( { } , {
+	__index = function ( sources , sample_rate )
+		local v = setmetatable ( { } , {
+			__index = function ( t , format )
+				local alsource = openal.newsource ( )
+				t [ format ] = alsource
+				return alsource
+			end ;
+		} )
+		sources [ sample_rate ] = v
+		return v
+	end ;
+} )
 
 local function setup ( )
 	local finished = false
@@ -49,9 +64,6 @@ local function setup ( )
 	local buffers = openal.newbuffers ( NUM_BUFFERS )
 	local source_data = ffi.new ( "char[?]" , BUFF_SIZE )
 
-	local time_in_buffers = { }
-	local time_buffered = 0 -- Keep as total of the above table
-
 	local sourcequeue = setmetatable ( { } , { __index = function ( t , k )
 			finished = false
 			local item = queue:pop ( )
@@ -59,9 +71,10 @@ local function setup ( )
 
 			local v = {
 				item = item ;
-				alsource = openal.newsource ( ) ;
+				alsource = sources [ item.sample_rate ] [ item.format ] ;
 				buffers = { } ; -- The set of buffers attached to this source
 				buffer_i = 1 ;
+				played = 0 ;
 			}
 			t [ k ] = v
 			return v
@@ -84,10 +97,10 @@ local function setup ( )
 		-- then play; so that all buffers have been processed
 		-- also make a reverse index of buffers
 		for i = 0 , NUM_BUFFERS - 1 do
-			time_in_buffers [ buffers[i] ] = 0
 			add_empty_buff ( item , buffers[i] )
 			sourcequeue [ source_from ].buffers [ buffers[i] ] = sourcequeue [ source_from ].buffer_i
 			sourcequeue [ source_from ].buffer_i = sourcequeue [ source_from ].buffer_i + 1
+			sourcequeue [ source_from ].played = 0
 		end
 		sourcequeue [ source_from ].alsource:queue ( NUM_BUFFERS , buffers )
 	end
@@ -103,8 +116,6 @@ local function setup ( )
 		openal.assert ( )
 
 		local duration = done / item.sample_rate
-		time_buffered = time_buffered + duration - time_in_buffers [ buff ]
-		time_in_buffers [ buff ] = duration
 
 		return hasmore , duration
 	end
@@ -152,9 +163,10 @@ local function setup ( )
 				for i = 1 , processed do
 					-- Get buffer back
 					sourcequeue [ source_from ].alsource:unqueue ( 1 , uint )
+					sourcequeue [ source_from ].played = sourcequeue [ source_from ].played + openal.buffer_info ( uint[0] ).frames
 					sourcequeue [ source_from ].buffers [ uint[0] ] = nil
 
-					if sourcequeue [ source_from ].alsource:buffers_queued ( ) == 0 then -- Source done; move on
+					if next ( sourcequeue [ source_from ].buffers ) == nil then -- Source done; move on
 						sourcequeue [ source_from ] = nil
 						source_from = source_from + 1
 
@@ -183,7 +195,7 @@ local function setup ( )
 
 			local current_buffer = sourcequeue [ source_from ].alsource:current_buffer ( )
 			local current_progress = sourcequeue [ source_from ].alsource:position_seconds ( )
-			local comeback = time_in_buffers [ current_buffer ] - current_progress
+			local comeback = openal.buffer_info ( current_buffer ).duration - current_progress
 
 			assert ( comeback >= 0 , comeback )
 
@@ -245,16 +257,22 @@ local function setup ( )
 	end
 
 	local position = function ( self )
-		local r = sourcequeue [ source_from ].item:position ( )
+		local song_pos = sourcequeue [ source_from ].item:position ( )
 
-		local frames_queued = 0
-		for buff in pairs ( sourcequeue [ source_from ].buffers ) do
-			local info = openal.buffer_info ( buff )
-			frames_queued = frames_queued + info.frames
+		-- Build data on buffers
+		local frames_queued = -sourcequeue [ source_from ].played
+		local buff_count = 0
+		for buff , i in pairs ( sourcequeue [ source_from ].buffers ) do
+			frames_queued = frames_queued + openal.buffer_info ( buff ).frames
+			buff_count = buff_count + 1
 		end
 
 		local openal_played = sourcequeue [ source_from ].alsource:position ( )
-		return r - frames_queued + openal_played
+
+		local ret = song_pos - frames_queued + openal_played
+		ret = min ( ret , song_pos ) -- Don't let position go over the song_pos
+
+		return ret
 	end
 
 	return {
