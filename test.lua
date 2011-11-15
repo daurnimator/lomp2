@@ -21,7 +21,7 @@ end
 
 io.stderr:setvbuf ( "no" )
 
-play:set_new_song ( function ( item )
+play:set_new_song ( function ( play , item )
 	local line = "Now Playing: " ..
 		pretty_time ( item.from / item.sample_rate ) ..
 		" - " ..

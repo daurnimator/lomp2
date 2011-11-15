@@ -83,7 +83,11 @@ local function setup ( )
 
 	local function new_song ( item ) end
 	local function set_new_song ( self , func )
-		new_song = func
+		new_song = function ( item )
+			if item ~= empty_item then
+				return func ( self , item )
+			end
+		end
 	end
 
 	local function add_empty_buff ( item , buff )
