@@ -82,7 +82,7 @@ local function setup ( )
 	local source_from , source_to
 
 	local function new_song ( item ) end
-	local function set_new_song ( func )
+	local function set_new_song ( self , func )
 		new_song = func
 	end
 
@@ -151,6 +151,8 @@ local function setup ( )
 		source_to = 1 -- Source to queue to
 
 		init_buffers ( sourcequeue [ source_from ].item )
+
+		new_song ( sourcequeue [ source_from ].item )
 
 		while true do
 			if play then
