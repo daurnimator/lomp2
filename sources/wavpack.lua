@@ -52,8 +52,8 @@ local function wavpack_file ( filename )
 	end
 
 	local seek = function ( self , newpos )
-		pos = newpos
-		self.wc:seek ( newpos )
+		pos = newpos + self.from
+		self.wc:seek ( pos )
 	end
 
 

@@ -46,6 +46,7 @@ local function mad_file ( filename , duration )
 	local seektable = { }
 
 	local seek = function ( self , newpos )
+		newpos = newpos + self.from
 		local framenum = floor ( newpos / frame_length )
 		local closestframe
 		closestframe , lastpos = find_last ( seektable , framenum-2 ) -- Go back at least 2 frames before target

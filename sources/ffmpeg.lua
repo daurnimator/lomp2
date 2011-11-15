@@ -73,6 +73,7 @@ local function ffmpeg_file ( filename )
 		end ;
 
 		seek = function ( self , newpos )
+			newpos = newpos + self.from
 			local ts = newpos * ffmpeg.AV_TIME_BASE / self.sample_rate
 			ffmpeg.avAssert ( ffmpeg.avformat.av_seek_frame ( formatctx , -1 , ts , 0 ) )--ffmpeg.avutil.AVSEEK_FLAG_BACKWARD +  ffmpeg.avutil.AVSEEK_FLAG_ANY + ffmpeg.avutil.AVSEEK_FLAG_FRAME ) )
 			pos = newpos

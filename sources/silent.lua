@@ -37,7 +37,7 @@ local function silent_source ( )
 		end ;
 
 		seek = function ( self , pos )
-			i = pos
+			i = pos + self.from
 		end ;
 	}
 end

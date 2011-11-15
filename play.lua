@@ -235,6 +235,8 @@ local function setup ( )
 	end
 
 	local seek = function ( self , newpos )
+		assert ( newpos % 1 == 0 , "Invalid seek destination" )
+
 		-- Seek the current item
 		sourcequeue [ source_from ].item:seek ( newpos )
 
@@ -255,6 +257,7 @@ local function setup ( )
 		-- Put all the buffers back in the queue
 		init_buffers ( sourcequeue [ source_from ].item )
 
+		sourcequeue [ source_from ].played = newpos
 		play = true
 	end
 

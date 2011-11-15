@@ -9,6 +9,8 @@ local huge , max = math.huge , math.max
 local general = require"general"
 local generatesinusoid = general.generatesinusoid
 
+local ffi = require"ffi"
+
 local openal = require"OpenAL"
 
 local function sine ( pitch )
@@ -49,7 +51,7 @@ local function sine ( pitch )
 		end ;
 
 		seek = function ( self , newpos )
-			self.pos = newpos
+			self.pos = newpos + self.from
 		end ;
 	}
 end
