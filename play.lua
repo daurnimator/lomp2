@@ -68,6 +68,11 @@ local function setup ( )
 		end } )
 	local source_from , source_to
 
+	local function new_song ( item ) end
+	local function set_new_song ( func )
+		new_song = func
+	end
+
 	local function add_empty_buff ( item , buff )
 		openal.alBufferData ( buff , openal.format [ item.format ] , source_data , 0 , item.sample_rate )
 		openal.assert ( )
@@ -153,6 +158,7 @@ local function setup ( )
 						sourcequeue [ source_from ] = nil
 						source_from = source_from + 1
 
+						new_song ( sourcequeue [ source_from ].item )
 					end
 
 					-- Loop/yield until queue has something in it
@@ -163,6 +169,7 @@ local function setup ( )
 							sourcequeue [ source_from ] = nil
 							newob = sourcequeue [ source_from ]
 						until newob.item ~= empty_item
+						new_song ( sourcequeue [ source_from ].item )
 					end
 
 					-- Fill up empty buffer
@@ -207,6 +214,9 @@ local function setup ( )
 			source_from = source_from + 1
 		end
 
+		if sourcequeue [ source_from ].item ~= empty_item then
+			new_song ( sourcequeue [ source_from ].item )
+		end
 		play = true
 	end
 
@@ -256,6 +266,7 @@ local function setup ( )
 		end ;
 
 		next = next ;
+		set_new_song = set_new_song ;
 
 		seek = seek ;
 		position = position ;
