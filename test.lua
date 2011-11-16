@@ -11,6 +11,7 @@ local sine_source 		= sources.sinusoidal
 local wavpack_source 	= sources.wavpack_file
 local mad_file 			= sources.mad_file
 local ffmpeg_source 	= sources.ffmpeg_file
+local libsndfile_path 	= sources.libsndfile_path
 
 
 local function pretty_time ( x )

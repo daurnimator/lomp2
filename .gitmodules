@@ -13,3 +13,6 @@
 [submodule "modules/ffi_util"]
 	path = modules/ffi_util
 	url = git@github.com:daurnimator/lua-ffi-util.git
+[submodule "modules/libsndfile"]
+	path = modules/libsndfile
+	url = git@github.com:daurnimator/libsndfile-lua-ffi.git
