@@ -72,7 +72,10 @@ local function add_dependancy ( ob , dep )
 end
 
 local function current_script_dir ( )
-	return debug.getinfo ( 2 , S ).source:match ( [=[^@(.-)[^/\]*$]=] )
+	local dir = debug.getinfo ( 2 , "S" ).source:match ( [=[^@(.-)[^/\]*$]=] )
+	if dir == "" then dir = "." end
+	dir = dir .. "/"
+	return dir
 end
 
 
