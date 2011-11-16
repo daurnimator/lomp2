@@ -90,10 +90,6 @@ while true do
 		repeat
 			local pos = play:position ( )
 
-			if not ( pos >= 0 and pos <= ( np.to - np.from ) ) then
-				error ( "Position out of range: " .. pos )
-			end
-
 			local pre = string.format ( "%04d W=%.5f  |" , i , wait )
 			local mid = pretty_time ( pos / np.sample_rate )
 			local post = "|"
