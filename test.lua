@@ -22,9 +22,9 @@ end
 io.stderr:setvbuf ( "no" )
 
 play:set_new_song ( function ( play , item )
-	local line = "Now Playing: " ..
+	local line = "Now Playing:    " ..
 		pretty_time ( item.from / item.sample_rate ) ..
-		" - " ..
+		"                       -                       " ..
 		pretty_time ( item.to / item.sample_rate )
 
 	io.stderr:write ( "\r" , line , string.rep ( " " , 80 - 1 - #line ) , "\n" )
@@ -83,10 +83,11 @@ while true do
 	local wait = play:step ( )
 	if not wait then break end
 
+	local np = play:nowplaying ( )
+
 	if wait > 0 then
 		local w = os.clock ( )
 		repeat
-			local np = play:nowplaying ( )
 			local pos = play:position ( )
 
 			if not ( pos >= 0 and pos <= ( np.to - np.from ) ) then
