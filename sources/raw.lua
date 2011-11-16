@@ -50,8 +50,9 @@ local function raw_file ( fd , headersize )
 		end ;
 
 		seek = function ( self , newpos )
-			pos = newpos + self.from
-			assert ( self.fd:seek ( "set" , pos*bytes_per_frame + self.headersize ) )
+			newpos = newpos + self.from
+			assert ( self.fd:seek ( "set" , newpos*bytes_per_frame + self.headersize ) )
+			pos = newpos
 		end ;
 
 		fd = fd ;
