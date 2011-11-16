@@ -1,4 +1,4 @@
-package.path = package.path .. ";./?/init.lua"
+package.path = package.path .. ";./modules/?/init.lua"
 
 local assert , error , print = assert , error , print
 local type , tostring , tonumber = type , tostring , tonumber
