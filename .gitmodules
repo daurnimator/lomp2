@@ -10,3 +10,6 @@
 [submodule "modules/MAD"]
 	path = modules/MAD
 	url = git@github.com:daurnimator/mad-lua-ffi.git
+[submodule "modules/ffi_util"]
+	path = modules/ffi_util
+	url = git@github.com:daurnimator/lua-ffi-util.git
