@@ -32,6 +32,7 @@ play:set_new_song ( function ( play , item )
 end )
 
 print("START")
+
 --[[
 play:push ( wavpack_source ( FILE ) )
 play:push ( wavpack_source ( FILE ) )
@@ -50,7 +51,12 @@ play:push ( m )
 local item = raw_fd ( io.open("samples.raw","rb") )
 play:push ( item )
 --]]
-play:push ( wav_fd ( io.open ( FILE ,"rb" ) ) )
+--[[
+local w = wav_fd ( io.open ( FILE ,"rb" ) )
+play:push ( w )
+--]]
+--[[
+play:push ( libsndfile_path ( FILE ) )
 --]]
 
 local item = sine_source ( 800 )
