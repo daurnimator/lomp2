@@ -4,7 +4,7 @@ local assert , error = assert , error
 local floor , huge , max = math.floor , math.huge , math.max
 local ioopen = io.open
 
-local mad = require"mad"
+local mad = require"MAD"
 local ffi = require"ffi"
 
 local function find_last ( tbl , n )
