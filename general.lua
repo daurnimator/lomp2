@@ -142,11 +142,11 @@ local generatesinusoid = function ( pitch , frequency )
 end
 
 
+local ok , ffi = pcall ( require , "ffi" )
 -- Sleeps for the specified amount of time;
 --  if no argument given, sleeps for smallest amount of time possible (gives up timeslice)
 local sleep
 do
-	local ok , ffi = pcall ( require , "ffi" )
 	if jit and ok then
 		if jit.os == "Windows" then
 			ffi.cdef[[void Sleep(int);]]
@@ -181,6 +181,39 @@ do
 	end
 end
 
+local time
+do
+	if jit and ok then
+		local ffi_util = require"ffi_util"
+		
+		if jit.os == "Windows" then
+			ffi.cdef [[void WINAPI GetSystemTime( __out  LPSYSTEMTIME lpSystemTime );]]
+			local tp = ffi.new ( "LPSYSTEMTIME[1]" )
+			time = function ( )
+				ffi.C.GetSystemTimeAsFileTime ( tp , nil )
+				local t = os.time ( {
+					year = tp[0].wYear * 60 ;
+					month = tp[0].wMonth * 60 ;
+					day = tp[0].wDay * 60 * 60 * 24 ;
+					hour = tp[0].wHour * 60 * 60 ;
+					min = tp[0].wMinute * 60 ;
+					sec = tp[0].wSecond ; } )
+				return t + tp[0].wMilliseconds * 1e-6
+			end
+		else -- Assume posix
+			ffi.cdef ( ffi_util.ffi_process_headers { "<sys/time.h>" } )
+			ffi.cdef [[int gettimeofday(struct timeval * tp, void * tzp);]]
+			local tp = ffi.new ( "struct timeval[1]" )
+			time = function ( )
+				ffi.C.gettimeofday ( tp , nil )
+				return tonumber ( tp[0].tv_sec ) + tonumber ( tp[0].tv_usec ) / 1e6
+			end
+		end
+	else
+		error ( "NYI" )
+	end
+end
+
 return {
 	loadfilein  = loadfilein ;
 	len = len ;
@@ -197,4 +230,5 @@ return {
 	generatesinusoid = generatesinusoid ;
 
 	sleep = sleep ;
+	time = time ;
 }
