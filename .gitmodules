@@ -1,18 +1,18 @@
 [submodule "modules/OpenAL"]
 	path = modules/OpenAL
-	url = git@github.com:daurnimator/openal-lua-ffi.git
+	url = git://github.com/daurnimator/openal-lua-ffi.git
 [submodule "modules/FFmpeg"]
 	path = modules/FFmpeg
-	url = git@github.com:daurnimator/ffmpeg-lua-ffi.git
+	url = git://github.com/daurnimator/ffmpeg-lua-ffi.git
 [submodule "modules/WavPack"]
 	path = modules/WavPack
-	url = git@github.com:daurnimator/wavpack-lua-ffi.git
+	url = git://github.com/daurnimator/wavpack-lua-ffi.git
 [submodule "modules/MAD"]
 	path = modules/MAD
-	url = git@github.com:daurnimator/mad-lua-ffi.git
+	url = git://github.com/daurnimator/mad-lua-ffi.git
 [submodule "modules/ffi_util"]
 	path = modules/ffi_util
-	url = git@github.com:daurnimator/lua-ffi-util.git
+	url = git://github.com/daurnimator/lua-ffi-util.git
 [submodule "modules/libsndfile"]
 	path = modules/libsndfile
-	url = git@github.com:daurnimator/libsndfile-lua-ffi.git
+	url = git://github.com/daurnimator/libsndfile-lua-ffi.git
