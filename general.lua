@@ -185,24 +185,39 @@ local time
 do
 	if jit and ok then
 		local ffi_util = require"ffi_util"
-		
+
 		if jit.os == "Windows" then
-			ffi.cdef [[void WINAPI GetSystemTime( __out  LPSYSTEMTIME lpSystemTime );]]
-			local tp = ffi.new ( "LPSYSTEMTIME[1]" )
+			ffi.cdef [[
+				typedef unsigned short WORD, *PWORD, *LPWORD;
+				typedef struct _SYSTEMTIME {
+					WORD wYear;
+					WORD wMonth;
+					WORD wDayOfWeek;
+					WORD wDay;
+					WORD wHour;
+					WORD wMinute;
+					WORD wSecond;
+					WORD wMilliseconds;
+				} SYSTEMTIME;
+
+				void GetSystemTime( SYSTEMTIME* );
+			]]
+			local tp = ffi.new ( "SYSTEMTIME[1]" )
 			time = function ( )
-				ffi.C.GetSystemTimeAsFileTime ( tp , nil )
-				local t = os.time ( {
-					year = tp[0].wYear * 60 ;
-					month = tp[0].wMonth * 60 ;
-					day = tp[0].wDay * 60 * 60 * 24 ;
-					hour = tp[0].wHour * 60 * 60 ;
-					min = tp[0].wMinute * 60 ;
-					sec = tp[0].wSecond ; } )
-				return t + tp[0].wMilliseconds * 1e-6
+				ffi.C.GetSystemTime ( tp )
+				local t = {
+					year  = tonumber ( tp[0].wYear ) ;
+					month = tonumber ( tp[0].wMonth ) ;
+					day   = tonumber ( tp[0].wDay ) ;
+					hour  = tonumber ( tp[0].wHour ) ;
+					min   = tonumber ( tp[0].wMinute ) ;
+					sec   = tonumber ( tp[0].wSecond ) ;
+				}
+				return os.time(t) + tp[0].wMilliseconds * 1e-6
 			end
 		else -- Assume posix
 			ffi.cdef ( ffi_util.ffi_process_headers { "<sys/time.h>" } )
-			ffi.cdef [[int gettimeofday(struct timeval * tp, void * tzp);]]
+			ffi.cdef [[int gettimeofday ( struct timeval * , void * );]]
 			local tp = ffi.new ( "struct timeval[1]" )
 			time = function ( )
 				ffi.C.gettimeofday ( tp , nil )
@@ -210,7 +225,7 @@ do
 			end
 		end
 	else
-		error ( "NYI" )
+		time = os.time
 	end
 end
 

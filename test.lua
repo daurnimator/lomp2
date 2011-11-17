@@ -1,7 +1,12 @@
 local FILE = arg[1]
 
+local format , rep = string.format , string.rep
+local floor = math.floor
+
 local general = require"general"
 local sleep = general.sleep
+local time = general.time
+
 local play = require"play"()
 
 local sources 			= require"sources"
@@ -16,8 +21,8 @@ local libsndfile_path 	= sources.libsndfile_path
 
 local function pretty_time ( x )
 	local sec = x % 60
-	local min = math.floor ( x / 60 )
-	return string.format ( "%02d:%05.2f" , min , sec )
+	local min = floor ( x / 60 )
+	return format ( "%02d:%05.2f" , min , sec )
 end
 
 io.stderr:setvbuf ( "no" )
@@ -28,7 +33,7 @@ play:set_new_song ( function ( play , item )
 		"                       -                       " ..
 		pretty_time ( item.to / item.sample_rate )
 
-	io.stderr:write ( "\r" , line , string.rep ( " " , 80 - 1 - #line ) , "\n" )
+	io.stderr:write ( "\r" , line , rep ( " " , 80 - 1 - #line ) , "\n" )
 end )
 
 print("START")
@@ -82,9 +87,6 @@ play:push ( item )
 
 --play:foreach(print)
 
-local time = os.time()
---play.setvolume (1.414)
-
 local i = 0
 while true do
 	local wait = play:step ( )
@@ -93,24 +95,24 @@ while true do
 	local np = play:nowplaying ( )
 
 	if wait > 0 then
-		local w = os.clock ( )
+		local w = time ( )
 		repeat
 			local pos = play:position ( )
 
-			local pre = string.format ( "%04d W=%.5f  |" , i , wait )
+			local pre = format ( "%04d W=%.5f  |" , i , wait )
 			local mid = pretty_time ( pos / np.sample_rate )
 			local post = "|"
 
 			local percent = pos/(np.to - np.from)
 			local size = 80 - 1 - #pre - #mid - #post
 
-			local line = pre .. string.rep ( "=" , size*percent ) .. mid .. string.rep ( "=" , size*(1-percent) ) .. post
+			local line = pre .. rep ( "=" , floor ( size*percent+0.5 ) ) .. mid .. rep ( "=" , floor ( size*(1-percent) - 0.5 ) ) .. post
 			io.stderr:write ( "\r" , line )
-
+			
 			sleep ( 0.03 )
-		until os.clock ( ) > w + wait
+		until time ( ) > w + wait
 	end
-
+	
 	i = i + 1
 end
 
