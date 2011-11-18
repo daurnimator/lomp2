@@ -8,7 +8,7 @@
   <style type="text/css">
     body {
       margin-top: 1.0em;
-      background-color: #0000AA;
+      background-color: #13c;
       font-family: Helvetica, Arial, FreeSans, san-serif;
       color: #ffffff;
     }
@@ -16,11 +16,11 @@
       margin: 0 auto;
       width: 700px;
     }
-    h1 { font-size: 3.8em; color: #ffff55; margin-bottom: 15px; }
+    h1 { font-size: 3.8em; color: #ff5; margin-bottom: 15px; }
     h1 .small { font-size: 0.4em; }
     h1 a { text-decoration: none }
-    h2 { font-size: 1.5em; color: #ffff55; }
-    h3 { text-align: center; color: #ffff55; }
+    h2 { font-size: 1.5em; color: #ff5; }
+    h3 { color: #ff5; }
     a { color: #ffff81; }
 	br { height: 20px; }
     .description { font-size: 1.2em; margin-bottom: 30px; margin-top: 30px; font-style: italic;}
@@ -28,6 +28,10 @@
     pre { background: #000; color: #fff; padding: 15px;}
     hr { border: 0; width: 80%; border-bottom: 1px solid #aaa}
     .footer { text-align:center; padding-top:30px; font-style: italic; }
+
+	.winlink {
+		font-size: 0.9em ;
+	}
   </style>
 </head>
 
@@ -52,9 +56,36 @@
     </div>
 
     <h2>Dependencies</h2>
-<p><a href="http://luajit.org/">luajit 2</a></p>
-<p>OpenAL</p>
-<p><a href="http://ffmpeg.org/">FFmpeg</a></p>
+	<p>
+		<a href="http://luajit.org/">luajit 2</a>
+		<span class="winlink">(<a href="http://peterodding.com/code/lua/buildbot/downloads/luajit-2.0.0-beta8.zip">Windows Download</a>)</span>
+	</p>
+
+	<h3>Audio Output Engines</h3>
+	<p>
+		<a href="http://connect.creativelabs.com/openal/default.aspx">OpenAL</a>
+		<span class="winlink">(<a href="http://connect.creativelabs.com/openal/Downloads/OpenAL11CoreSDK.zip">Windows Download</a>)</span>
+	</p>
+
+	<h3>Codecs</h3>
+	<p>
+		<a href="http://www.mega-nerd.com/libsndfile/">libsndfile</a>
+		<span class="winlink">(<a href="http://www.mega-nerd.com/libsndfile/files/libsndfile-1.0.25-w32-setup.exe">Windows Download</a>)</span>
+	</p>
+	<p>
+		<a href="http://www.wavpack.com/">WavPack</a>
+		<span class="winlink">(<a href="http://www.wavpack.com/wavpackdll.zip">Windows Download</a>)</span>
+	</p>
+	<p>
+		<a href="http://www.underbit.com/products/mad/">MAD: MPEG Audio Decoder</a>
+	</p>
+	<p>
+		<a href="http://ffmpeg.org/">FFmpeg</a>
+		<span class="winlink">(<a href="http://ffmpeg.zeranoe.com/builds/win32/shared/ffmpeg-latest-win32-shared.7z">Windows Download</a>)</span>
+	</p>
+	<br>
+	<p>To generate the defs.h files you'll need a C preprocessor (eg, "cpp" that comes with gcc)</p>
+
 <h2>Authors</h2>
 <p>daurnimator (quae@daurnimator.com)
 <br/>      </p>
