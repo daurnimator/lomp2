@@ -1,46 +1,68 @@
 package.path = package.path .. ";./modules/?/init.lua"
+local require = require
 
-local assert , error , print = assert , error , print
+local assert , error , print , pcall , xpcall = assert , error , print , pcall , xpcall
 local type , tostring , tonumber = type , tostring , tonumber
 local ipairs , pairs = ipairs , pairs
 local rawset = rawset
 local getmetatable , setmetatable = getmetatable , setmetatable
-local loadfile = loadfile
-
-
-local setfenv , loadin = setfenv , loadin
+local setfenv , load , loadfile = setfenv , load , loadfile
+local select = select
 
 local ioopen = io.open
-local osclock , osexecute = os.clock , os.execute
-
+local ostime , osexecute = os.time , os.execute
+local getinfo = debug.getinfo
 local tblconcat = table.concat
 
 local ceil , log , max , pi , sin = math.ceil , math.log , math.max , math.pi , math.sin
 
-local registry = debug.getregistry ( )
+-- Add some functions differences between 5.1 and 5.2
+local pack = table.pack or function ( ... ) return { n = select("#",...) , ... } end
+local unpack = unpack or table.unpack
+
+-- For checking if we're in luajit
+local jit = jit
+local gotffi , ffi = pcall ( require , "ffi" )
+
+local gotsocket , socket = pcall ( require , "socket" )
 
 
-local doc = require "codedoc".doc
+-- Let xpcall take arguments
+do
+	-- Test for native support
+	local ok , result = xpcall ( function ( ... ) return ... end , function ( ) end, "a" )
+	if result ~= "a" then
+		local old_xpcall = xpcall
 
+		xpcall = function ( func , handler , ... )
+			local args = pack ( ... )
+			return old_xpcall ( function ( ) return func ( unpack ( args , 1 , args.n ) ) end , handler )
+		end
+	end
+end
+
+-- Loads the given file in the given environment. mode is as load is in 5.2
 local loadfilein
-if loadin then
-	loadfilein = function ( file , env )
-		return loadin ( env , ioopen ( file ):read ( "*a" ) )
+if not setfenv then
+	loadfilein = function ( file , env , mode )
+		local fd = ioopen ( file , "r" )
+		local source = assert ( fd:read ( "*a" ) )
+		return load ( source , file , mode , env )
 	end
 else
-	loadfilein = function ( file , env )
-		assert ( type ( env ) == "table" , "invalid environment" )
+	loadfilein = function ( file , env , mode )
+		local fd = ioopen ( file , "r" )
+		local source = assert ( fd:read ( "*a" ) )
+		local isbinary = source:byte ( 1 , 1 ) == 27
+
+		if isbinary and not mode:match ( "b" ) then
+			error ( "Loading binary code not allowed" )
+		elseif not isbinary and not mode:match ( "t") then
+			error ( "Loading text source not allowed" )
+		end
 		return setfenv ( loadfile ( file ) , env )
 	end
 end
-doc {
-	desc = [[loads ^file^ in given ^env^]] ;
-	params = {
-		{ "file" , "path to file" } ;
-		{ "env" , "environment" } ;
-	} ;
-	returns = { { "chunk" , "function representing file" } } ;
-} ( loadfilein )
 
 local len
 do
@@ -50,7 +72,7 @@ do
 		len = function ( o ) return #o end
 	else
 		len = function ( o )
-			local mt = getmetatable(o)
+			local mt = getmetatable ( o )
 			if mt then
 				local mmt = mt.__len
 				if mmt then return mmt(o) end
@@ -60,19 +82,8 @@ do
 	end
 end
 
-local deps = setmetatable ( { } , { __mode = "" } )
-registry.deps = deps
-local function add_dependancy ( ob , dep )
-	local t = deps[dep]
-	if not t then
-		t = setmetatable ( { } , { __mode = "" } )
-		deps[dep] = t
-	end
-	t[ob] = true
-end
-
 local function current_script_dir ( )
-	local dir = debug.getinfo ( 2 , "S" ).source:match ( [=[^@(.-)[^/\]*$]=] )
+	local dir = getinfo ( 2 , "S" ).source:match ( [=[^@(.-)[^/\]*$]=] )
 	if dir == "" then dir = "." end
 	dir = dir .. "/"
 	return dir
@@ -97,6 +108,7 @@ local function pretty ( t , prefix )
 	end
 end
 local pretty_print = function ( ... ) for i , v in ipairs ( { ... } ) do print ( pretty ( v ) ) end end
+
 
 --- Table-y functions
 
@@ -141,13 +153,51 @@ local generatesinusoid = function ( pitch , frequency )
 		end
 end
 
+-- Gets the current time in as accurate way as possible
+local time
+do
+	if jit and gotffi then
+		local ffi_util = require"ffi_util"
 
-local ok , ffi = pcall ( require , "ffi" )
+		if jit.os == "Windows" then
+			ffi.cdef [[
+				typedef unsigned long DWORD, *PDWORD, *LPDWORD;
+				typedef struct _FILETIME {
+				  DWORD dwLowDateTime;
+				  DWORD dwHighDateTime;
+				} FILETIME, *PFILETIME;
+
+				void GetSystemTimeAsFileTime ( FILETIME* );
+			]]
+			local ft = ffi.new ( "FILETIME[1]" )
+			time = function ( ) -- As found in luasocket's timeout.c
+				ffi.C.GetSystemTimeAsFileTime ( ft )
+				local t = tonumber ( ft[0].dwLowDateTime ) / 1e7 + tonumber ( ft[0].dwHighDateTime ) * ( 2^32 / 1e7 )
+				-- Convert to Unix Epoch time (time since January 1, 1970 (UTC))
+				t = t - 11644473600
+				return t
+			end
+		else -- Assume posix
+			ffi.cdef ( ffi_util.ffi_process_headers { "<sys/time.h>" } )
+			ffi.cdef [[int gettimeofday ( struct timeval * , void * );]]
+			local tp = ffi.new ( "struct timeval[1]" )
+			time = function ( )
+				ffi.C.gettimeofday ( tp , nil )
+				return tonumber ( tp[0].tv_sec ) + tonumber ( tp[0].tv_usec ) / 1e6
+			end
+		end
+	elseif gotsocket then
+		time = socket.gettime
+	else
+		time = ostime
+	end
+end
+
 -- Sleeps for the specified amount of time;
 --  if no argument given, sleeps for smallest amount of time possible (gives up timeslice)
 local sleep
 do
-	if jit and ok then
+	if jit and gotffi then
 		if jit.os == "Windows" then
 			ffi.cdef[[void Sleep(int);]]
 			sleep = function ( x )
@@ -162,8 +212,7 @@ do
 			end
 		end
 	else
-		local ok , socket = pcall ( require , "socket" )
-		if ok then
+		if gotsocket then
 			sleep = socket.sleep
 		elseif osexecute ( "sleep" ) == 0 then
 			sleep = function ( x )
@@ -174,68 +223,23 @@ do
 		else -- Oh well, busy-wait it is
 			sleep = function ( x )  -- seconds
 				x = x or 0
-				local t0 = osclock ( )
-				while osclock ( ) - t0 <= x do end
+				local t0 = time ( )
+				while time ( ) - t0 <= x do end
 			end
 		end
 	end
 end
 
-local time
-do
-	if jit and ok then
-		local ffi_util = require"ffi_util"
-
-		if jit.os == "Windows" then
-			ffi.cdef [[
-				typedef unsigned short WORD, *PWORD, *LPWORD;
-				typedef struct _SYSTEMTIME {
-					WORD wYear;
-					WORD wMonth;
-					WORD wDayOfWeek;
-					WORD wDay;
-					WORD wHour;
-					WORD wMinute;
-					WORD wSecond;
-					WORD wMilliseconds;
-				} SYSTEMTIME;
-
-				void GetSystemTime( SYSTEMTIME* );
-			]]
-			local tp = ffi.new ( "SYSTEMTIME[1]" )
-			time = function ( )
-				ffi.C.GetSystemTime ( tp )
-				local t = {
-					year  = tonumber ( tp[0].wYear ) ;
-					month = tonumber ( tp[0].wMonth ) ;
-					day   = tonumber ( tp[0].wDay ) ;
-					hour  = tonumber ( tp[0].wHour ) ;
-					min   = tonumber ( tp[0].wMinute ) ;
-					sec   = tonumber ( tp[0].wSecond ) ;
-				}
-				return os.time(t) + tp[0].wMilliseconds * 1e-6
-			end
-		else -- Assume posix
-			ffi.cdef ( ffi_util.ffi_process_headers { "<sys/time.h>" } )
-			ffi.cdef [[int gettimeofday ( struct timeval * , void * );]]
-			local tp = ffi.new ( "struct timeval[1]" )
-			time = function ( )
-				ffi.C.gettimeofday ( tp , nil )
-				return tonumber ( tp[0].tv_sec ) + tonumber ( tp[0].tv_usec ) / 1e6
-			end
-		end
-	else
-		time = os.time
-	end
-end
 
 return {
+	pack = pack ;
+	unpack = unpack ;
+	xpcall = xpcall ;
 	loadfilein  = loadfilein ;
 	len = len ;
 
 	reverse_lookup = reverse_lookup ;
 	save__index = save__index ;
-	add_dependancy = add_dependancy ;
 	current_script_dir = current_script_dir ;
 	pretty_print = pretty_print ;
 
@@ -244,6 +248,6 @@ return {
 	nearestpow2 = nearestpow2 ;
 	generatesinusoid = generatesinusoid ;
 
-	sleep = sleep ;
 	time = time ;
+	sleep = sleep ;
 }
