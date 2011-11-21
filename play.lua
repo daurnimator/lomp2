@@ -3,7 +3,7 @@ local next , pairs = next , pairs
 local setmetatable , tonumber = setmetatable , tonumber
 local floor , huge = math.floor , math.huge
 local min, max = math.min , math.max
-local cowrap , coyield = coroutine.wrap , coroutine.yield
+local cocreate , coresume , coyield = coroutine.create , coroutine.resume , coroutine.yield
 
 
 local general 			= require"general"
@@ -150,7 +150,7 @@ local function setup ( )
 
 	local play = true
 
-	local step = cowrap ( function ( self )
+	local loop = function ( self )
 		source_from = 1 -- Source to unqueue from
 		source_to = 1 -- Source to queue to
 
@@ -210,7 +210,23 @@ local function setup ( )
 
 			coyield ( comeback )
 		end
-	end )
+	end
+
+	local main = cocreate ( loop )
+
+	local step = function ( self )
+		local ok , r = coresume ( main )
+		if ok then
+			if r then -- It is time to wait until calling again
+				return r
+			else -- r is false: nothing left to play
+				return r
+			end
+		else -- Error
+			main = cocreate ( loop )
+			error ( r )
+		end
+	end
 
 	-- Goes forward n tracks (n defaults to 1)
 	local next = function ( self , n )
