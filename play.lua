@@ -290,7 +290,13 @@ local function setup ( )
 	end
 
 	local position = function ( self )
-		return sourcequeue [ source_from ].played + sourcequeue [ source_from ].alsource:position ( )
+		if sourcequeue [ source_from ].alsource:buffers_processed ( ) > 0 then
+			return false
+		end
+
+		local played = sourcequeue [ source_from ].played
+		local pos_in_buff = sourcequeue [ source_from ].alsource:position ( )
+		return played + pos_in_buff
 	end
 
 	return {
