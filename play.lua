@@ -35,6 +35,7 @@ empty_item.sample_rate = native_sample_rate
 local sources = setmetatable ( { } , {
 	__index = function ( sources , sample_rate )
 		local v = setmetatable ( { } , {
+			__mode = "v" ;
 			__index = function ( t , format )
 				local alsource = openal.newsource ( )
 				t [ format ] = alsource
