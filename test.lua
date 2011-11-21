@@ -89,30 +89,32 @@ play:push ( item )
 
 local i = 0
 while true do
+	local time_of_step = time ( )
+
 	local wait = play:step ( )
 	if not wait then break end
 
 	local np = play:nowplaying ( )
 
-	if wait > 0 then
-		local w = time ( )
-		repeat
-			local pos = play:position ( )
+	while time_of_step + wait > time ( ) do
+		local pos = play:position ( )
+		if not pos then break end
 
-			local pre = format ( "%04d W=%.5f  |" , i , wait )
-			local mid = pretty_time ( pos / np.sample_rate )
-			local post = "|"
+		local pre = format ( "%04d W=%.5f  |" , i , wait )
+		local mid = pretty_time ( pos / np.sample_rate )
+		local post = "|"
 
-			local percent = pos/(np.to - np.from)
-			local size = 80 - 1 - #pre - #mid - #post
+		local percent = pos/(np.to - np.from)
+		local size = 80 - 1 - #pre - #mid - #post
+		local sizepre = floor ( size*percent + 0.5 )
+		local sizepost = size - sizepre
 
-			local line = pre .. rep ( "=" , floor ( size*percent+0.5 ) ) .. mid .. rep ( "=" , floor ( size*(1-percent) - 0.5 ) ) .. post
-			io.stderr:write ( "\r" , line )
-			
-			sleep ( 0.03 )
-		until time ( ) > w + wait
+		local line = pre .. rep ( "=" , sizepre ) .. mid .. rep ( "=" , sizepost ) .. post
+		io.stderr:write ( "\r" , line )
+
+		sleep ( 0.03 )
 	end
-	
+
 	i = i + 1
 end
 
