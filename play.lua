@@ -59,12 +59,8 @@ local function setup ( )
 		queue:push ( item )
 	end
 
-	local BUFF_SIZE = 192000
-	local NUM_BUFFERS = 3
-	local buffers = openal.newbuffers ( NUM_BUFFERS )
-	local source_data = ffi.new ( "char[?]" , BUFF_SIZE )
-
-	local sourcequeue = setmetatable ( { } , { __index = function ( t , k )
+	local source_queue_mt = {
+		__index = function ( t , k )
 			finished = false
 			local item = queue:pop ( )
 			item:reset ( )
@@ -73,13 +69,20 @@ local function setup ( )
 				item = item ;
 				alsource = sources [ item.sample_rate ] [ item.format ] ;
 				buffers = { } ; -- The set of buffers attached to this source
-				buffer_i = 1 ;
+				buffer_i = 1 ; -- Next number of buffer (this lets you know what order the buffers are in)
 				played = 0 ;
 			}
 			t [ k ] = v
 			return v
-		end } )
-	local source_from , source_to
+		end ;
+	}
+
+	local BUFF_SIZE = 192000
+	local NUM_BUFFERS = 3
+	local buffers = openal.newbuffers ( NUM_BUFFERS )
+	local source_data = ffi.new ( "char[?]" , BUFF_SIZE )
+
+	local sourcequeue , source_from , source_to
 
 	local function new_song ( item ) end
 	local function set_new_song ( self , func )
@@ -114,6 +117,7 @@ local function setup ( )
 		local ci_type = openal.format_to_type [ format ]
 		local ci_bytes_per_frame = openal.format_to_channels [ format ] * ffi.sizeof ( ci_type )
 		local ci_fit_samples_in_buff = floor ( BUFF_SIZE / ci_bytes_per_frame )
+
 		local hasmore , done = item:source ( ffi.cast ( ci_type .. "*" , source_data ) , ci_fit_samples_in_buff )
 
 		openal.alBufferData ( buff , openal.format [ format ] , source_data , done * ci_bytes_per_frame , item.sample_rate )
@@ -151,6 +155,7 @@ local function setup ( )
 	local play = true
 
 	local loop = function ( self )
+		sourcequeue = setmetatable ( { } , source_queue_mt )
 		source_from = 1 -- Source to unqueue from
 		source_to = 1 -- Source to queue to
 
