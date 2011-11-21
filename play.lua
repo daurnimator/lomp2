@@ -209,8 +209,11 @@ local function setup ( )
 			end
 
 			local current_buffer = sourcequeue [ source_from ].alsource:current_buffer ( )
+			local current_buffer_duration = openal.buffer_info ( current_buffer ).duration
+
 			local current_progress = sourcequeue [ source_from ].alsource:position_seconds ( )
-			local comeback = openal.buffer_info ( current_buffer ).duration - current_progress
+
+			local comeback = current_buffer_duration - current_progress
 
 			assert ( comeback >= 0 , comeback )
 
