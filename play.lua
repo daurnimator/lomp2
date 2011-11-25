@@ -14,7 +14,6 @@ local sleep 			= general.sleep
 local sources			= require"sources"
 
 local ffi 				= require"ffi"
-local new_fifo 			= require"fifo"
 local openal 			= require"OpenAL"
 
 local int = ffi.new ( "ALint[1]" )
@@ -47,23 +46,17 @@ local sources = setmetatable ( { } , {
 	end ;
 } )
 
-local function setup ( )
+local function setup ( fetchnextsong )
 	local finished = false
-	-- Create source queue
-	local queue = new_fifo ( )
-	queue:setempty ( function ( f )
-		finished = true
-		return empty_item
-	end )
-
-	local push = function ( self , item )
-		queue:push ( item )
-	end
 
 	local source_queue_mt = {
 		__index = function ( t , k )
 			finished = false
-			local item = queue:pop ( )
+			local item = fetchnextsong ( )
+			if not item then
+				item = empty_item
+				finished = true
+			end
 			item:reset ( )
 
 			local v = {
@@ -113,15 +106,18 @@ local function setup ( )
 		sourcequeue [ source_from ].alsource:queue ( NUM_BUFFERS , buffers )
 	end
 
-	local function add_to_buffer ( item , buff )
+	local function add_to_buffer ( item , albuff )
 		local format = item.format
 		local ci_type = openal.format_to_type [ format ]
 		local ci_bytes_per_frame = openal.format_to_channels [ format ] * ffi.sizeof ( ci_type )
 		local ci_fit_samples_in_buff = floor ( BUFF_SIZE / ci_bytes_per_frame )
+		local rawbuff = ffi.cast ( ci_type .. "*" , source_data )
 
-		local hasmore , done = item:source ( ffi.cast ( ci_type .. "*" , source_data ) , ci_fit_samples_in_buff )
+		-- Get data from source
+		local hasmore , done = item:source ( rawbuff , ci_fit_samples_in_buff )
 
-		openal.alBufferData ( buff , openal.format [ format ] , source_data , done * ci_bytes_per_frame , item.sample_rate )
+		-- Pass the buffer off to openal
+		openal.alBufferData ( albuff , openal.format [ format ] , source_data , done * ci_bytes_per_frame , item.sample_rate )
 		openal.assert ( )
 
 		local duration = done / item.sample_rate

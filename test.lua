@@ -7,7 +7,10 @@ local general = require"general"
 local sleep = general.sleep
 local time = general.time
 
-local play = require"play"()
+local fifo = require "fifo" ( )
+fifo:setempty ( function ( f ) return nil end )
+
+local play = require "play" ( function () return fifo:pop() end )
 
 local sources 			= require"sources"
 local raw_fd 			= sources.raw_fd
@@ -39,51 +42,51 @@ end )
 print("START")
 
 --[[
-play:push ( wavpack_source ( FILE ) )
-play:push ( wavpack_source ( FILE ) )
+fifo:push ( wavpack_source ( FILE ) )
+fifo:push ( wavpack_source ( FILE ) )
 --]]
 --[[
 local ff = ffmpeg_source ( FILE )
-play:push ( ff )
+fifo:push ( ff )
 --]]
 --[[
 local m = mad_file ( FILE )
 m.from = m.to*9/10
-play:push ( m )
-play:push ( m )
+fifo:push ( m )
+fifo:push ( m )
 --]]
 --[[
 local item = raw_fd ( io.open("samples.raw","rb") )
-play:push ( item )
+fifo:push ( item )
 --]]
 --[[
 local w = wav_fd ( io.open ( FILE ,"rb" ) )
-play:push ( w )
+fifo:push ( w )
 --]]
 --[[
-play:push ( libsndfile_path ( FILE ) )
+fifo:push ( libsndfile_path ( FILE ) )
 --]]
 
 local item = sine_source ( 800 )
 item.format = "STEREO8"
 item.to = 90000
-play:push ( item )
+fifo:push ( item )
 
 local item = sine_source ( 1000 )
 item.from = 30000
 item.to = 40000
-play:push ( item )
+fifo:push ( item )
 
 local item = sine_source ( 440 )
 item.from = 30000
 item.to = 70000
 item.sample_rate = 48000
-play:push ( item )
+fifo:push ( item )
 
 local item = sine_source ( 440 )
 item.from = 20000
 item.to = 60000
-play:push ( item )
+fifo:push ( item )
 
 --play:foreach(print)
 
